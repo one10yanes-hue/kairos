@@ -1,0 +1,109 @@
+{% extends "base.html" %}{% block content %}
+<div class="container-fluid mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h5 class="fw-bold mb-0"><i class="bi bi-info-circle" style="color:var(--accent);font-size:1.2rem;"></i> {{ asignacion.actividad.nombre }}</h5>
+        <div class="d-flex gap-1">
+            <span class="badge {% if asignacion.estado == 'EnCurso' %}bg-warning text-dark{% elif asignacion.estado == 'Pausada' %}bg-secondary{% elif asignacion.estado == 'Finalizada' %}bg-success{% else %}bg-light text-muted{% endif %}" style="font-size:0.65rem;">{{ asignacion.get_estado_display }}</span>
+            <span class="badge bg-light text-muted" style="font-size:0.65rem;">{{ asignacion.actividad.tipo_actividad.nombre }}</span>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-8">
+            <div class="card shadow-sm mb-3">
+                <div class="card-header py-1 px-2 d-flex justify-content-between align-items-center">
+                    <small class="fw-semibold"><i class="bi bi-info-circle"></i> Informacion</small>
+                    <span class="badge bg-light text-muted" style="font-size:0.55rem;">{{ asignacion.origen|default:"Manual" }}{% if asignacion.origen_user %} por {{ asignacion.origen_user.get_full_name }}{% endif %}</span>
+                </div>
+                <div class="card-body p-3">
+                    <p class="mb-1" style="font-size:0.82rem;">{{ asignacion.actividad.subarea.area.empresa.nombre }} &gt; {{ asignacion.actividad.subarea.area.nombre }} &gt; {{ asignacion.actividad.subarea.nombre }}</p>
+                    {% if asignacion.actividad.descripcion %}<p class="text-muted mb-2" style="font-size:0.78rem;">{{ asignacion.actividad.descripcion }}</p>{% endif %}
+                    <div class="d-flex gap-3" style="font-size:0.78rem;">
+                        <span class="text-muted"><i class="bi bi-clock"></i> <strong>{{ tiempo_efectivo }}</strong></span>
+                        <span class="text-muted"><i class="bi bi-calendar3"></i> {{ asignacion.fecha_asignacion|date:"d/m/Y H:i" }}</span>
+                        {% if asignacion.planificacion_detalle.fecha_limite %}
+                        <span class="text-muted"><i class="bi bi-calendar-check"></i> Limite: {{ asignacion.planificacion_detalle.fecha_limite|date:"d/m/Y" }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-3">
+                <div class="card-header py-1 px-2"><small class="fw-semibold"><i class="bi bi-clock-history"></i> Linea de tiempo</small></div>
+                <div class="card-body p-3">
+                    {% if registros %}
+                    <div style="position:relative;padding-left:1.75rem;">
+                        <div style="position:absolute;left:0.65rem;top:0;bottom:0;width:2px;background:var(--slate-200);"></div>
+                        {% for r in registros %}
+                        <div style="position:relative;padding-bottom:1rem;">
+                            <div style="position:absolute;left:-1.45rem;top:0.3rem;width:12px;height:12px;border-radius:50%;
+                                {% if r.evento == 'Inicio' or r.evento == 'Finalizacion' %}background:var(--success);border:2px solid var(--success);
+                                {% elif r.evento == 'Pausa' %}background:var(--warning);border:2px solid var(--warning);
+                                {% elif r.evento == 'Reanudacion' %}background:var(--accent);border:2px solid var(--accent);
+                                {% else %}background:var(--slate-400);border:2px solid var(--slate-400);{% endif %}">
+                            </div>
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <span class="fw-semibold" style="font-size:0.8rem;color:
+                                        {% if r.evento == 'Inicio' or r.evento == 'Finalizacion' %}var(--success)
+                                        {% elif r.evento == 'Pausa' %}var(--warning)
+                                        {% elif r.evento == 'Reanudacion' %}var(--accent)
+                                        {% else %}var(--slate-500){% endif %};">
+                                        {{ r.get_evento_display }}
+                                    </span>
+                                    {% if r.evento == 'Pausa' and r.motivo_pausa %}
+                                    <span class="badge bg-light text-muted ms-1" style="font-size:0.6rem;">{{ r.motivo_pausa }}</span>
+                                    {% endif %}
+                                    {% if r.comentario %}<p class="mb-0 text-muted mt-1" style="font-size:0.75rem;">{{ r.comentario }}</p>{% endif %}
+                                    {% if r.nro_actividad %}<p class="mb-0 text-muted" style="font-size:0.75rem;">Nro: {{ r.nro_actividad }}</p>{% endif %}
+                                </div>
+                                <small class="text-muted" style="font-size:0.7rem;white-space:nowrap;margin-left:0.5rem;">{{ r.fecha_hora|date:"d/m H:i:s" }}</small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center py-3 mb-0" style="font-size:0.8rem;">Sin registros de tiempo</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm mb-3">
+                <div class="card-header py-1 px-2"><small class="fw-semibold"><i class="bi bi-chat-dots"></i> Comentarios</small></div>
+                <div class="card-body p-3">
+                    <form method="POST" action="{% url 'gestion:agregar_comentario' asignacion.pk %}" class="mb-3">
+                        {% csrf_token %}
+                        <textarea name="texto" class="form-control form-control-sm mb-2" rows="2" placeholder="Agregar comentario..." style="font-size:0.82rem;"></textarea>
+                        <button type="submit" class="btn btn-sm btn-primary w-100" style="font-size:0.78rem;">Enviar</button>
+                    </form>
+                    {% for c in comentarios %}
+                    <div class="border-bottom mb-2 pb-2">
+                        <small class="fw-semibold" style="font-size:0.78rem;">{{ c.user.get_full_name }}</small>
+                        <p class="mb-0" style="font-size:0.78rem;">{{ c.texto }}</p>
+                        <small class="text-muted" style="font-size:0.65rem;">{{ c.fecha_creacion|date:"d/m H:i" }}</small>
+                    </div>
+                    {% empty %}<p class="text-muted" style="font-size:0.78rem;">Sin comentarios</p>{% endfor %}
+                </div>
+            </div>
+            <div class="card shadow-sm mb-3">
+                <div class="card-header py-1 px-2"><small class="fw-semibold"><i class="bi bi-arrow-left-right"></i> Traslados</small></div>
+                <div class="card-body p-3">
+                    {% for t in traslados %}
+                    <p class="mb-1" style="font-size:0.78rem;"><strong>De:</strong> {{ t.user_origen.get_full_name }} &rarr; <strong>{{ t.user_destino.get_full_name }}</strong></p>
+                    {% if t.motivo %}<p class="text-muted" style="font-size:0.75rem;">{{ t.motivo }}</p>{% endif %}
+                    {% empty %}<p class="text-muted" style="font-size:0.78rem;">Sin traslados</p>{% endfor %}
+                </div>
+            </div>
+            <div class="card shadow-sm">
+                <div class="card-header py-1 px-2"><small class="fw-semibold"><i class="bi bi-people-fill"></i> Colaboradores</small></div>
+                <div class="card-body p-3">
+                    {% for c in colaboraciones %}
+                    <span class="badge bg-light text-muted me-1" style="font-size:0.7rem;">{{ c.user_colaborador.get_full_name }}</span>
+                    {% empty %}<p class="text-muted" style="font-size:0.78rem;">Sin colaboradores</p>{% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>{% endblock %}

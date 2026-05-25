@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid mt-4">
+    <nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'estructura:empresa_list' %}">Empresas</a></li><li class="breadcrumb-item active">{{ title }}</li></ol></nav>
+    <div class="row justify-content-center"><div class="col-md-8 col-lg-6"><div class="card shadow-sm">
+        <div class="card-header"><h5 class="mb-0 fw-bold"><i class="bi bi-building"></i> {{ title }}{% if form.instance.codigo %} <span class="badge bg-secondary ms-2" style="font-size:0.7rem;">{{ form.instance.codigo }}</span>{% endif %}</h5></div>
+        <div class="card-body">
+            <form method="POST" enctype="multipart/form-data">{% csrf_token %}
+                {% for field in form %}<div class="mb-3"><label class="form-label small fw-semibold">{{ field.label }}</label>{{ field }}{% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}</div>{% endfor %}
+                <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Guardar</button>
+                <a href="{% url 'estructura:empresa_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+            </form>
+        </div>
+    </div></div></div>
+</div>
+{% endblock %}

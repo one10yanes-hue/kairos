@@ -1,0 +1,91 @@
+{% if user.rol.nombre == 'Master' %}
+<div class="nav-section">
+    <span class="nav-section-title">Organizacion</span>
+    <a href="{% url 'estructura:empresa_list' %}" class="nav-item {% if '/empresas' in request.path %}active{% endif %}">
+        <i class="bi bi-building"></i><span>Empresas</span>
+    </a>
+    <a href="{% url 'estructura:area_list' %}" class="nav-item {% if '/areas' in request.path %}active{% endif %}">
+        <i class="bi bi-diagram-3"></i><span>Areas</span>
+    </a>
+    <a href="{% url 'estructura:subarea_list' %}" class="nav-item {% if '/subareas' in request.path %}active{% endif %}">
+        <i class="bi bi-diagram-2"></i><span>SubAreas</span>
+    </a>
+</div>
+<div class="nav-section">
+    <span class="nav-section-title">Usuarios</span>
+    <a href="{% url 'accounts:master_usuarios' %}" class="nav-item {% if '/usuarios' in request.path %}active{% endif %}">
+        <i class="bi bi-people"></i><span>Gestionar Usuarios</span>
+    </a>
+</div>
+<div class="nav-section">
+    <span class="nav-section-title">Gestion</span>
+    <a href="{% url 'dashboard:dashboard_admin' %}" class="nav-item {% if '/dashboard' in request.path %}active{% endif %}">
+        <i class="bi bi-speedometer2"></i><span>Dashboard</span>
+    </a>
+    <a href="{% url 'dashboard:progreso' %}" class="nav-item {% if '/progreso' in request.path %}active{% endif %}">
+        <i class="bi bi-graph-up"></i><span>Progreso</span>
+    </a>
+    <a href="{% url 'dashboard:linea_tiempo' %}" class="nav-item {% if '/linea-tiempo' in request.path %}active{% endif %}">
+        <i class="bi bi-clock-history"></i><span>Linea de Tiempo</span>
+    </a>
+    <a href="{% url 'actividades:tipo_list' %}" class="nav-item {% if '/tipos' in request.path %}active{% endif %}">
+        <i class="bi bi-tags"></i><span>Tipos de Actividad</span>
+    </a>
+    <a href="{% url 'actividades:actividad_list' %}" class="nav-item {% if '/actividades' in request.path %}active{% endif %}">
+        <i class="bi bi-list-check"></i><span>Actividades</span>
+    </a>
+    <a href="{% url 'planificacion:planificacion_list' %}" class="nav-item {% if '/planificaciones' in request.path %}active{% endif %}">
+        <i class="bi bi-calendar-check"></i><span>Planificaciones</span>
+    </a>
+    <a href="{% url 'reportes:reporte_list' %}" class="nav-item {% if '/reportes' in request.path %}active{% endif %}">
+        <i class="bi bi-file-earmark-spreadsheet"></i><span>Reportes</span>
+    </a>
+    <a href="{% url 'estructura:importar_exportar' %}" class="nav-item {% if '/importar' in request.path %}active{% endif %}">
+        <i class="bi bi-database"></i><span>Importar Datos</span>
+    </a>
+</div>
+{% elif user.rol.nombre == 'Admin' %}
+<div class="nav-section">
+    <span class="nav-section-title">Dashboard</span>
+    <a href="{% url 'dashboard:dashboard_admin' %}" class="nav-item {% if '/dashboard' in request.path %}active{% endif %}">
+        <i class="bi bi-speedometer2"></i><span>Indicadores</span>
+    </a>
+    <a href="{% url 'dashboard:progreso' %}" class="nav-item {% if '/progreso' in request.path %}active{% endif %}">
+        <i class="bi bi-graph-up"></i><span>Progreso del Equipo</span>
+    </a>
+    <a href="{% url 'dashboard:linea_tiempo' %}" class="nav-item {% if '/linea-tiempo' in request.path %}active{% endif %}">
+        <i class="bi bi-clock-history"></i><span>Linea de Tiempo</span>
+    </a>
+</div>
+<div class="nav-section">
+    <span class="nav-section-title">Administrar</span>
+    <a href="{% url 'actividades:tipo_list' %}" class="nav-item {% if '/tipos' in request.path %}active{% endif %}">
+        <i class="bi bi-tags"></i><span>Tipos de Actividad</span>
+    </a>
+    <a href="{% url 'actividades:actividad_list' %}" class="nav-item {% if '/actividades' in request.path %}active{% endif %}">
+        <i class="bi bi-list-check"></i><span>Actividades</span>
+    </a>
+    <a href="{% url 'planificacion:planificacion_list' %}" class="nav-item {% if '/planificaciones' in request.path %}active{% endif %}">
+        <i class="bi bi-calendar-check"></i><span>Planificaciones</span>
+    </a>
+    <a href="{% url 'reportes:reporte_list' %}" class="nav-item {% if '/reportes' in request.path %}active{% endif %}">
+        <i class="bi bi-file-earmark-spreadsheet"></i><span>Reportes</span>
+    </a>
+</div>
+{% elif user.rol.nombre == 'Usuario' %}
+<div class="nav-section">
+    <span class="nav-section-title">Mi Gestion</span>
+    <a href="{% url 'gestion:tablero' %}" class="nav-item {% if '/tablero' in request.path %}active{% endif %}">
+        <i class="bi bi-kanban"></i><span>Tablero</span>
+    </a>
+    <a href="{% url 'gestion:calendario' %}" class="nav-item {% if '/calendario' in request.path %}active{% endif %}">
+        <i class="bi bi-calendar3"></i><span>Calendario</span>
+    </a>
+    <a href="{% url 'gestion:perfil' %}" class="nav-item {% if '/perfil' in request.path %}active{% endif %}">
+        <i class="bi bi-person-circle"></i><span>Mi Perfil</span>
+    </a>
+    <a href="{% url 'gestion:crear_no_programada' %}" class="nav-item {% if '/no-programada' in request.path %}active{% endif %}">
+        <i class="bi bi-lightning-charge"></i><span>Evento Flash</span>
+    </a>
+</div>
+{% endif %}

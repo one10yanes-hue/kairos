@@ -1,0 +1,60 @@
+# docker-compose.yml — Kairos + SQL Server + Watchtower (auto-update)
+version: "3.9"
+
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: kairos-db
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${DB_PASSWORD:-Admin1234!}
+      MSSQL_PID: Express
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    restart: unless-stopped
+    healthcheck:
+      test: /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$${MSSQL_SA_PASSWORD}" -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  web:
+    build: .
+    container_name: kairos-web
+    ports:
+      - "8000:8000"
+    environment:
+      DEBUG: "False"
+      SECRET_KEY: ${SECRET_KEY}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1}
+      DB_ENGINE: mssql
+      DB_NAME: viva1a_db
+      DB_USER: sa
+      DB_PASSWORD: ${DB_PASSWORD:-Admin1234!}
+      DB_HOST: db
+      DB_PORT: "1433"
+      DB_OPTIONS_DRIVER: ODBC Driver 17 for SQL Server
+      DB_OPTIONS_TRUST_CERT: "True"
+    volumes:
+      - media_data:/app/media
+      - static_data:/app/staticfiles
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  watchtower:
+    image: containrrr/watchtower
+    container_name: kairos-watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 60 --cleanup kairos-web
+    restart: unless-stopped
+
+volumes:
+  sqlserver_data:
+  media_data:
+  static_data:

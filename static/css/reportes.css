@@ -1,0 +1,15 @@
+.card-header h6 {
+    font-size: 0.9rem;
+}
+
+.form-label {
+    margin-bottom: 0.25rem;
+}
+
+.input-group-text {
+    font-size: 0.85rem;
+}
+
+ul li {
+    padding: 0.1rem 0;
+}

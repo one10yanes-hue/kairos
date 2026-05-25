@@ -1,0 +1,84 @@
+{% extends "base.html" %}{% block content %}
+<div class="container-fluid mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h5 class="fw-bold mb-0"><i class="bi bi-tags" style="color:var(--accent);font-size:1.2rem;"></i> Tipos de Actividad</h5>
+        <a href="{% url 'actividades:tipo_create' %}" class="btn btn-primary btn-sm" style="font-size:0.78rem;"><i class="bi bi-plus-lg"></i> Nuevo Tipo</a>
+    </div>
+
+    <form method="GET" class="row g-2 mb-3">
+        <div class="col-md-4">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white"><i class="bi bi-search" style="font-size:0.75rem;"></i></span>
+                <input type="text" name="q" class="form-control" placeholder="Buscar por nombre o subarea..." value="{{ q }}" style="font-size:0.78rem;">
+                <button class="btn btn-outline-secondary" type="submit" style="font-size:0.78rem;">Filtrar</button>
+                {% if q %}<a href="{% url 'actividades:tipo_list' %}" class="btn btn-outline-danger" style="font-size:0.78rem;">Limpiar</a>{% endif %}
+            </div>
+        </div>
+    </form>
+
+    {% if page_obj.paginator.count > 0 %}
+    <div class="row g-2 mb-3">
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.1rem;color:var(--slate-700);">{{ page_obj.paginator.count }}</div><small class="text-muted" style="font-size:0.65rem;">Total{% if q %} (filtrados){% endif %}</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.1rem;color:#16a34a;">{{ tipos_con_fecha }}</div><small class="text-muted" style="font-size:0.65rem;">Requieren fecha</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.1rem;color:#64748b;">{{ tipos_sin_fecha }}</div><small class="text-muted" style="font-size:0.65rem;">Sin fecha</small></div></div></div>
+    </div>
+    {% endif %}
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0" style="font-size:0.82rem;">
+                <thead class="table-light">
+                    <tr>
+                        <th class="py-2">Codigo</th>
+                        <th class="py-2">Nombre</th>
+                        <th class="py-2">SubArea</th>
+                        <th class="py-2">Requiere Fecha</th>
+                        <th class="py-2" style="width:90px;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in tipos %}
+                    <tr>
+                        <td class="py-2"><code style="font-size:0.7rem;color:var(--accent);">{{ t.codigo|default:"" }}</code></td>
+                        <td class="py-2 fw-semibold">{{ t.nombre }}</td>
+                        <td class="py-2">
+                            <span class="text-muted" style="font-size:0.7rem;">{{ t.subarea.nombre }}</span>
+                            <small class="d-block text-muted" style="font-size:0.63rem;">{{ t.subarea.area.empresa.nombre }} > {{ t.subarea.area.nombre }}</small>
+                        </td>
+                        <td class="py-2">
+                            {% if t.requiere_fecha_limite %}
+                            <span class="badge bg-success" style="font-size:0.65rem;"><i class="bi bi-calendar-check"></i> Si</span>
+                            {% else %}
+                            <span class="badge bg-light text-muted" style="font-size:0.65rem;">No</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-2">
+                            <div class="btn-group btn-group-sm">
+                                <a href="{% url 'actividades:tipo_edit' t.pk %}" class="btn btn-outline-secondary" title="Editar"><i class="bi bi-pencil"></i></a>
+                                <a href="{% url 'actividades:tipo_delete' t.pk %}" class="btn btn-outline-danger" title="Inactivar" onclick="return confirm('Inactivar {{ t.nombre }}?')"><i class="bi bi-trash"></i></a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="text-center text-muted py-4" style="font-size:0.75rem;">{% if q %}Sin resultados para "{{ q }}"{% else %}No hay tipos de actividad{% endif %}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% if page_obj.paginator.num_pages > 1 %}
+        <div class="card-footer py-2 px-3 d-flex justify-content-between align-items-center">
+            <small class="text-muted" style="font-size:0.7rem;">Pagina {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</small>
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item"><a class="page-link py-1 px-2" style="font-size:0.7rem;" href="?q={{ q }}&page={{ page_obj.previous_page_number }}">Anterior</a></li>
+                    {% endif %}
+                    {% if page_obj.has_next %}
+                    <li class="page-item"><a class="page-link py-1 px-2" style="font-size:0.7rem;" href="?q={{ q }}&page={{ page_obj.next_page_number }}">Siguiente</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>{% endblock %}

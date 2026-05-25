@@ -1,0 +1,86 @@
+{% extends "base.html" %}{% load static %}
+{% block extra_css %}<link href="{% static 'css/dashboard.css' %}" rel="stylesheet">{% endblock %}
+{% block content %}
+<div class="container-fluid mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-1">
+        <h5 class="fw-bold mb-0"><i class="bi bi-speedometer2" style="color:var(--accent);font-size:1.2rem;"></i> Dashboard</h5>
+        <div class="d-flex gap-2 flex-wrap align-items-center">
+            <select name="subarea_id" class="form-select form-select-sm" style="width:auto;font-size:0.78rem;" onchange="this.form.submit()" form="filtrosForm">
+                <option value="">Todas las SubAreas</option>
+                {% for s in subareas %}<option value="{{ s.pk }}" {% if subarea_id == s.pk %}selected{% endif %}>{{ s.nombre }}</option>{% endfor %}
+            </select>
+            <select name="user_id" class="form-select form-select-sm" style="width:auto;font-size:0.78rem;" onchange="this.form.submit()" form="filtrosForm">
+                <option value="">Todos los usuarios</option>
+                {% for u in usuarios_select %}<option value="{{ u.pk }}" {% if user_id == u.pk %}selected{% endif %}>{{ u.get_full_name }}</option>{% endfor %}
+            </select>
+            <input type="date" name="fecha_desde" class="form-control form-control-sm" style="width:130px;font-size:0.78rem;" value="{{ fecha_desde }}" onchange="this.form.submit()" form="filtrosForm" title="Desde">
+            <input type="date" name="fecha_hasta" class="form-control form-control-sm" style="width:130px;font-size:0.78rem;" value="{{ fecha_hasta }}" onchange="this.form.submit()" form="filtrosForm" title="Hasta">
+            {% if subarea_id or user_id or fecha_desde or fecha_hasta %}<a href="?" class="btn btn-outline-danger btn-sm py-0" style="font-size:0.72rem;">Limpiar</a>{% endif %}
+        </div>
+    </div>
+
+    <form id="filtrosForm" method="GET" style="display:none;"></form>
+
+    <div class="mb-2">
+        <small class="fw-semibold text-uppercase" style="color:var(--slate-500);letter-spacing:0.03em;font-size:0.7rem;">Estado de Actividades</small>
+        <div class="row g-2 mt-1">
+            <div class="col-md-2"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.3rem;color:var(--slate-700);">{{ total_actividades }}</div><small class="text-muted" style="font-size:0.65rem;">Total Asignadas</small></div></div></div>
+            <div class="col-md-2"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.3rem;color:#64748b;">{{ actividades_pendientes }}</div><small class="text-muted" style="font-size:0.65rem;">Pendientes</small></div></div></div>
+            <div class="col-md-2"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.3rem;color:#ca8a04;">{{ actividades_curso }}</div><small class="text-muted" style="font-size:0.65rem;">En Curso</small></div></div></div>
+            <div class="col-md-2"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.3rem;color:#94a3b8;">{{ actividades_pausadas }}</div><small class="text-muted" style="font-size:0.65rem;">Pausadas</small></div></div></div>
+            <div class="col-md-2"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.3rem;color:#16a34a;">{{ actividades_finalizadas }}</div><small class="text-muted" style="font-size:0.65rem;">Finalizadas</small></div></div></div>
+            <div class="col-md-2"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.3rem;color:#0ea5e9;">{{ finalizadas_hoy }}</div><small class="text-muted" style="font-size:0.65rem;">Terminadas Hoy</small></div></div></div>
+        </div>
+    </div>
+
+    <div class="mb-2">
+        <small class="fw-semibold text-uppercase" style="color:var(--slate-500);letter-spacing:0.03em;font-size:0.7rem;">Rendimiento</small>
+        <div class="row g-2 mt-1">
+            <div class="col-md-2"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.3rem;color:var(--slate-700);">{{ tiempo_total }}</div><small class="text-muted" style="font-size:0.65rem;">Tiempo Total</small></div></div></div>
+            <div class="col-md-2"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.3rem;color:var(--accent);">{{ productividad_media }}%</div><small class="text-muted" style="font-size:0.65rem;">Productividad</small></div></div></div>
+            <div class="col-md-2"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.3rem;color:#16a34a;">{{ nro_total_items }}</div><small class="text-muted" style="font-size:0.65rem;">Items Realizados</small></div></div></div>
+            <div class="col-md-2"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.3rem;color:#0ea5e9;">{{ promedio_item }}</div><small class="text-muted" style="font-size:0.65rem;">Promedio x Item</small></div></div></div>
+            <div class="col-md-2"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.3rem;color:#f59e0b;">{{ prorrogas_total }}</div><small class="text-muted" style="font-size:0.65rem;">Prorrogas</small></div></div></div>
+        </div>
+    </div>
+
+    <div class="row g-2 mb-2">
+        <div class="col-md-5">
+            <div class="card shadow-sm"><div class="card-header py-1 px-2"><small class="fw-semibold"><i class="bi bi-pie-chart"></i> Distribucion</small></div><div class="card-body p-2"><canvas id="chartDistribucion" height="200"></canvas></div></div>
+        </div>
+        <div class="col-md-7">
+            <div class="card shadow-sm"><div class="card-header py-1 px-2"><small class="fw-semibold"><i class="bi bi-bar-chart"></i> Productividad por Usuario</small></div><div class="card-body p-2"><canvas id="chartProductividad" height="200"></canvas></div></div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm"><div class="card-header py-1 px-2 d-flex justify-content-between align-items-center"><small class="fw-semibold"><i class="bi bi-people-fill"></i> Detalle por Usuario</small><small class="text-muted" style="font-size:0.65rem;">{{ usuarios_stats|length }} usuario(s)</small></div>
+        <div class="card-body p-0"><table class="table table-hover mb-0" style="font-size:0.7rem;"><thead class="table-light"><tr><th style="width:25%;">Usuario</th><th>Tot</th><th>Pen</th><th>Cur</th><th>Pau</th><th>Fin</th><th>Items</th><th>Prr</th><th>Activo</th><th>Pausa</th><th>Prom</th><th>Prod</th></tr></thead><tbody>{% for s in usuarios_stats %}<tr><td class="fw-semibold">{{ s.usuario.get_full_name }}</td><td>{{ s.total }}</td><td>{{ s.pendientes }}</td><td>{{ s.en_curso }}</td><td>{{ s.pausadas }}</td><td>{{ s.finalizadas }}</td><td>{{ s.nro_items }}</td><td>{{ s.prorrogas }}</td><td>{{ s.tiempo }}</td><td>{{ s.tiempo_pausado }}</td><td>{{ s.promedio }}</td><td><span class="badge {% if s.productividad >= 70 %}bg-success{% elif s.productividad >= 40 %}bg-warning text-dark{% else %}bg-danger{% endif %}" style="font-size:0.6rem;">{{ s.productividad }}%</span></td></tr>{% empty %}<tr><td colspan="12" class="text-center text-muted py-3" style="font-size:0.7rem;">Sin datos</td></tr>{% endfor %}</tbody></table></div></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    new Chart(document.getElementById('chartDistribucion'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Pendientes', 'En Curso', 'Pausadas', 'Finalizadas'],
+            datasets: [{ data: [{{ actividades_pendientes }}, {{ actividades_curso }}, {{ actividades_pausadas }}, {{ actividades_finalizadas }}], backgroundColor: ['#64748b', '#ca8a04', '#94a3b8', '#16a34a'], borderWidth: 0 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } } }
+    });
+
+    var usr = [{% for s in usuarios_stats %}'{{ s.usuario.get_full_name|escapejs }}',{% endfor %}];
+    var prod = [{% for s in usuarios_stats %}{{ s.productividad }},{% endfor %}];
+    new Chart(document.getElementById('chartProductividad'), {
+        type: 'bar',
+        data: { labels: usr, datasets: [{ data: prod, backgroundColor: '#3b82f6', borderRadius: 4 }] },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true, max: 100, ticks: { font: { size: 9 } } }, x: { ticks: { font: { size: 9 } } } },
+            plugins: { legend: { display: false } }
+        }
+    });
+});
+</script>
+{% endblock %}

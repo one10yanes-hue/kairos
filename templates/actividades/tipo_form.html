@@ -1,0 +1,27 @@
+{% extends "base.html" %}{% block content %}
+<div class="container-fluid mt-4">
+    <nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'actividades:tipo_list' %}">Tipos</a></li><li class="breadcrumb-item active">{{ title }}</li></ol></nav>
+    <div class="row justify-content-center"><div class="col-md-6"><div class="card shadow-sm"><div class="card-header"><h5 class="mb-0 fw-bold">{{ title }}</h5></div>
+    <div class="card-body">
+        <form method="POST">{% csrf_token %}
+            {% for field in form %}
+            {% if field.widget_type == 'CheckboxInput' %}
+            <div class="mb-3 form-check">
+                {{ field }}
+                <label class="form-check-label fw-semibold small" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {% if field.help_text %}<div class="text-muted small">{{ field.help_text }}</div>{% endif %}
+            </div>
+            {% else %}
+            <div class="mb-3">
+                <label class="form-label small fw-semibold">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}
+                {% if field.help_text %}<div class="text-muted small">{{ field.help_text }}</div>{% endif %}
+            </div>
+            {% endif %}
+            {% endfor %}
+            <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Guardar</button>
+            <a href="{% url 'actividades:tipo_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+        </form>
+    </div></div></div></div>
+</div>{% endblock %}

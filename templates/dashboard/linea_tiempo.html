@@ -1,0 +1,61 @@
+{% extends "base.html" %}{% load static %}
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/vis-timeline@7.7.3/styles/vis-timeline-graph2d.min.css" rel="stylesheet">
+<link href="{% static 'css/linea_tiempo.css' %}" rel="stylesheet">
+{% endblock %}
+{% block content %}
+<div class="container-fluid mt-3 tl-wrap">
+  <div class="tl-toolbar card">
+    <div class="card-body">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div class="d-flex align-items-center gap-2">
+          <div class="tl-title-icon">
+            <i class="bi bi-clock-history"></i>
+          </div>
+          <div>
+            <h5 class="mb-0 fw-bold">Linea de Tiempo</h5>
+            <div class="tl-subtitle">{{ dia|date:"l, d/m/Y" }}</div>
+          </div>
+        </div>
+        <div class="tl-controls d-flex flex-wrap align-items-center gap-2">
+          <div class="btn-group btn-group-sm" role="group" aria-label="Navegacion de fecha">
+            <a href="?fecha={{ ayer.isoformat }}" class="btn btn-outline-secondary">&lsaquo; Ayer</a>
+            <a href="?fecha={{ maniana.isoformat }}" class="btn btn-outline-secondary">Mañana &rsaquo;</a>
+          </div>
+          <form method="GET" class="tl-date-form">
+            <input type="date" name="fecha" value="{{ fecha_str }}" class="form-control form-control-sm tl-date-input" onchange="this.form.submit()">
+          </form>
+          <a href="?fecha=" class="btn btn-sm btn-outline-primary">Hoy</a>
+        </div>
+      </div>
+      <div class="tl-legend">
+        <div class="tl-legend-item"><span class="tl-legend-dot actv"></span>Activo</div>
+        <div class="tl-legend-item"><span class="tl-legend-dot paus"></span>Pausado</div>
+        <div class="tl-legend-item"><span class="tl-legend-dot pend"></span>Pendiente</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-body">
+    {% if timeline_items %}
+    <div id="tlTimeline" class="tl-vis"></div>
+    {{ timeline_groups|json_script:"tl-groups" }}
+    {{ timeline_items|json_script:"tl-items" }}
+    {{ timeline_window|json_script:"tl-window" }}
+    {{ tooltip_map|json_script:"tl-tips" }}
+    {% else %}
+    <div class="tl-empty">
+      <div class="text-center">
+        <i class="bi bi-inbox"></i>
+        <div>No hay actividad para este dia</div>
+        <small><a href="?fecha={{ ayer.isoformat }}" class="text-decoration-none">ver ayer</a></small>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/vis-timeline@7.7.3/standalone/umd/vis-timeline-graph2d.min.js"></script>
+<script src="{% static 'js/linea_tiempo.js' %}"></script>
+{% endblock %}

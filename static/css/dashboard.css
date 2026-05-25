@@ -1,0 +1,21 @@
+#chartDistribucion, #chartProductividad {
+    max-height: 280px;
+}
+
+.dashboard-stat {
+    transition: box-shadow 0.2s ease;
+}
+
+.dashboard-stat:hover {
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+
+.dashboard-stat h1 {
+    font-size: 2.25rem;
+    letter-spacing: -0.03em;
+}
+
+.dashboard-stat p {
+    font-size: 0.8rem;
+    letter-spacing: 0.02em;
+}

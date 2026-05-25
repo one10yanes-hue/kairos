@@ -1,0 +1,86 @@
+{% extends "base.html" %}{% block content %}
+<div class="container-fluid mt-3"><div class="row justify-content-center"><div class="col-md-6">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h5 class="fw-bold mb-0"><i class="bi bi-lightning-charge" style="color:var(--accent);font-size:1.2rem;"></i> Evento Flash</h5>
+        <a href="{% url 'gestion:tablero' %}" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:0.78rem;">Volver al tablero</a>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header py-1 px-2"><small class="fw-semibold"><i class="bi bi-play-circle"></i> Iniciar actividad no programada</small></div>
+        <div class="card-body p-3">
+            <p class="text-muted mb-3" style="font-size:0.78rem;">Selecciona la actividad que vas a realizar de forma eventual o imprevista.</p>
+            <form method="POST">{% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" style="font-size:0.82rem;">SubArea</label>
+                    {% if user_subareas|length == 1 %}
+                    <input type="text" class="form-control form-control-sm" value="{{ user_subareas.0.subarea.nombre }} ({{ user_subareas.0.subarea.area.empresa.nombre }})" readonly style="font-size:0.85rem;">
+                    <input type="hidden" name="subarea_id" id="subareaSelect" value="{{ user_subareas.0.subarea.pk }}">
+                    {% else %}
+                    <input type="text" class="form-control form-control-sm mb-1" id="filtroSubarea" placeholder="Filtrar subareas..." onkeyup="filtrarSubareas()" style="font-size:0.85rem;">
+                    <select name="subarea_id" id="subareaSelect" class="form-select form-select-sm" required onchange="cargarActividades(this.value)" size="4" style="height:auto;font-size:0.85rem;">
+                        <option value="" disabled selected>Seleccione...</option>
+                        {% for usa in user_subareas %}
+                        <option value="{{ usa.subarea.pk }}" class="subarea-option">{{ usa.subarea.nombre }} ({{ usa.subarea.area.empresa.nombre }})</option>
+                        {% endfor %}
+                    </select>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" style="font-size:0.82rem;">Actividad a realizar</label>
+                    <input type="text" class="form-control form-control-sm mb-2" id="filtroActividades" placeholder="Buscar actividades..." onkeyup="filtrarActividades()" style="font-size:0.85rem;">
+                    <div id="actividadesContainer" class="border rounded" style="max-height:200px;overflow-y:auto;font-size:0.85rem;">
+                        <p class="text-muted text-center py-3 mb-0">Primero selecciona una subarea</p>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" style="font-size:0.82rem;">Comentario</label>
+                    <textarea name="comentario" class="form-control form-control-sm" rows="2" placeholder="Opcional: motivo o detalle de la actividad..." style="font-size:0.85rem;"></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-warning w-100" style="font-size:0.85rem;"><i class="bi bi-play-fill"></i> Iniciar Actividad</button>
+            </form>
+        </div>
+    </div>
+</div></div></div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var sel = document.getElementById('subareaSelect');
+    if (sel && sel.value) cargarActividades(sel.value);
+});
+
+function filtrarSubareas() {
+    var f = document.getElementById('filtroSubarea').value.toLowerCase();
+    document.querySelectorAll('.subarea-option').forEach(function(o) {
+        o.style.display = o.textContent.toLowerCase().includes(f) ? '' : 'none';
+    });
+}
+
+function cargarActividades(subareaId) {
+    var container = document.getElementById('actividadesContainer');
+    if (!subareaId) { container.innerHTML = '<p class="text-muted text-center py-3 mb-0">Primero selecciona una subarea</p>'; return; }
+    container.innerHTML = '<p class="text-muted text-center py-3 mb-0">Cargando...</p>';
+    fetch('/master/api/buscar/actividad/?subarea_id=' + subareaId + '&tipo_nombre=No+Programada&_=' + Date.now(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data.length) { container.innerHTML = '<p class="text-muted text-center py-3 mb-0">No hay actividades no programadas en esta subarea</p>'; return; }
+            var html = '';
+            data.forEach(function(a) {
+                html += '<label class="d-flex align-items-center gap-2 px-3 py-2 act-item" style="cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:0.85rem;">';
+                html += '<input type="radio" name="actividad_id" value="' + a.id + '" class="form-check-input mt-0" required>';
+                html += '<span>' + a.label + ' <span class="badge bg-light text-muted">' + a.text.split('(').pop().replace(')','') + '</span></span></label>';
+            });
+            container.innerHTML = html;
+        });
+}
+
+function filtrarActividades() {
+    var f = document.getElementById('filtroActividades').value.toLowerCase();
+    document.querySelectorAll('.act-item').forEach(function(e) {
+        e.style.display = e.textContent.toLowerCase().includes(f) ? '' : 'none';
+    });
+}
+</script>
+{% endblock %}

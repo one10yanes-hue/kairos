@@ -1,0 +1,77 @@
+{% extends "base.html" %}{% block content %}
+<div class="container-fluid mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h5 class="fw-bold mb-0"><i class="bi bi-person-circle" style="color:var(--accent);font-size:1.2rem;"></i> Mi Perfil</h5>
+        <a href="{% url 'gestion:tablero' %}" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:0.78rem;"><i class="bi bi-kanban"></i> Tablero</a>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-body text-center p-3">
+                    <div class="mx-auto mb-2 d-flex align-items-center justify-content-center" style="width:64px;height:64px;border-radius:50%;background:var(--accent-light);color:var(--accent-dark);font-size:1.5rem;font-weight:600;">
+                        {{ user.nombre|first|upper }}{{ user.apellido|first|upper }}
+                    </div>
+                    <h6 class="fw-bold mb-0">{{ user.get_full_name }}</h6>
+                    <small class="text-muted">{{ user.rol.nombre|default:"" }}{% if user.cargo %} &middot; {{ user.cargo }}{% endif %}</small>
+                    {% if user.email %}<p class="text-muted mt-1 mb-0" style="font-size:0.72rem;"><i class="bi bi-envelope"></i> {{ user.email }}</p>{% endif %}
+                    <p class="text-muted mb-0" style="font-size:0.72rem;"><i class="bi bi-person-badge"></i> {{ user.cedula }}</p>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mt-3">
+                <div class="card-header py-1 px-2"><small class="fw-semibold"><i class="bi bi-clock-history"></i> Ultimas actividades</small></div>
+                <div class="card-body p-0">
+                    <table class="table table-hover mb-0" style="font-size:0.72rem;">
+                        <thead class="table-light"><tr><th>Actividad</th><th>Estado</th></tr></thead>
+                        <tbody>
+                            {% for a in ultimas %}
+                            <tr>
+                                <td>{{ a.actividad.nombre|truncatechars:22 }}</td>
+                                <td><span class="badge {% if a.estado == 'EnCurso' %}bg-warning text-dark{% elif a.estado == 'Finalizada' %}bg-success{% elif a.estado == 'Pausada' %}bg-secondary{% else %}bg-light text-muted{% endif %}" style="font-size:0.55rem;">{{ a.get_estado_display }}</span></td>
+                            </tr>
+                            {% empty %}<tr><td colspan="2" class="text-center text-muted py-2">Sin actividades</td></tr>{% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="row g-2 mb-3">
+                <div class="col-4"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.2rem;color:var(--slate-700);">{{ total_asignaciones }}</div><small class="text-muted" style="font-size:0.6rem;">Total Asig.</small></div></div></div>
+                <div class="col-4"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.2rem;color:#16a34a;">{{ completadas }}</div><small class="text-muted" style="font-size:0.6rem;">Finalizadas</small></div></div></div>
+                <div class="col-4"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.2rem;color:#64748b;">{{ pendientes }}</div><small class="text-muted" style="font-size:0.6rem;">Pendientes</small></div></div></div>
+                <div class="col-4"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.2rem;color:#ca8a04;">{{ en_curso }}</div><small class="text-muted" style="font-size:0.6rem;">En Curso</small></div></div></div>
+                <div class="col-4"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.2rem;color:#94a3b8;">{{ pausadas }}</div><small class="text-muted" style="font-size:0.6rem;">Pausadas</small></div></div></div>
+                <div class="col-4"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.2rem;color:#f59e0b;">{{ prorrogas }}</div><small class="text-muted" style="font-size:0.6rem;">Prorrogas</small></div></div></div>
+            </div>
+
+            <div class="row g-2 mb-3">
+                <div class="col-4"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.2rem;color:var(--slate-700);">{{ horas }}h {{ minutos }}m</div><small class="text-muted" style="font-size:0.6rem;">Tiempo activo</small></div></div></div>
+                <div class="col-4"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.2rem;color:#94a3b8;">{{ horas_p }}h {{ mins_p }}m</div><small class="text-muted" style="font-size:0.6rem;">Tiempo pausado</small></div></div></div>
+                <div class="col-4"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.2rem;color:#16a34a;">{{ total_items }}</div><small class="text-muted" style="font-size:0.6rem;">Items realizados</small></div></div></div>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-header py-1 px-2"><small class="fw-semibold"><i class="bi bi-clock-history"></i> Actividad de hoy ({{ hoy|date:"d/m/Y" }})</small></div>
+                <div class="card-body p-0">
+                    <table class="table table-hover mb-0" style="font-size:0.78rem;">
+                        <thead class="table-light"><tr><th style="width:15%;">Hora</th><th>Actividad</th><th>Evento</th></tr></thead>
+                        <tbody>
+                            {% for r in hoy_registros %}
+                            <tr>
+                                <td class="text-muted">{{ r.fecha_hora|date:"H:i" }}</td>
+                                <td class="fw-semibold">{{ r.asignacion.actividad.nombre }}</td>
+                                <td><span class="badge {% if r.evento == 'Inicio' %}bg-success{% elif r.evento == 'Finalizacion' %}bg-success{% elif r.evento == 'Pausa' %}bg-warning text-dark{% elif r.evento == 'Reanudacion' %}bg-primary{% else %}bg-light text-muted{% endif %}" style="font-size:0.6rem;">{{ r.get_evento_display }}</span></td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="3" class="text-center text-muted py-3" style="font-size:0.75rem;">Sin actividad hoy</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>{% endblock %}

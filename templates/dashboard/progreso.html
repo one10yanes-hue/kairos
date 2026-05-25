@@ -1,0 +1,126 @@
+{% extends "base.html" %}{% block content %}
+<div class="container-fluid mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h5 class="fw-bold mb-0"><i class="bi bi-graph-up-arrow" style="color:var(--accent);font-size:1.2rem;"></i> Progreso del Equipo</h5>
+        <div class="d-flex gap-2 flex-wrap align-items-center">
+            <select name="subarea_id" class="form-select form-select-sm" style="width:auto;font-size:0.78rem;" onchange="filtrar()">
+                <option value="">Todas las subareas</option>
+                {% for s in subareas %}<option value="{{ s.pk }}" {% if subarea_id == s.pk %}selected{% endif %}>{{ s.nombre }}</option>{% endfor %}
+            </select>
+            <select name="user_id" class="form-select form-select-sm" style="width:auto;font-size:0.78rem;" onchange="filtrar()">
+                <option value="">Todos los usuarios</option>
+                {% for u in usuarios_filtro %}<option value="{{ u.pk }}" {% if user_id == u.pk %}selected{% endif %}>{{ u.get_full_name }}</option>{% endfor %}
+            </select>
+            <select name="estado" class="form-select form-select-sm" style="width:auto;font-size:0.78rem;" onchange="filtrar()">
+                <option value="">Todos los estados</option>
+                <option value="Pendiente" {% if estado_filter == 'Pendiente' %}selected{% endif %}>Pendiente</option>
+                <option value="EnCurso" {% if estado_filter == 'EnCurso' %}selected{% endif %}>En Curso</option>
+                <option value="Pausada" {% if estado_filter == 'Pausada' %}selected{% endif %}>Pausada</option>
+                <option value="Finalizada" {% if estado_filter == 'Finalizada' %}selected{% endif %}>Finalizada</option>
+            </select>
+            <input type="date" name="fecha_desde" class="form-control form-control-sm" style="width:125px;font-size:0.78rem;" value="{{ fecha_desde }}" onchange="filtrar()" title="Desde">
+            <input type="date" name="fecha_hasta" class="form-control form-control-sm" style="width:125px;font-size:0.78rem;" value="{{ fecha_hasta }}" onchange="filtrar()" title="Hasta">
+            <input type="text" name="q" class="form-control form-control-sm" style="width:160px;font-size:0.78rem;" placeholder="Buscar actividad o usuario..." value="{{ q }}" onkeyup="if(event.key==='Enter')filtrar()">
+            {% if subarea_id or user_id or estado_filter or q or fecha_desde or fecha_hasta %}<a href="?" class="btn btn-outline-danger btn-sm" style="font-size:0.72rem;">Limpiar</a>{% endif %}
+        </div>
+    </div>
+
+    <div class="row g-2 mb-3">
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2 px-2"><div class="fw-bold" style="font-size:1.1rem;color:var(--slate-700);">{{ resumen_total }}</div><small class="text-muted" style="font-size:0.65rem;">Total</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2 px-2"><div class="fw-bold" style="font-size:1.1rem;color:#ca8a04;">{{ resumen_curso }}</div><small class="text-muted" style="font-size:0.65rem;">Curso</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2 px-2"><div class="fw-bold" style="font-size:1.1rem;color:#94a3b8;">{{ resumen_pausa }}</div><small class="text-muted" style="font-size:0.65rem;">Pausa</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2 px-2"><div class="fw-bold" style="font-size:1.1rem;color:#16a34a;">{{ resumen_fin }}</div><small class="text-muted" style="font-size:0.65rem;">Fin</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2 px-2"><div class="fw-bold" style="font-size:1.1rem;color:var(--slate-500);">{{ page_obj.paginator.count }}</div><small class="text-muted" style="font-size:0.65rem;">Filtro</small></div></div></div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-2">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" style="font-size:0.82rem;">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="py-2">Usuario</th>
+                            <th class="py-2">Actividad</th>
+                            <th class="py-2">Tipo</th>
+                            <th class="py-2">SubArea</th>
+                            <th class="py-2">Estado</th>
+                            <th class="py-2">Activo</th>
+                            <th class="py-2">Pausa</th>
+                            <th class="py-2">Inicio</th>
+                            <th class="py-2">Fin</th>
+                            <th class="py-2">Origen</th>
+                            <th class="py-2">Prr</th>
+                            <th class="py-2">Asignado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for a in asignaciones %}
+                        <tr>
+                            <td class="py-2 fw-semibold">
+                                <a href="{% url 'gestion:detalle_actividad' a.pk %}" class="text-decoration-none text-reset">{{ a.user.get_full_name }}</a>
+                            </td>
+                            <td class="py-2">
+                                <a href="{% url 'gestion:detalle_actividad' a.pk %}" class="text-decoration-none">{{ a.actividad.nombre }}</a>
+                                <small class="d-block text-muted" style="font-size:0.63rem;">{{ a.actividad.subarea.area.empresa.nombre }}</small>
+                            </td>
+                            <td class="py-2"><span class="badge bg-light text-muted" style="font-size:0.65rem;">{{ a.actividad.tipo_actividad.nombre }}</span></td>
+                            <td class="py-2"><span class="text-muted" style="font-size:0.7rem;">{{ a.actividad.subarea.nombre }}</span></td>
+                            <td class="py-2">
+                                <span class="badge {% if a.estado == 'Finalizada' %}bg-success{% elif a.estado == 'EnCurso' %}bg-warning text-dark{% elif a.estado == 'Pausada' %}bg-secondary{% elif a.estado == 'Cancelada' %}bg-danger{% else %}bg-light text-muted{% endif %}" style="font-size:0.65rem;">
+                                    <i class="bi {% if a.estado == 'Finalizada' %}bi-check-circle{% elif a.estado == 'EnCurso' %}bi-play-circle{% elif a.estado == 'Pausada' %}bi-pause-circle{% elif a.estado == 'Cancelada' %}bi-x-circle{% else %}bi-inbox{% endif %}"></i>
+                                    {{ a.get_estado_display }}
+                                </span>
+                            </td>
+                            <td class="py-2">{{ a.tiempo_formateado }}</td>
+                            <td class="py-2">{{ a.tiempo_pausado_formateado }}</td>
+                            <td class="py-2"><span class="text-muted" style="font-size:0.65rem;">{% if a.primer_inicio %}{{ a.primer_inicio|date:"d/m H:i" }}{% else %}-{% endif %}</span></td>
+                            <td class="py-2"><span class="text-muted" style="font-size:0.65rem;">{% if a.ultimo_fin %}{{ a.ultimo_fin|date:"d/m H:i" }}{% else %}-{% endif %}</span></td>
+                            <td class="py-2"><span class="badge bg-light text-muted" style="font-size:0.6rem;">{{ a.origen|default:"-" }}</span></td>
+                            <td class="py-2">{% if a.prorroga_count > 0 %}<span class="badge bg-warning text-dark" style="font-size:0.65rem;">{{ a.prorroga_count }}</span>{% else %}0{% endif %}</td>
+                            <td class="py-2 text-muted" style="font-size:0.7rem;">{{ a.fecha_asignacion|date:"d/m/y" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="12" class="text-center text-muted py-4" style="font-size:0.75rem;">Sin asignaciones{% if q %} para "{{ q }}"{% endif %}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% if page_obj.paginator.num_pages > 1 %}
+        <div class="card-footer py-2 px-3 d-flex justify-content-between align-items-center">
+            <small class="text-muted" style="font-size:0.7rem;">Pagina {{ page_obj.number }} de {{ page_obj.paginator.num_pages }} ({{ page_obj.paginator.count }} registros)</small>
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item"><a class="page-link py-1 px-2" style="font-size:0.7rem;" href="?{% if subarea_id %}subarea_id={{ subarea_id }}{% endif %}{% if user_id %}&user_id={{ user_id }}{% endif %}{% if estado_filter %}&estado={{ estado_filter }}{% endif %}{% if q %}&q={{ q }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}&page={{ page_obj.previous_page_number }}">Anterior</a></li>
+                    {% endif %}
+                    {% if page_obj.has_next %}
+                    <li class="page-item"><a class="page-link py-1 px-2" style="font-size:0.7rem;" href="?{% if subarea_id %}subarea_id={{ subarea_id }}{% endif %}{% if user_id %}&user_id={{ user_id }}{% endif %}{% if estado_filter %}&estado={{ estado_filter }}{% endif %}{% if q %}&q={{ q }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}&page={{ page_obj.next_page_number }}">Siguiente</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function filtrar() {
+    var params = new URLSearchParams();
+    var selSub = document.querySelector('select[name="subarea_id"]');
+    if(selSub.value) params.set('subarea_id', selSub.value);
+    var selUsr = document.querySelector('select[name="user_id"]');
+    if(selUsr.value) params.set('user_id', selUsr.value);
+    var selEst = document.querySelector('select[name="estado"]');
+    if(selEst.value) params.set('estado', selEst.value);
+    var inpQ = document.querySelector('input[name="q"]');
+    if(inpQ.value) params.set('q', inpQ.value);
+    var fd = document.querySelector('input[name="fecha_desde"]');
+    if(fd.value) params.set('fecha_desde', fd.value);
+    var fh = document.querySelector('input[name="fecha_hasta"]');
+    if(fh.value) params.set('fecha_hasta', fh.value);
+    if(params.toString()) location.href = '?' + params.toString();
+    else location.href = '.';
+}
+</script>
+{% endblock %}

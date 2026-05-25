@@ -1,0 +1,40 @@
+# .github/workflows/deploy.yml
+# CI/CD: Build Docker image + Desplegar en servidor Windows via SSH
+name: Deploy Kairos
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:  # Permite ejecución manual desde GitHub
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Configurar SSH
+        uses: webfactory/ssh-agent@v0.9.1
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Conectar al servidor y desplegar
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+            set -e
+            cd /opt/kairos || cd C:/Apps/kairos/viva1a
+
+            echo "=== Pull código ==="
+            git pull origin main
+
+            echo "=== Reconstruir y reiniciar ==="
+            docker compose build web
+            docker compose up -d --remove-orphans
+
+            echo "=== Limpiar imágenes viejas ==="
+            docker image prune -f
+
+            echo "=== Despliegue completado ==="
+          EOF

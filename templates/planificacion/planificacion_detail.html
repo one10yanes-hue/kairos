@@ -1,0 +1,110 @@
+{% extends "base.html" %}{% block content %}
+<div class="container-fluid mt-4">
+    <nav aria-label="breadcrumb"><ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'planificacion:planificacion_list' %}">Planificaciones</a></li>
+        <li class="breadcrumb-item active">{{ planificacion.nombre }}</li>
+    </ol></nav>
+
+    <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+        <div>
+            <h4 class="fw-bold mb-1"><i class="bi bi-calendar-check" style="color:var(--accent);"></i> {{ planificacion.nombre }}
+                <span class="badge bg-secondary ms-2" style="font-size:0.7rem;">Cerrada</span>
+            </h4>
+            <p class="text-muted small mb-0">{{ planificacion.descripcion|default:"Sin descripcion" }}</p>
+            <p class="text-muted small">{{ planificacion.subarea.area.empresa.nombre }} &gt; {{ planificacion.subarea.area.nombre }} &gt; {{ planificacion.subarea.nombre }}</p>
+        </div>
+        <a href="{% url 'planificacion:planificacion_delete' planificacion.pk %}" class="btn btn-outline-danger btn-sm" onclick="return confirm('Inactivar planificacion?')">
+            <i class="bi bi-trash"></i> Inactivar
+        </a>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-semibold"><i class="bi bi-list-task"></i> Actividades Asignadas <span class="badge bg-light text-muted ms-1">{{ detalles|length }}</span></h6>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr><th>Actividad</th><th>Tipo</th><th>Usuario</th><th>Estado</th><th>Limite</th></tr>
+                </thead>
+                <tbody>
+                    {% for d in detalles %}
+                    <tr>
+                        <td class="fw-semibold">{{ d.actividad.nombre }}</td>
+                        <td><span class="badge bg-light text-muted">{{ d.actividad.tipo_actividad.nombre }}</span></td>
+                        <td>{{ d.user.get_full_name }}</td>
+                        <td>
+                            {% for a in d.asignaciones.all %}
+                            <span class="badge {% if a.estado == 'Finalizada' %}bg-success bg-opacity-25 text-success{% elif a.estado == 'EnCurso' %}bg-warning bg-opacity-25 text-warning{% elif a.estado == 'Pausada' %}bg-light text-muted{% elif a.estado == 'Cancelada' %}bg-danger bg-opacity-25 text-danger{% else %}bg-light text-muted{% endif %}">{{ a.estado }}</span>
+                            {% empty %}
+                            <span class="badge bg-light text-muted">Pendiente</span>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            {% if d.fecha_limite %}
+                            <span class="badge bg-light text-muted">{{ d.fecha_limite|date:"d/m/Y" }}</span>
+                            {% else %}-{% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="text-center text-muted py-4">Esta planificacion no tiene actividades asignadas.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mt-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-semibold"><i class="bi bi-exclamation-triangle" style="color:#f59e0b;"></i> Pendientes por Gestionar <span class="badge bg-warning text-dark ms-1">{{ pendientes|length }}</span></h6>
+        </div>
+        <div class="card-body p-0">
+            {% if pendientes %}
+            <table class="table table-hover mb-0 small">
+                <thead class="table-light"><tr><th>Actividad</th><th>Usuario</th><th>Estado</th><th>Limite</th><th>Prorr</th><th>Acciones</th></tr></thead>
+                <tbody>
+                    {% for a in pendientes %}
+                    <tr>
+                        <td class="fw-semibold">{{ a.actividad.nombre }}</td>
+                        <td>{{ a.user.get_full_name }}</td>
+                        <td><span class="badge {% if a.estado == 'Pausada' %}bg-secondary{% else %}bg-light text-muted{% endif %}">{{ a.estado }}</span></td>
+                        <td>
+                            {% if a.planificacion_detalle.fecha_limite %}{{ a.planificacion_detalle.fecha_limite|date:"d/m/Y" }}{% else %}-{% endif %}
+                        </td>
+                        <td>
+                            {% if a.prorroga_count > 0 %}<span class="badge bg-warning text-dark">{{ a.prorroga_count }}</span>{% else %}0{% endif %}
+                        </td>
+                        <td>
+                            <div class="d-flex gap-1 flex-wrap">
+                                <form method="POST" action="{% url 'planificacion:reprogramar_pendiente' a.pk %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-warning" title="Reprogramar al dia siguiente"><i class="bi bi-calendar-plus"></i></button>
+                                </form>
+                                <form method="POST" action="{% url 'planificacion:reasignar_pendiente' a.pk %}" class="d-flex gap-1" onsubmit="return this.querySelector('select').value !== ''">
+                                    {% csrf_token %}
+                                    <select name="user_id" class="form-select form-select-sm" style="width:140px;font-size:0.75rem;">
+                                        <option value="">Reasignar...</option>
+                                        {% for u in usuarios_disponibles %}
+                                        {% if u.pk != a.user_id %}
+                                        <option value="{{ u.pk }}">{{ u.get_full_name }}</option>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </select>
+                                    <button type="submit" class="btn btn-sm btn-outline-info"><i class="bi bi-arrow-right-circle"></i></button>
+                                </form>
+                                <form method="POST" action="{% url 'planificacion:cancelar_pendiente' a.pk %}" class="d-inline" onsubmit="return confirm('Cancelar esta actividad?')">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Cancelar"><i class="bi bi-x-circle"></i></button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-muted text-center py-4 small">No hay actividades pendientes en esta planificacion.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>{% endblock %}

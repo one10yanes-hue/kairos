@@ -1,0 +1,180 @@
+{% extends "base.html" %}{% block content %}
+<style>.usuario-extra { display: none; }</style>
+<div class="container-fluid mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h5 class="fw-bold mb-0"><i class="bi bi-calendar-plus" style="color:var(--accent);font-size:1.2rem;"></i> Crear Planificacion</h5>
+        <a href="{% url 'planificacion:planificacion_list' %}" class="btn btn-outline-secondary btn-sm" style="font-size:0.78rem;">Cancelar</a>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <form method="POST" id="planForm" data-api-act="{% url 'estructura:api_buscar' 'actividad' %}" data-api-user="{% url 'estructura:api_buscar' 'user' %}">
+                        {% csrf_token %}
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-12">
+                                <label class="form-label fw-semibold" style="font-size:0.85rem;">SubArea</label>
+                                <input type="text" class="form-control form-control-sm mb-2" id="filtroSubarea" placeholder="Filtrar subareas..." onkeyup="filtrarSubareas()" style="font-size:0.85rem;">
+                                <select name="subarea" id="subareaSelect" class="form-select" required
+                                    onclick="onSubareaClick(this)" onchange="onSubareaChange(this)" style="font-size:0.85rem;">
+                                    <option value="" disabled>Seleccione una subarea...</option>
+                                    {% for s in subareas %}
+                                    <option value="{{ s.pk }}"{% if subareas|length == 1 %} selected{% endif %}>{{ s.nombre }} ({{ s.area.empresa.nombre }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-12">
+                                <label class="form-label fw-semibold" style="font-size:0.85rem;">Nombre</label>
+                                <input type="text" name="nombre" class="form-control form-control-sm" placeholder="Ej: Sprint 1, Planificacion semanal..." required style="font-size:0.85rem;">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold" style="font-size:0.85rem;">Descripcion</label>
+                                <textarea name="descripcion" class="form-control form-control-sm" rows="2" placeholder="Opcional" style="font-size:0.85rem;"></textarea>
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <h6 class="fw-semibold mb-3" style="font-size:0.85rem;color:var(--slate-700);">Asignar Actividades</h6>
+
+                        <div class="row g-4 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold mb-2" style="font-size:0.85rem;">Actividades</label>
+                                <input type="text" class="form-control form-control-sm mb-2" id="filtroActividades" placeholder="Buscar actividades..." style="font-size:0.85rem;">
+                                <div id="actividadesContainer" class="border rounded" style="max-height:200px;overflow-y:auto;font-size:0.85rem;">
+                                    <p class="text-muted text-center py-4 mb-0">Primero selecciona una subarea</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold mb-2" style="font-size:0.85rem;">Usuarios</label>
+                                <input type="text" class="form-control form-control-sm mb-2" id="filtroUsuarios" placeholder="Buscar usuarios..." style="font-size:0.85rem;">
+                                <div id="usuariosContainer" class="border rounded" style="max-height:200px;overflow-y:auto;font-size:0.85rem;">
+                                    <p class="text-muted text-center py-4 mb-0">Primero selecciona una subarea</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <div class="row align-items-end">
+                            <div class="col-md-5">
+                                <label class="form-label fw-semibold" style="font-size:0.85rem;">Fecha de Planificacion</label>
+                                <input type="date" name="fecha_limite" id="fechaLimiteInput" class="form-control form-control-sm" style="font-size:0.85rem;">
+                                <small id="fechaLimiteMsg" class="text-muted" style="font-size:0.7rem;">Si se deja vacia, la actividad aparece inmediatamente en el tablero del usuario</small>
+                            </div>
+                            <div class="col-md-7 d-flex justify-content-end align-items-center gap-3">
+                                <span id="volumenInfo" class="text-muted" style="font-size:0.85rem;"></span>
+                                <button type="submit" class="btn btn-primary px-4" style="font-size:0.85rem;"><i class="bi bi-save"></i> Crear Planificacion</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+var currentSubareaId = null;
+var timerAct = null;
+var timerUser = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    var f = document.getElementById('planForm');
+    var A = f.getAttribute('data-api-act');
+    var U = f.getAttribute('data-api-user');
+    var s = document.getElementById('subareaSelect');
+    if (s && s.value) cargarDatosSubarea(s.value, A, U);
+    var ia = document.getElementById('filtroActividades');
+    if (ia) ia.addEventListener('input', function(){ debounceSearch(this, 'act') });
+    var iu = document.getElementById('filtroUsuarios');
+    if (iu) iu.addEventListener('input', function(){ debounceSearch(this, 'usr') });
+});
+
+function debounceSearch(el, tipo) {
+    if (tipo === 'act') {
+        clearTimeout(timerAct);
+        timerAct = setTimeout(function(){ searchItems('act', el.value); }, 300);
+    } else {
+        clearTimeout(timerUser);
+        timerUser = setTimeout(function(){ searchItems('usr', el.value); }, 300);
+    }
+}
+
+function searchItems(tipo, q) {
+    if (!currentSubareaId) return;
+    var f = document.getElementById('planForm');
+    var apiUrl = tipo === 'act' ? f.getAttribute('data-api-act') : f.getAttribute('data-api-user');
+    fetch(apiUrl + '?subarea_id=' + currentSubareaId + '&q=' + encodeURIComponent(q || '') + '&_=' + Date.now(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(function(r){ return r.json(); })
+        .then(function(data){ if(tipo === 'act') renderActividades(data); else renderUsuarios(data); });
+}
+
+function onSubareaClick(el) { if (el.value) onSubareaChange(el); }
+function onSubareaChange(el) {
+    var id = el ? el.value : null;
+    if (!id) {
+        document.getElementById('actividadesContainer').innerHTML = '<p class="text-muted text-center py-4 mb-0">Primero selecciona una subarea</p>';
+        document.getElementById('usuariosContainer').innerHTML = '<p class="text-muted text-center py-4 mb-0">Primero selecciona una subarea</p>';
+        return;
+    }
+    var f = document.getElementById('planForm');
+    cargarDatosSubarea(id, f.getAttribute('data-api-act'), f.getAttribute('data-api-user'));
+}
+
+function cargarDatosSubarea(id, A, U) {
+    currentSubareaId = id;
+    document.getElementById('actividadesContainer').innerHTML = '<p class="text-muted text-center py-4 mb-0">Cargando...</p>';
+    document.getElementById('usuariosContainer').innerHTML = '<p class="text-muted text-center py-4 mb-0">Cargando...</p>';
+    fetch(A + '?subarea_id=' + id + '&_=' + Date.now(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(function(r){ return r.json(); })
+        .then(function(d){ renderActividades(d); });
+    fetch(U + '?subarea_id=' + id + '&_=' + Date.now(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(function(r){ return r.json(); })
+        .then(function(d){ renderUsuarios(d); });
+}
+
+function renderActividades(d) {
+    var c = document.getElementById('actividadesContainer');
+    if (!d.length) { c.innerHTML = '<p class="text-muted text-center py-4 mb-0">No hay actividades en esta subarea</p>'; return; }
+    var h = '';
+    d.forEach(function(a){ h += '<label class="d-flex align-items-center gap-2 px-3 py-2 actividad-item" style="cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:0.85rem;"><input type="checkbox" name="actividades" value="'+a.id+'" class="form-check-input mt-0 actividad-check" data-requiere-fecha="'+a.requiere_fecha_limite+'" onchange="toggleFechaLimite();actualizarVolumen()"><span>'+a.text+'</span></label>'; });
+    c.innerHTML = h; actualizarVolumen();
+}
+
+function renderUsuarios(d) {
+    var c = document.getElementById('usuariosContainer');
+    if (!d.length) { c.innerHTML = '<p class="text-muted text-center py-4 mb-0">No hay usuarios en esta subarea</p>'; return; }
+    var h = '';
+    d.forEach(function(u,i){ h += '<label class="d-flex align-items-center gap-2 px-3 py-2 usuario-item'+(i>=3?' usuario-extra':'')+'" style="cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:0.85rem;"><input type="checkbox" name="users" value="'+u.id+'" class="form-check-input mt-0" onchange="actualizarVolumen()"><span>'+u.text+'</span></label>'; });
+    if (d.length > 3) h += '<div class="text-center py-1"><button type="button" class="btn btn-link btn-sm text-decoration-none" onclick="mostrarTodosUsuarios(this)" style="font-size:0.75rem;">Ver todos ('+d.length+')</button></div>';
+    c.innerHTML = h; actualizarVolumen();
+}
+
+function toggleFechaLimite() {
+    var m = document.getElementById('fechaLimiteMsg');
+    m.textContent = document.querySelectorAll('.actividad-check:checked').length > 0 ? 'Dia en que aparecera en el tablero del usuario' : '';
+}
+
+function filtrarSubareas() {
+    var f = document.getElementById('filtroSubarea').value.toLowerCase();
+    Array.from(document.getElementById('subareaSelect').options).forEach(function(o){ o.style.display = o.text.toLowerCase().includes(f)||!o.value?'':'none'; });
+}
+
+function mostrarTodosUsuarios(btn) {
+    document.querySelectorAll('.usuario-extra').forEach(function(e){ e.style.display=''; e.classList.remove('usuario-extra'); });
+    if (btn) btn.style.display = 'none';
+}
+
+function actualizarVolumen() {
+    var a = document.querySelectorAll('#actividadesContainer input[name="actividades"]:checked').length;
+    var u = document.querySelectorAll('#usuariosContainer input[name="users"]:checked').length;
+    document.getElementById('volumenInfo').textContent = (a>0&&u>0) ? (a*u)+' asignacion(es) ('+a+' act. x '+u+' usu.)' : '';
+}
+</script>
+{% endblock %}
