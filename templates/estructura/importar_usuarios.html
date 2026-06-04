@@ -1,0 +1,54 @@
+{% extends "base.html" %}{% block content %}
+<div class="container-fluid mt-4">
+  <nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item active">Matricula de Usuarios por Area / SubArea</li></ol></nav>
+
+  <div class="alert alert-info small">
+    <i class="bi bi-info-circle"></i> Descarga la plantilla, llena la <strong>cedula</strong> del usuario (debe existir en el sistema), el <strong>area_codigo</strong> y <strong>subarea_codigo</strong> (codigos internos del sistema). El usuario quedara matriculado en esa area/subarea.
+  </div>
+
+  <div class="row g-4 mb-3">
+    <div class="col-md-6">
+      <div class="card shadow-sm">
+        <div class="card-header"><h5 class="mb-0 fw-bold"><i class="bi bi-download" style="color:var(--accent);"></i> 1. Descargar plantilla</h5></div>
+        <div class="card-body">
+          <a href="{% url 'estructura:descargar_template_usuarios' %}" class="btn btn-primary"><i class="bi bi-file-earmark-arrow-down"></i> Descargar plantilla Excel</a>
+          <p class="text-muted small mt-2 mb-0">El Excel tiene 3 columnas: cedula, area_codigo, subarea_codigo.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="card shadow-sm">
+        <div class="card-header"><h5 class="mb-0 fw-bold"><i class="bi bi-upload" style="color:var(--accent);"></i> 2. Importar</h5></div>
+        <div class="card-body">
+          <form method="POST" enctype="multipart/form-data" action="{% url 'estructura:importar_usuarios_datos' %}">
+            {% csrf_token %}
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Archivo Excel llenado (.xlsx)</label>
+              <input type="file" name="archivo" class="form-control" accept=".xlsx" required>
+            </div>
+            <button type="submit" class="btn btn-success"><i class="bi bi-upload"></i> Matricular Usuarios</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-header"><h6 class="mb-0 fw-semibold"><i class="bi bi-table"></i> Columnas del Archivo</h6></div>
+    <div class="card-body">
+      <p class="small mb-2">El Excel tiene 3 columnas. La cedula debe existir en el sistema, los codigos deben existir previamente.</p>
+      <table class="table table-bordered small mb-0" style="max-width:500px;">
+        <thead class="table-light">
+          <tr><th>Columna</th><th>Descripcion</th><th>Ejemplo</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>cedula</code></td><td>Cedula del usuario (debe existir)</td><td><code>1234567890</code></td></tr>
+          <tr><td><code>area_codigo</code></td><td>Codigo interno del area</td><td><code>AR001</code></td></tr>
+          <tr><td><code>subarea_codigo</code></td><td>Codigo interno de la subarea</td><td><code>SB001</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

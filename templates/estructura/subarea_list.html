@@ -1,56 +1,48 @@
-{% extends "base.html" %}
-{% block content %}
-<div class="container-fluid mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <h3 class="fw-bold mb-0"><i class="bi bi-diagram-2" style="color: var(--accent);"></i> SubAreas</h3>
-        <a href="{% url 'estructura:subarea_create' %}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> Nueva SubArea</a>
+{% extends "base.html" %}{% block content %}
+<div class="container-fluid mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-1">
+        <h5 class="fw-bold mb-0" style="font-size:0.95rem;"><i class="bi bi-diagram-2" style="color:var(--accent);font-size:0.9rem;"></i> SubAreas</h5>
+        <a href="{% url 'estructura:subarea_create' %}" class="btn btn-primary btn-sm" style="font-size:0.7rem;padding:0.2rem 0.5rem;"><i class="bi bi-plus-lg"></i> Nueva</a>
     </div>
 
-    <form class="row g-2 mb-3" method="GET">
+    <form class="row g-1 mb-2" method="GET">
         <div class="col-md-4">
-            <div class="input-group">
-                <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-                <input type="text" name="q" class="form-control" placeholder="Buscar subarea..." value="{{ q }}">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white" style="font-size:0.7rem;"><i class="bi bi-search"></i></span>
+                <input type="text" name="q" class="form-control" placeholder="Buscar subarea..." value="{{ q }}" style="font-size:0.75rem;">
             </div>
         </div>
         <div class="col-md-3">
-            <select name="empresa" class="form-select" onchange="this.form.submit()">
-                <option value="">Todas las empresas</option>
-                {% for e in empresas %}<option value="{{ e.pk }}" {% if empresa_filter == e.pk|stringformat:'s' %}selected{% endif %}>{{ e.nombre }}</option>{% endfor %}
-            </select>
-        </div>
-        <div class="col-md-3">
-            <select name="area" class="form-select" onchange="this.form.submit()">
+            <select name="area" class="form-select form-select-sm" style="font-size:0.75rem;" onchange="this.form.submit()">
                 <option value="">Todas las areas</option>
                 {% for a in areas %}<option value="{{ a.pk }}" {% if area_filter == a.pk|stringformat:'s' %}selected{% endif %}>{{ a.nombre }}</option>{% endfor %}
             </select>
         </div>
         <div class="col-auto">
-            <button class="btn btn-outline-secondary" type="submit">Filtrar</button>
-            {% if q or empresa_filter or area_filter %}<a href="{% url 'estructura:subarea_list' %}" class="btn btn-outline-danger">Limpiar</a>{% endif %}
+            <button class="btn btn-outline-secondary btn-sm" type="submit" style="font-size:0.7rem;">Filtrar</button>
+            {% if q or area_filter %}<a href="{% url 'estructura:subarea_list' %}" class="btn btn-outline-danger btn-sm" style="font-size:0.7rem;">Limpiar</a>{% endif %}
         </div>
     </form>
 
     <div class="card shadow-sm">
         <div class="card-body p-0">
-            <table class="table table-hover mb-0">
-                <thead class="table-light"><tr><th>Codigo</th><th>Nombre</th><th>Area</th><th>Empresa</th><th>Acciones</th></tr></thead>
+            <table class="table table-hover mb-0" style="font-size:0.78rem;">
+                <thead class="table-light"><tr><th style="font-size:0.6rem;">Codigo</th><th style="font-size:0.6rem;">Nombre</th><th style="font-size:0.6rem;">Area</th><th style="font-size:0.6rem;width:90px;">Acciones</th></tr></thead>
                 <tbody>
                     {% for s in subareas %}
                     <tr>
-                        <td><code style="font-size:0.75rem;color:var(--slate-400);">{{ s.codigo|default:"" }}</code></td>
+                        <td><code style="font-size:0.7rem;color:var(--slate-400);">{{ s.codigo|default:"" }}</code></td>
                         <td class="fw-semibold">{{ s.nombre }}</td>
-                        <td>{{ s.area.nombre }}</td>
-                        <td><span class="badge bg-light text-muted">{{ s.area.empresa.nombre }}</span></td>
+                        <td class="text-muted" style="font-size:0.72rem;">{{ s.area.nombre }}</td>
                         <td>
-                            <div class="btn-group btn-group-sm">
-                                <a href="{% url 'estructura:subarea_usuarios' s.pk %}" class="btn btn-outline-primary"><i class="bi bi-people"></i></a>
-                                <a href="{% url 'estructura:subarea_edit' s.pk %}" class="btn btn-outline-secondary"><i class="bi bi-pencil"></i></a>
-                                <a href="{% url 'estructura:subarea_delete' s.pk %}" class="btn btn-outline-danger" onclick="return confirm('Inactivar?')"><i class="bi bi-trash"></i></a>
+                            <div class="btn-group btn-group-sm" style="gap:2px;">
+                                <a href="{% url 'estructura:subarea_usuarios' s.pk %}" class="btn btn-outline-primary py-0 px-1" style="font-size:0.65rem;" title="Usuarios"><i class="bi bi-people"></i></a>
+                                <a href="{% url 'estructura:subarea_edit' s.pk %}" class="btn btn-outline-secondary py-0 px-1" style="font-size:0.65rem;" title="Editar"><i class="bi bi-pencil"></i></a>
+                                <a href="{% url 'estructura:subarea_delete' s.pk %}" class="btn btn-outline-danger py-0 px-1" style="font-size:0.65rem;" title="Inactivar" onclick="return confirm('Inactivar?')"><i class="bi bi-trash"></i></a>
                             </div>
                         </td>
                     </tr>
-                    {% empty %}<tr><td colspan="5" class="text-center text-muted py-4">{% if q %}Sin resultados para "{{ q }}"{% else %}No hay subareas{% endif %}</td></tr>{% endfor %}
+                    {% empty %}<tr><td colspan="4" class="text-center text-muted py-3" style="font-size:0.72rem;">{% if q %}Sin resultados para "{{ q }}"{% else %}No hay subareas{% endif %}</td></tr>{% endfor %}
                 </tbody>
             </table>
         </div>

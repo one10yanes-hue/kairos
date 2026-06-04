@@ -7,13 +7,14 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from apps.gestion.models import AsignacionActividad, RegistroTiempo
 from apps.accounts.models import User
-from apps.estructura.models import Area, SubArea, UserSubArea
+from apps.estructura.models import Area, SubArea, UserSubArea, EmpresaArea
 from apps.actividades.models import Actividad
 
 
 def admin_required(view_func):
     def wrapper(request, *args, **kwargs):
-        if request.user.rol.nombre not in ["Admin", "Master"]:
+        if not (request.user.rol.nombre in ["Admin", "Master"] or
+                request.user.roles_adicionales.filter(nombre__in=["Admin", "Master"]).exists()):
             from django.shortcuts import redirect
             return redirect("root")
         return view_func(request, *args, **kwargs)
@@ -21,7 +22,11 @@ def admin_required(view_func):
 
 
 def get_admin_subareas(user):
-    if user.rol.nombre == "Master":
+    if user.rol.nombre == "Master" or user.roles_adicionales.filter(nombre="Master").exists():
+        return SubArea.objects.filter(activo=True)
+    # Check original primary role from DB (in case role switcher changed user.rol)
+    db_rol = User.objects.filter(pk=user.pk).values_list('rol__nombre', flat=True).first()
+    if db_rol == "Master":
         return SubArea.objects.filter(activo=True)
     return SubArea.objects.filter(usuarios__user=user, activo=True)
 
@@ -53,14 +58,17 @@ def _auto_width(ws):
 @admin_required
 def reporte_list(request):
     subareas = get_admin_subareas(request.user)
-    empresas = Area.objects.filter(subareas__in=subareas).values_list("empresa__nombre", flat=True).distinct()
+    empresas = EmpresaArea.objects.filter(area__subareas__in=subareas).values_list("empresa__nombre", flat=True).distinct()
     areas = Area.objects.filter(subareas__in=subareas)
     users = User.objects.filter(
         id__in=UserSubArea.objects.filter(subarea__in=subareas, activo=True).values_list("user_id", flat=True),
         activo=True
     ).exclude(rol__nombre="Master")
-    if request.user.rol.nombre != "Master":
-        users = users.exclude(id=request.user.id).filter(rol__nombre="Usuario")
+    db_es_master = User.objects.filter(pk=request.user.pk, rol__nombre="Master").exists()
+    if not (request.user.rol.nombre == "Master" or request.user.roles_adicionales.filter(nombre="Master").exists() or db_es_master):
+        users = users.filter(
+            Q(rol__nombre="Usuario") | Q(roles_adicionales__nombre="Usuario")
+        ).distinct()
 
     qs = AsignacionActividad.objects.filter(actividad__subarea__in=subareas, activo=True)
     return render(request, "reportes/reporte_list.html", {
@@ -88,10 +96,13 @@ def exportar_completo(request):
 
     asignaciones = AsignacionActividad.objects.filter(
         actividad__subarea__in=subareas, activo=True
-    ).select_related(
+    )
+    asignaciones_tiempo = AsignacionActividad.objects.filter(
+        actividad__subarea__in=subareas
+    )
+    asignaciones = asignaciones.select_related(
         "user", "actividad", "actividad__tipo_actividad",
         "actividad__subarea", "actividad__subarea__area",
-        "actividad__subarea__area__empresa",
         "planificacion_detalle__planificacion__admin"
     ).prefetch_related("registros")
 
@@ -101,20 +112,29 @@ def exportar_completo(request):
             Q(user__nombre__icontains=q) |
             Q(user__apellido__icontains=q)
         )
-    if empresa_nombre:
-        asignaciones = asignaciones.filter(actividad__subarea__area__empresa__nombre=empresa_nombre)
+        asignaciones_tiempo = asignaciones_tiempo.filter(
+            Q(actividad__nombre__icontains=q) |
+            Q(user__nombre__icontains=q) |
+            Q(user__apellido__icontains=q)
+        )
     if area_id:
         asignaciones = asignaciones.filter(actividad__subarea__area_id=area_id)
+        asignaciones_tiempo = asignaciones_tiempo.filter(actividad__subarea__area_id=area_id)
     if subarea_id:
         asignaciones = asignaciones.filter(actividad__subarea_id=subarea_id)
+        asignaciones_tiempo = asignaciones_tiempo.filter(actividad__subarea_id=subarea_id)
     if user_id:
         asignaciones = asignaciones.filter(user_id=user_id)
+        asignaciones_tiempo = asignaciones_tiempo.filter(user_id=user_id)
     if estado:
         asignaciones = asignaciones.filter(estado=estado)
+        asignaciones_tiempo = asignaciones_tiempo.filter(estado=estado)
     if fecha_desde:
         asignaciones = asignaciones.filter(fecha_asignacion__date__gte=fecha_desde)
+        asignaciones_tiempo = asignaciones_tiempo.filter(fecha_asignacion__date__gte=fecha_desde)
     if fecha_hasta:
         asignaciones = asignaciones.filter(fecha_asignacion__date__lte=fecha_hasta)
+        asignaciones_tiempo = asignaciones_tiempo.filter(fecha_asignacion__date__lte=fecha_hasta)
 
     wb = Workbook()
 
@@ -128,7 +148,8 @@ def exportar_completo(request):
         "Cod. Tipo", "Tipo",
         "Usuario", "Cedula", "Email",
         "Estado", "Origen", "Asignado por",
-        "Fecha Asignacion", "Tiempo Efectivo",
+        "Fecha Asignacion", "Fecha Vencimiento",
+        "Tiempo Efectivo",
         "Fecha Primer Inicio", "Fecha Ultimo Evento",
         "Nro Actividad", "Total Pausas",
     ]
@@ -143,9 +164,11 @@ def exportar_completo(request):
         pausas = sum(1 for x in r if x.evento == "Pausa")
 
         sub = a.actividad.subarea
+        pd = a.planificacion_detalle
+        venc = pd.fecha_vencimiento.astimezone(tz).strftime("%Y-%m-%d") if pd and pd.fecha_vencimiento and a.actividad.tipo_actividad.requiere_fecha_limite else "-"
         row = [
             a.pk,
-            sub.area.empresa.codigo, sub.area.empresa.nombre,
+            "", "",
             sub.area.codigo, sub.area.nombre,
             sub.codigo, sub.nombre,
             a.actividad.codigo, a.actividad.nombre,
@@ -154,6 +177,7 @@ def exportar_completo(request):
             a.get_estado_display(), a.origen or "Manual",
             a.origen_user.get_full_name() if a.origen_user else "-",
             a.fecha_asignacion.astimezone(tz).strftime("%Y-%m-%d %H:%M") if a.fecha_asignacion else "",
+            venc,
             a.tiempo_formateado(),
             inicio, ultimo,
             nros, pausas,
@@ -178,7 +202,6 @@ def exportar_completo(request):
         asignacion__actividad__subarea__in=subareas, activo=True
     ).select_related(
         "asignacion__user", "asignacion__actividad",
-        "asignacion__actividad__subarea__area__empresa",
     ).order_by("-fecha_hora")
 
     if fecha_desde:
@@ -195,7 +218,7 @@ def exportar_completo(request):
         sub = r.asignacion.actividad.subarea
         row = [
             r.asignacion_id, r.pk,
-            sub.area.empresa.nombre, sub.area.nombre, sub.nombre,
+            sub.area.nombre, sub.area.nombre, sub.nombre,
             r.asignacion.actividad.nombre,
             r.asignacion.actividad.tipo_actividad.nombre,
             r.asignacion.user.get_full_name(), r.asignacion.user.cedula,
@@ -217,13 +240,13 @@ def exportar_completo(request):
     ]
     _style_header(ws3, headers3)
 
-    for row_num, a in enumerate(asignaciones.values("user__pk").annotate(total=Count("id")), 2):
+    for row_num, a in enumerate(asignaciones_tiempo.values("user__pk").annotate(total=Count("id")), 2):
         pk = a["user__pk"]
-        asign_user = asignaciones.filter(user__pk=pk)
+        asign_user = asignaciones_tiempo.filter(user__pk=pk)
         user = asign_user.first().user
         empresas = set(
-            usa.subarea.area.empresa.nombre
-            for usa in UserSubArea.objects.filter(user=user, activo=True).select_related("subarea__area__empresa")
+            usa.subarea.area.nombre
+            for usa in UserSubArea.objects.filter(user=user, activo=True).select_related("subarea__area")
         )
         total_tiempo = sum(x.tiempo_efectivo() for x in asign_user)
         row = [
@@ -245,6 +268,27 @@ def exportar_completo(request):
         for c, v in enumerate(row, 1):
             ws3.cell(row=row_num, column=c, value=v).border = TB
     _auto_width(ws3)
+
+    # ---- SHEET 4: Tiempos Muertos ----
+    from apps.gestion.models import TiempoInactividad
+    ws4 = wb.create_sheet("Tiempos Inactividad")
+    headers4 = ["ID", "Usuario", "Cedula", "Fecha", "Inicio", "Fin", "Duracion (min)", "Estado"]
+    _style_header(ws4, headers4)
+    tiempos_qs = TiempoInactividad.objects.all().select_related("user").order_by("-fecha", "-inicio")
+    if fecha_desde:
+        tiempos_qs = tiempos_qs.filter(fecha__gte=fecha_desde)
+    if fecha_hasta:
+        tiempos_qs = tiempos_qs.filter(fecha__lte=fecha_hasta)
+    if user_id:
+        tiempos_qs = tiempos_qs.filter(user_id=user_id)
+    for row_num, tm in enumerate(tiempos_qs, 2):
+        mins = int(tm.duracion_segundos // 60) if tm.duracion_segundos > 0 else 0
+        inicio_str = tm.inicio.strftime("%Y-%m-%d %H:%M") if tm.inicio else "-"
+        fin_str = tm.fin.strftime("%Y-%m-%d %H:%M") if tm.fin else "Abierto"
+        row = [tm.pk, tm.user.get_full_name(), tm.user.cedula, str(tm.fecha), inicio_str, fin_str, mins, "Cerrado" if tm.fin else "Abierto"]
+        for c, v in enumerate(row, 1):
+            ws4.cell(row=row_num, column=c, value=v).border = TB
+    _auto_width(ws4)
 
     now = timezone.now().strftime("%Y%m%d_%H%M")
     resp = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")

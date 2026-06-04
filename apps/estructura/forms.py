@@ -19,9 +19,8 @@ class EmpresaForm(forms.ModelForm):
 class AreaForm(forms.ModelForm):
     class Meta:
         model = Area
-        fields = ["empresa", "nombre", "descripcion"]
+        fields = ["nombre", "descripcion"]
         widgets = {
-            "empresa": forms.Select(attrs={"class": "form-control dynamic-select", "data-model": "empresa", "data-placeholder": "Buscar empresa por nombre o NIT..."}),
             "nombre": forms.TextInput(attrs={"class": "form-control"}),
             "descripcion": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
         }

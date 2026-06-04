@@ -13,6 +13,12 @@ class AsignacionActividad(models.Model):
         ("Finalizada", "Finalizada"),
         ("Cancelada", "Cancelada"),
         ("Trasladada", "Trasladada"),
+        ("Revision", "En Revision"),
+    ]
+    ESTADOS_REVISION = [
+        ("pendiente", "Pendiente"),
+        ("aprobado", "Aprobado"),
+        ("rechazado", "Rechazado"),
     ]
     planificacion_detalle = models.ForeignKey(
         PlanificacionDetalle, on_delete=models.SET_NULL, null=True, blank=True,
@@ -24,9 +30,16 @@ class AsignacionActividad(models.Model):
     origen = models.CharField(max_length=20, blank=True, null=True, help_text="Planificacion, Traslado, Manual")
     origen_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="asignaciones_origen")
     fecha_asignacion = models.DateTimeField(auto_now_add=True)
+    nombre_actividad = models.CharField(max_length=300, blank=True, help_text="Nombre congelado de la actividad al momento de la asignacion")
+    nombre_tipo = models.CharField(max_length=200, blank=True, help_text="Nombre congelado del tipo de actividad al momento de la asignacion")
     tiempo_total_segundos = models.IntegerField(default=0, help_text="Tiempo cacheado hasta la ultima pausa/finalizacion")
     tiempo_pausado_segundos = models.IntegerField(default=0, help_text="Tiempo total en pausa cacheado")
     prorroga_count = models.IntegerField(default=0, help_text="Cantidad de veces que fue reprogramado")
+    dias_vencida = models.IntegerField(default=0, help_text="Dias de retraso al momento de finalizar/trasladar")
+    entregable = models.FileField(upload_to="entregables/", blank=True, null=True)
+    estado_revision = models.CharField(max_length=20, choices=ESTADOS_REVISION, default="pendiente")
+    revision_comentario = models.TextField(blank=True, null=True)
+    fecha_revision = models.DateTimeField(null=True, blank=True)
     activo = models.BooleanField(default=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_update = models.DateTimeField(auto_now=True)
@@ -202,6 +215,7 @@ class Colaboracion(models.Model):
 
 class Comentario(models.Model):
     asignacion = models.ForeignKey(AsignacionActividad, on_delete=models.PROTECT, related_name="comentarios")
+    detalle = models.ForeignKey("planificacion.PlanificacionDetalle", on_delete=models.SET_NULL, null=True, blank=True, related_name="comentarios")
     user = models.ForeignKey(User, on_delete=models.PROTECT, related_name="comentarios")
     texto = models.TextField()
     activo = models.BooleanField(default=True)
@@ -215,3 +229,46 @@ class Comentario(models.Model):
 
     def __str__(self):
         return f"{self.user}: {self.texto[:50]}"
+
+
+class TiempoInactividad(models.Model):
+    user = models.ForeignKey(User, on_delete=models.PROTECT, related_name="tiempos_inactividad")
+    fecha = models.DateField(db_index=True)
+    inicio = models.DateTimeField(null=True, blank=True)
+    fin = models.DateTimeField(null=True, blank=True)
+    duracion_segundos = models.IntegerField(default=0)
+    motivo = models.CharField(max_length=100, default="Tiempo sin actividad")
+    activo = models.BooleanField(default=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "tiempo_inactividad"
+        verbose_name = "Tiempo de Inactividad"
+        verbose_name_plural = "Tiempos de Inactividad"
+        ordering = ["-fecha", "-inicio"]
+
+    def __str__(self):
+        from django.utils import timezone
+        inicio_str = self.inicio.strftime("%H:%M") if self.inicio else "?"
+        fin_str = self.fin.strftime("%H:%M") if self.fin else "?"
+        mins = int(self.duracion_segundos // 60) if self.duracion_segundos > 0 else 0
+        return f"{self.user.get_full_name()} - {self.fecha} {inicio_str}-{fin_str} ({mins}min)"
+
+
+class RevisionHistorial(models.Model):
+    ACCIONES = [("aprobado", "Aprobado"), ("rechazado", "Rechazado")]
+    asignacion = models.ForeignKey(AsignacionActividad, on_delete=models.PROTECT, related_name="historial_revision")
+    user = models.ForeignKey(User, on_delete=models.PROTECT, related_name="revisiones_hechas")
+    accion = models.CharField(max_length=20, choices=ACCIONES)
+    comentario = models.TextField(blank=True)
+    fecha = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "revision_historial"
+        verbose_name = "Historial de Revision"
+        verbose_name_plural = "Historial de Revisiones"
+        ordering = ["-fecha"]
+
+    def __str__(self):
+        return f"{self.get_accion_display()} - {self.asignacion} por {self.user.get_full_name()}"
+

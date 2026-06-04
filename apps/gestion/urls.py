@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from apps.accounts import views as accounts_views
 
 app_name = "gestion"
 
@@ -19,4 +20,8 @@ urlpatterns = [
     path("traslado/<int:pk>/cancelar/", views.cancelar_traslado, name="cancelar_traslado"),
     path("api/traslados/pendientes/", views.api_traslados_pendientes, name="api_traslados_pendientes"),
     path("perfil/", views.perfil, name="perfil"),
+    path("perfil/subir-foto/", accounts_views.subir_foto, name="subir_foto"),
+    path("revisiones/", views.revisiones_list, name="revisiones"),
+    path("revision/<int:pk>/aprobar/", views.revision_aprobar, name="revision_aprobar"),
+    path("revision/<int:pk>/rechazar/", views.revision_rechazar, name="revision_rechazar"),
 ]

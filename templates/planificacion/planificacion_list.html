@@ -32,7 +32,8 @@
 
     {% if page_obj.paginator.count > 0 %}
     <div class="row g-2 mb-3">
-        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.1rem;color:var(--slate-700);">{{ total_base }}</div><small class="text-muted" style="font-size:0.65rem;">Planificaciones</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.1rem;color:var(--slate-700);">{{ total_base }}</div><small class="text-muted" style="font-size:0.65rem;">Total</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.1rem;color:#ca8a04;">{{ cursos_count }}</div><small class="text-muted" style="font-size:0.65rem;">Con Activos</small></div></div></div>
         <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.1rem;color:#0ea5e9;">{{ page_obj.paginator.count }}</div><small class="text-muted" style="font-size:0.65rem;">Mostrando</small></div></div></div>
     </div>
     {% endif %}
@@ -42,13 +43,13 @@
             <table class="table table-hover mb-0" style="font-size:0.82rem;">
                 <thead class="table-light">
                     <tr>
-                        <th class="py-2" style="width:28%;">Nombre</th>
+                        <th class="py-2" style="width:25%;">Nombre</th>
                         <th class="py-2">SubArea</th>
                         <th class="py-2">Admin</th>
-                        <th class="py-2">Actividades</th>
                         <th class="py-2">Estado</th>
+                        <th class="py-2">F. Planif.</th>
                         <th class="py-2">Creado</th>
-                        <th class="py-2" style="width:90px;">Acciones</th>
+                        <th class="py-2" style="width:80px;">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -57,25 +58,34 @@
                         <td class="py-2">
                             <a href="{% url 'planificacion:planificacion_detail' p.pk %}" class="fw-semibold text-decoration-none">{{ p.nombre }}</a>
                             {% if p.descripcion %}<small class="d-block text-muted" style="font-size:0.63rem;">{{ p.descripcion|truncatechars:60 }}</small>{% endif %}
+                            {% if p.comentarios > 0 %}
+                            <span class="badge bg-danger" style="font-size:0.5rem;vertical-align:top;"><i class="bi bi-chat-dots"></i> {{ p.comentarios }}</span>
+                            {% endif %}
                         </td>
                         <td class="py-2">
                             <span class="text-muted" style="font-size:0.7rem;">{{ p.subarea.nombre }}</span>
-                            <small class="d-block text-muted" style="font-size:0.63rem;">{{ p.subarea.area.empresa.nombre }}</small>
+                            <small class="d-block text-muted" style="font-size:0.63rem;">{{ p.subarea.area.nombre }}</small>
                         </td>
                         <td class="py-2" style="font-size:0.75rem;">{{ p.admin.get_full_name }}</td>
-                        <td class="py-2">{{ p.detalles.all.count }}</td>
                         <td class="py-2">
-                            {% if p.cerrada %}
-                            <span class="badge bg-secondary" style="font-size:0.65rem;"><i class="bi bi-lock"></i> Cerrada</span>
+                            {% if p.cur > 0 or p.pau > 0 %}
+                            <span class="badge bg-warning text-dark" style="font-size:0.65rem;">En curso</span>
+                            {% elif p.pen > 0 and p.fin == 0 %}
+                            <span class="badge bg-secondary" style="font-size:0.65rem;">Sin iniciar</span>
+                            {% elif p.fin > 0 %}
+                            <span class="badge bg-success" style="font-size:0.65rem;">Finalizada</span>
                             {% else %}
-                            <span class="badge bg-success" style="font-size:0.65rem;"><i class="bi bi-unlock"></i> Abierta</span>
+                            <span class="badge bg-light text-muted" style="font-size:0.65rem;">-</span>
                             {% endif %}
                         </td>
+                        <td class="py-2 text-muted" style="font-size:0.7rem;">{% if p.fecha_plan %}{{ p.fecha_plan|date:"d/m/y" }}{% else %}-{% endif %}</td>
                         <td class="py-2 text-muted" style="font-size:0.7rem;">{{ p.fecha_creacion|date:"d/m/y" }}</td>
                         <td class="py-2">
-                            <div class="btn-group btn-group-sm">
-                                <a href="{% url 'planificacion:planificacion_detail' p.pk %}" class="btn btn-outline-primary" title="Ver"><i class="bi bi-eye"></i></a>
-                                <a href="{% url 'planificacion:planificacion_delete' p.pk %}" class="btn btn-outline-danger" title="Inactivar" onclick="return confirm('Inactivar {{ p.nombre }}?')"><i class="bi bi-trash"></i></a>
+                            <div class="d-flex gap-1">
+                                <a href="{% url 'planificacion:planificacion_detail' p.pk %}" class="btn btn-sm py-0 px-1 btn-outline-primary" title="Ver"><i class="bi bi-eye"></i></a>
+                                {% if p.cur == 0 and p.pau == 0 and p.fin == 0 %}
+                                <a href="{% url 'planificacion:planificacion_delete' p.pk %}" class="btn btn-sm py-0 px-1 btn-outline-danger" title="Inactivar" onclick="return confirm('Inactivar {{ p.nombre|escapejs }}?')"><i class="bi bi-trash"></i></a>
+                                {% endif %}
                             </div>
                         </td>
                     </tr>

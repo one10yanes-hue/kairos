@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q
-from apps.accounts.models import User
+from apps.accounts.models import User, Empresa
 from apps.estructura.models import SubArea, UserSubArea
 from .models import TipoActividad, Actividad
 from .forms import TipoActividadForm, ActividadForm
@@ -29,12 +29,30 @@ def _auto_select(form, qs, field_name):
         form.fields[field_name].empty_label = None
 
 
+def _empresa_filter(request):
+    subareas = get_admin_subareas(request.user)
+    sub_id = request.GET.get("subarea_id")
+    if sub_id:
+        try:
+            sub_id = int(sub_id)
+        except (ValueError, TypeError):
+            sub_id = None
+    return Empresa.objects.none(), subareas, None, sub_id
+
+
+def _tipos_queryset(subareas, sub_id=None):
+    qs = TipoActividad.objects.filter(subarea__in=subareas, activo=True)
+    if sub_id:
+        qs = qs.filter(subarea_id=sub_id)
+    return qs
+
+
 @login_required
 @admin_required
 def tipo_actividad_list(request):
     subareas = get_admin_subareas(request.user)
     q = request.GET.get("q", "")
-    tipos = TipoActividad.objects.filter(subarea__in=subareas, activo=True).select_related("subarea__area__empresa")
+    tipos = TipoActividad.objects.filter(subarea__in=subareas, activo=True)
     base = tipos  # without search filter for summary
     if q:
         tipos = tipos.filter(Q(nombre__icontains=q) | Q(descripcion__icontains=q) | Q(subarea__nombre__icontains=q))
@@ -53,7 +71,7 @@ def tipo_actividad_list(request):
 @login_required
 @admin_required
 def tipo_actividad_create(request):
-    subareas = get_admin_subareas(request.user)
+    empresas, subareas, emp_id, sub_id = _empresa_filter(request)
     if request.method == "POST":
         form = TipoActividadForm(request.POST)
         form.fields["subarea"].queryset = subareas
@@ -65,14 +83,17 @@ def tipo_actividad_create(request):
         form = TipoActividadForm()
         form.fields["subarea"].queryset = subareas
         _auto_select(form, subareas, "subarea")
-    return render(request, "actividades/tipo_form.html", {"form": form, "title": "Crear Tipo de Actividad"})
+    return render(request, "actividades/tipo_form.html", {
+        "form": form, "title": "Crear Tipo de Actividad",
+        "empresas": empresas, "empresa_id": emp_id, "subarea_id": sub_id,
+    })
 
 
 @login_required
 @admin_required
 def tipo_actividad_edit(request, pk):
     tipo = get_object_or_404(TipoActividad, pk=pk, activo=True)
-    subareas = get_admin_subareas(request.user)
+    empresas, subareas, emp_id, sub_id = _empresa_filter(request)
     if request.method == "POST":
         form = TipoActividadForm(request.POST, instance=tipo)
         form.fields["subarea"].queryset = subareas
@@ -83,7 +104,10 @@ def tipo_actividad_edit(request, pk):
     else:
         form = TipoActividadForm(instance=tipo)
         form.fields["subarea"].queryset = subareas
-    return render(request, "actividades/tipo_form.html", {"form": form, "title": "Editar Tipo de Actividad"})
+    return render(request, "actividades/tipo_form.html", {
+        "form": form, "title": "Editar Tipo de Actividad",
+        "empresas": empresas, "empresa_id": emp_id, "subarea_id": sub_id,
+    })
 
 
 @login_required
@@ -102,7 +126,7 @@ def actividad_list(request):
     subareas = get_admin_subareas(request.user)
     q = request.GET.get("q", "")
     tipo_filter = request.GET.get("tipo", "")
-    actividades = Actividad.objects.filter(subarea__in=subareas, activo=True).select_related("tipo_actividad", "subarea__area__empresa")
+    actividades = Actividad.objects.filter(subarea__in=subareas, activo=True).select_related("tipo_actividad")
     base = actividades  # unfiltered for summary
     if q:
         actividades = actividades.filter(Q(nombre__icontains=q) | Q(descripcion__icontains=q))
@@ -126,34 +150,43 @@ def actividad_list(request):
 @login_required
 @admin_required
 def actividad_create(request):
-    subareas = get_admin_subareas(request.user)
+    empresas, subareas, emp_id, sub_id = _empresa_filter(request)
+    tipos = _tipos_queryset(subareas, sub_id)
     if request.method == "POST":
         form = ActividadForm(request.POST)
         form.fields["subarea"].queryset = subareas
-        form.fields["tipo_actividad"].queryset = TipoActividad.objects.filter(subarea__in=subareas, activo=True)
+        form.fields["tipo_actividad"].queryset = tipos
         if form.is_valid():
             form.save()
             messages.success(request, "Actividad creada.")
             return redirect("actividades:actividad_list")
     else:
-        form = ActividadForm()
+        initial = {}
+        if sub_id:
+            initial["subarea"] = sub_id
+        form = ActividadForm(initial=initial)
         form.fields["subarea"].queryset = subareas
         _auto_select(form, subareas, "subarea")
-        tipos = TipoActividad.objects.filter(subarea__in=subareas, activo=True)
         form.fields["tipo_actividad"].queryset = tipos
         _auto_select(form, tipos, "tipo_actividad")
-    return render(request, "actividades/actividad_form.html", {"form": form, "title": "Crear Actividad"})
+    return render(request, "actividades/actividad_form.html", {
+        "form": form, "title": "Crear Actividad",
+        "empresas": empresas, "empresa_id": emp_id, "subarea_id": sub_id,
+    })
 
 
 @login_required
 @admin_required
 def actividad_edit(request, pk):
     actividad = get_object_or_404(Actividad, pk=pk, activo=True)
-    subareas = get_admin_subareas(request.user)
+    empresas, subareas, emp_id, sub_id = _empresa_filter(request)
+    if not request.GET.get("subarea_id"):
+        sub_id = actividad.subarea_id
+    tipos = _tipos_queryset(subareas, sub_id)
     if request.method == "POST":
         form = ActividadForm(request.POST, instance=actividad)
         form.fields["subarea"].queryset = subareas
-        form.fields["tipo_actividad"].queryset = TipoActividad.objects.filter(subarea__in=subareas, activo=True)
+        form.fields["tipo_actividad"].queryset = tipos
         if form.is_valid():
             form.save()
             messages.success(request, "Actividad actualizada.")
@@ -161,8 +194,11 @@ def actividad_edit(request, pk):
     else:
         form = ActividadForm(instance=actividad)
         form.fields["subarea"].queryset = subareas
-        form.fields["tipo_actividad"].queryset = TipoActividad.objects.filter(subarea__in=subareas, activo=True)
-    return render(request, "actividades/actividad_form.html", {"form": form, "title": "Editar Actividad"})
+        form.fields["tipo_actividad"].queryset = tipos
+    return render(request, "actividades/actividad_form.html", {
+        "form": form, "title": "Editar Actividad",
+        "empresas": empresas, "empresa_id": emp_id, "subarea_id": sub_id,
+    })
 
 
 @login_required

@@ -1,0 +1,92 @@
+{% extends "base.html" %}{% block content %}
+<div class="container-fluid mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-1">
+        <h5 class="fw-bold mb-0" style="font-size:0.95rem;"><i class="bi bi-hourglass-split" style="color:var(--accent);font-size:0.9rem;"></i> Tiempo de Inactividad</h5>
+    </div>
+
+    <div class="row g-2 mb-3">
+        <div class="col-md-3">
+            <div class="card shadow-sm">
+                <div class="card-body text-center py-2">
+                    <div class="fw-bold" style="font-size:1.1rem;color:var(--slate-700);">{{ page_obj.paginator.count }}</div>
+                    <small class="text-muted" style="font-size:0.6rem;">Periodos sin actividad</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm">
+                <div class="card-body text-center py-2">
+                    <div class="fw-bold" style="font-size:1.1rem;color:var(--slate-700);">{{ total_tiempo }}</div>
+                    <small class="text-muted" style="font-size:0.6rem;">Tiempo sin actividad acumulado</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-1 mb-2">
+        <div class="col-md-3">
+            <select name="subarea_id" class="form-control form-select-sm dynamic-select" data-model="subarea" data-placeholder="Subarea..." style="font-size:0.72rem;" onchange="filtrar()">
+                <option value="">Todas las subareas</option>
+                {% for s in subareas %}<option value="{{ s.pk }}" {% if subarea_id == s.pk %}selected{% endif %} data-label="{{ s.nombre }} ({{ s.area.nombre }})">{{ s.nombre }} ({{ s.area.nombre }})</option>{% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <select name="user_id" class="form-select form-select-sm" style="font-size:0.72rem;" onchange="filtrar()">
+                <option value="">Todos los usuarios</option>
+                {% for u in usuarios %}<option value="{{ u.pk }}" {% if user_id == u.pk %}selected{% endif %} data-label="{{ u.get_full_name }}">{{ u.get_full_name }} ({{ u.cedula }})</option>{% endfor %}
+            </select>
+        </div>
+        <div class="col-auto">
+            <button type="button" class="btn btn-outline-secondary btn-sm" style="font-size:0.68rem;padding:0.1rem 0.35rem;" onclick="filtrar()"><i class="bi bi-funnel"></i></button>
+            {% if subarea_id or user_id %}<a href="?" class="btn btn-outline-danger btn-sm" style="font-size:0.65rem;padding:0.1rem 0.35rem;">Limpiar</a>{% endif %}
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0" style="font-size:0.78rem;">
+                <thead class="table-light">
+                    <tr>
+                        <th style="font-size:0.6rem;">Usuario</th>
+                        <th style="font-size:0.6rem;">Inicio</th>
+                        <th style="font-size:0.6rem;">Fin</th>
+                        <th style="font-size:0.6rem;">Duracion</th>
+                        <th style="font-size:0.6rem;">Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in tiempos_list %}
+                    <tr>
+                        <td class="fw-semibold">{{ t.objeto.user.get_full_name }}</td>
+                        <td style="font-size:0.72rem;">{% if t.objeto.inicio %}{{ t.objeto.inicio|date:"d/m H:i" }}{% else %}-{% endif %}</td>
+                        <td style="font-size:0.72rem;">{% if t.objeto.fin %}{{ t.objeto.fin|date:"d/m H:i" }}{% else %}<span class="text-muted">-</span>{% endif %}</td>
+                        <td class="fw-semibold">{{ t.duracion }}</td>
+                        <td>{% if t.estado == "abierto" %}<span class="badge bg-light text-muted" style="font-size:0.55rem;">Abierto</span>{% elif t.estado == "abierto (multi-dia)" %}<span class="badge bg-warning text-dark" style="font-size:0.55rem;">Multi-dia</span>{% else %}<span class="badge bg-light text-muted" style="font-size:0.55rem;">Cerrado</span>{% endif %}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="text-center text-muted py-3" style="font-size:0.72rem;">Sin registros de inactividad</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% include "partials/pagination.html" %}
+    </div>
+</div>
+
+<script>
+function filtrar() {
+    var params = new URLSearchParams();
+    function gv(name) {
+        var el = document.querySelector('[name="' + name + '"]');
+        if (el && el.value) {
+            if (Array.isArray(el.value)) { if (el.value.length) params.set(name, el.value.join(',')); }
+            else { params.set(name, el.value); }
+        }
+    }
+    gv('subarea_id');
+    gv('user_id');
+    if (params.toString()) location.href = '?' + params.toString();
+    else location.href = '.';
+}
+</script>
+{% endblock %}

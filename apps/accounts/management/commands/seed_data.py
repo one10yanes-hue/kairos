@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 from datetime import date
 from apps.accounts.models import Rol, User, Empresa, UserEmpresa
-from apps.estructura.models import Area, SubArea, UserSubArea
+from apps.estructura.models import Area, SubArea, UserSubArea, EmpresaArea
 from apps.actividades.models import TipoActividad
 
 
@@ -29,7 +29,8 @@ class Command(BaseCommand):
             ("Talento Humano", [("Nomina", "Gestion de nomina"), ("Seleccion", "Reclutamiento y seleccion")]),
         ]
         for area_name, subareas in areas_data:
-            area, _ = Area.objects.get_or_create(empresa=emp, nombre=area_name)
+            area, _ = Area.objects.get_or_create(nombre=area_name)
+            EmpresaArea.objects.get_or_create(area=area, empresa=emp)
             self.stdout.write(f"  {'[CREADO]' if _ else '[EXISTE]'} Area: {area.nombre}")
             for sub_name, sub_desc in subareas:
                 sub, _ = SubArea.objects.get_or_create(area=area, nombre=sub_name, defaults={"descripcion": sub_desc})

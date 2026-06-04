@@ -1,27 +1,28 @@
-{% extends "base.html" %}{% block content %}
+{% extends "base.html" %}{% load gestion_extras %}{% block content %}
 <div class="container-fluid mt-3">
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <h5 class="fw-bold mb-0"><i class="bi bi-graph-up-arrow" style="color:var(--accent);font-size:1.2rem;"></i> Progreso del Equipo</h5>
-        <div class="d-flex gap-2 flex-wrap align-items-center">
-            <select name="subarea_id" class="form-select form-select-sm" style="width:auto;font-size:0.78rem;" onchange="filtrar()">
-                <option value="">Todas las subareas</option>
-                {% for s in subareas %}<option value="{{ s.pk }}" {% if subarea_id == s.pk %}selected{% endif %}>{{ s.nombre }}</option>{% endfor %}
+        <div class="d-flex gap-1 flex-wrap align-items-center">
+            <select name="subarea_id" class="form-control dynamic-select" data-model="subarea" data-placeholder="Subarea..." style="width:105px;font-size:0.68rem;">
+                <option value="">Todas</option>
+                {% for s in subareas %}<option value="{{ s.pk }}" {% if subarea_id == s.pk %}selected{% endif %} data-label="{{ s.nombre }}">{{ s.nombre }}</option>{% endfor %}
             </select>
-            <select name="user_id" class="form-select form-select-sm" style="width:auto;font-size:0.78rem;" onchange="filtrar()">
-                <option value="">Todos los usuarios</option>
-                {% for u in usuarios_filtro %}<option value="{{ u.pk }}" {% if user_id == u.pk %}selected{% endif %}>{{ u.get_full_name }}</option>{% endfor %}
+            <select name="user_id" class="form-control dynamic-select" data-model="user" data-placeholder="Usuario..." style="width:105px;font-size:0.68rem;">
+                <option value="">Todos</option>
+                {% for u in usuarios_filtro %}<option value="{{ u.pk }}" {% if user_id == u.pk %}selected{% endif %} data-label="{{ u.get_full_name }}">{{ u.get_full_name }} ({{ u.cedula }})</option>{% endfor %}
             </select>
-            <select name="estado" class="form-select form-select-sm" style="width:auto;font-size:0.78rem;" onchange="filtrar()">
-                <option value="">Todos los estados</option>
+            <select name="estado" class="form-select" style="width:105px;font-size:0.68rem;" onchange="filtrar()">
+                <option value="">Estado</option>
                 <option value="Pendiente" {% if estado_filter == 'Pendiente' %}selected{% endif %}>Pendiente</option>
                 <option value="EnCurso" {% if estado_filter == 'EnCurso' %}selected{% endif %}>En Curso</option>
                 <option value="Pausada" {% if estado_filter == 'Pausada' %}selected{% endif %}>Pausada</option>
                 <option value="Finalizada" {% if estado_filter == 'Finalizada' %}selected{% endif %}>Finalizada</option>
+                <option value="Vencidas" {% if estado_filter == 'Vencidas' %}selected{% endif %}>Vencidas</option>
             </select>
-            <input type="date" name="fecha_desde" class="form-control form-control-sm" style="width:125px;font-size:0.78rem;" value="{{ fecha_desde }}" onchange="filtrar()" title="Desde">
-            <input type="date" name="fecha_hasta" class="form-control form-control-sm" style="width:125px;font-size:0.78rem;" value="{{ fecha_hasta }}" onchange="filtrar()" title="Hasta">
-            <input type="text" name="q" class="form-control form-control-sm" style="width:160px;font-size:0.78rem;" placeholder="Buscar actividad o usuario..." value="{{ q }}" onkeyup="if(event.key==='Enter')filtrar()">
-            {% if subarea_id or user_id or estado_filter or q or fecha_desde or fecha_hasta %}<a href="?" class="btn btn-outline-danger btn-sm" style="font-size:0.72rem;">Limpiar</a>{% endif %}
+            <input type="date" name="fecha_desde" class="form-control" style="width:105px;font-size:0.68rem;" value="{{ fecha_desde }}" title="Desde">
+            <input type="date" name="fecha_hasta" class="form-control" style="width:105px;font-size:0.68rem;" value="{{ fecha_hasta }}" title="Hasta">
+            <button type="button" class="btn btn-outline-secondary btn-sm" style="font-size:0.68rem;padding:0.1rem 0.35rem;" onclick="filtrar()"><i class="bi bi-funnel"></i></button>
+            {% if subarea_id or user_id or estado_filter or fecha_desde or fecha_hasta %}<a href="?" class="btn btn-outline-danger btn-sm" style="font-size:0.65rem;padding:0.1rem 0.35rem;">Limpiar</a>{% endif %}
         </div>
     </div>
 
@@ -36,51 +37,61 @@
     <div class="card shadow-sm">
         <div class="card-body p-2">
             <div class="table-responsive">
-                <table class="table table-hover mb-0" style="font-size:0.82rem;">
+                <table class="table table-hover mb-0" style="font-size:0.78rem;">
                     <thead class="table-light">
                         <tr>
-                            <th class="py-2">Usuario</th>
-                            <th class="py-2">Actividad</th>
-                            <th class="py-2">Tipo</th>
-                            <th class="py-2">SubArea</th>
-                            <th class="py-2">Estado</th>
-                            <th class="py-2">Activo</th>
-                            <th class="py-2">Pausa</th>
-                            <th class="py-2">Inicio</th>
-                            <th class="py-2">Fin</th>
-                            <th class="py-2">Origen</th>
-                            <th class="py-2">Prr</th>
-                            <th class="py-2">Asignado</th>
+                            <th style="font-size:0.65rem;">Usuario</th>
+                            <th style="font-size:0.65rem;">Actividad</th>
+                            <th style="font-size:0.65rem;">Tipo</th>
+                            <th style="font-size:0.65rem;">SubArea</th>
+                            <th style="font-size:0.65rem;">Estado</th>
+                            <th style="font-size:0.65rem;">Activo</th>
+                            <th style="font-size:0.65rem;">Pausa</th>
+                            <th style="font-size:0.65rem;">Inicio</th>
+                            <th style="font-size:0.65rem;">Fin</th>
+                            <th style="font-size:0.65rem;">Origen</th>
+                            <th style="font-size:0.65rem;">Vence</th>
+                            <th style="font-size:0.65rem;">Dias venc.</th>
+                            <th style="font-size:0.65rem;">Prr</th>
+                            <th style="font-size:0.65rem;">F.Asig</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for a in asignaciones %}
                         <tr>
-                            <td class="py-2 fw-semibold">
+                            <td class="fw-semibold" style="font-size:0.72rem;">
                                 <a href="{% url 'gestion:detalle_actividad' a.pk %}" class="text-decoration-none text-reset">{{ a.user.get_full_name }}</a>
                             </td>
-                            <td class="py-2">
-                                <a href="{% url 'gestion:detalle_actividad' a.pk %}" class="text-decoration-none">{{ a.actividad.nombre }}</a>
-                                <small class="d-block text-muted" style="font-size:0.63rem;">{{ a.actividad.subarea.area.empresa.nombre }}</small>
+                            <td>
+                                <a href="{% url 'gestion:detalle_actividad' a.pk %}" class="text-decoration-none">{{ a.nombre_actividad|default:a.actividad.nombre }}</a>
+                                <small class="d-block text-muted" style="font-size:0.6rem;">{{ a.actividad.subarea.area.nombre }}</small>
                             </td>
-                            <td class="py-2"><span class="badge bg-light text-muted" style="font-size:0.65rem;">{{ a.actividad.tipo_actividad.nombre }}</span></td>
-                            <td class="py-2"><span class="text-muted" style="font-size:0.7rem;">{{ a.actividad.subarea.nombre }}</span></td>
-                            <td class="py-2">
-                                <span class="badge {% if a.estado == 'Finalizada' %}bg-success{% elif a.estado == 'EnCurso' %}bg-warning text-dark{% elif a.estado == 'Pausada' %}bg-secondary{% elif a.estado == 'Cancelada' %}bg-danger{% else %}bg-light text-muted{% endif %}" style="font-size:0.65rem;">
+                            <td><span class="badge bg-light text-muted" style="font-size:0.6rem;">{{ a.nombre_tipo|default:a.actividad.tipo_actividad.nombre }}</span></td>
+                            <td><span class="text-muted" style="font-size:0.65rem;">{{ a.actividad.subarea.nombre }}</span></td>
+                            <td>
+                                {% if a.estado == 'Trasladada' %}
+                                <span class="badge bg-info text-white" style="font-size:0.6rem;"><i class="bi bi-arrow-right-circle"></i> Completada por otro</span>
+                                {% elif a.estado == 'Revision' %}
+                                <span class="badge bg-warning text-dark" style="font-size:0.6rem;"><i class="bi bi-hourglass-split"></i> En revision</span>
+                                {% else %}
+                                <span class="badge {% if a.estado == 'Finalizada' %}bg-success{% elif a.estado == 'EnCurso' %}bg-warning text-dark{% elif a.estado == 'Pausada' %}bg-secondary{% elif a.estado == 'Cancelada' %}bg-danger{% else %}bg-light text-muted{% endif %}" style="font-size:0.6rem;">
                                     <i class="bi {% if a.estado == 'Finalizada' %}bi-check-circle{% elif a.estado == 'EnCurso' %}bi-play-circle{% elif a.estado == 'Pausada' %}bi-pause-circle{% elif a.estado == 'Cancelada' %}bi-x-circle{% else %}bi-inbox{% endif %}"></i>
                                     {{ a.get_estado_display }}
                                 </span>
+                                {% endif %}
                             </td>
-                            <td class="py-2">{{ a.tiempo_formateado }}</td>
-                            <td class="py-2">{{ a.tiempo_pausado_formateado }}</td>
-                            <td class="py-2"><span class="text-muted" style="font-size:0.65rem;">{% if a.primer_inicio %}{{ a.primer_inicio|date:"d/m H:i" }}{% else %}-{% endif %}</span></td>
-                            <td class="py-2"><span class="text-muted" style="font-size:0.65rem;">{% if a.ultimo_fin %}{{ a.ultimo_fin|date:"d/m H:i" }}{% else %}-{% endif %}</span></td>
-                            <td class="py-2"><span class="badge bg-light text-muted" style="font-size:0.6rem;">{{ a.origen|default:"-" }}</span></td>
-                            <td class="py-2">{% if a.prorroga_count > 0 %}<span class="badge bg-warning text-dark" style="font-size:0.65rem;">{{ a.prorroga_count }}</span>{% else %}0{% endif %}</td>
-                            <td class="py-2 text-muted" style="font-size:0.7rem;">{{ a.fecha_asignacion|date:"d/m/y" }}</td>
+                            <td style="font-size:0.65rem;">{{ a.tiempo_formateado }}</td>
+                            <td style="font-size:0.65rem;">{{ a.tiempo_pausado_formateado }}</td>
+                            <td style="font-size:0.65rem;">{% if a.primer_inicio %}{{ a.primer_inicio|date:"d/m H:i" }}{% else %}-{% endif %}</td>
+                            <td style="font-size:0.65rem;">{% if a.ultimo_fin %}{{ a.ultimo_fin|date:"d/m H:i" }}{% else %}-{% endif %}</td>
+                            <td><span class="badge bg-light text-muted" style="font-size:0.55rem;">{{ a.origen|default:"-" }}</span></td>
+                            <td style="font-size:0.65rem;">{% if a.actividad.tipo_actividad.requiere_fecha_limite and a.planificacion_detalle.fecha_vencimiento %}{{ a.planificacion_detalle.fecha_vencimiento|date:"d/m" }}{% else %}-{% endif %}</td>
+                            <td style="font-size:0.65rem;">{% if a.actividad.tipo_actividad.requiere_fecha_limite %}{% with dias=a.planificacion_detalle.fecha_vencimiento|days_overdue %}{% if dias > 0 %}<span class="badge bg-danger" style="font-size:0.55rem;">{{ dias }}d</span>{% else %}-{% endif %}{% endwith %}{% else %}-{% endif %}</td>
+                            <td style="font-size:0.65rem;">{% if a.prorroga_count > 0 %}<span class="badge bg-warning text-dark" style="font-size:0.6rem;">{{ a.prorroga_count }}</span>{% else %}0{% endif %}</td>
+                            <td class="text-muted" style="font-size:0.65rem;">{{ a.fecha_asignacion|date:"d/m/y" }}</td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="12" class="text-center text-muted py-4" style="font-size:0.75rem;">Sin asignaciones{% if q %} para "{{ q }}"{% endif %}</td></tr>
+                        <tr><td colspan="13" class="text-center text-muted py-4" style="font-size:0.72rem;">Sin asignaciones</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -88,14 +99,14 @@
         </div>
         {% if page_obj.paginator.num_pages > 1 %}
         <div class="card-footer py-2 px-3 d-flex justify-content-between align-items-center">
-            <small class="text-muted" style="font-size:0.7rem;">Pagina {{ page_obj.number }} de {{ page_obj.paginator.num_pages }} ({{ page_obj.paginator.count }} registros)</small>
+            <small class="text-muted" style="font-size:0.65rem;">Pagina {{ page_obj.number }} de {{ page_obj.paginator.num_pages }} ({{ page_obj.paginator.count }} registros)</small>
             <nav>
                 <ul class="pagination pagination-sm mb-0">
                     {% if page_obj.has_previous %}
-                    <li class="page-item"><a class="page-link py-1 px-2" style="font-size:0.7rem;" href="?{% if subarea_id %}subarea_id={{ subarea_id }}{% endif %}{% if user_id %}&user_id={{ user_id }}{% endif %}{% if estado_filter %}&estado={{ estado_filter }}{% endif %}{% if q %}&q={{ q }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}&page={{ page_obj.previous_page_number }}">Anterior</a></li>
+                    <li class="page-item"><a class="page-link py-1 px-2" style="font-size:0.65rem;" href="?{% if subarea_id %}subarea_id={{ subarea_id }}{% endif %}{% if user_id %}&user_id={{ user_id }}{% endif %}{% if estado_filter %}&estado={{ estado_filter }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}&page={{ page_obj.previous_page_number }}">Anterior</a></li>
                     {% endif %}
                     {% if page_obj.has_next %}
-                    <li class="page-item"><a class="page-link py-1 px-2" style="font-size:0.7rem;" href="?{% if subarea_id %}subarea_id={{ subarea_id }}{% endif %}{% if user_id %}&user_id={{ user_id }}{% endif %}{% if estado_filter %}&estado={{ estado_filter }}{% endif %}{% if q %}&q={{ q }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}&page={{ page_obj.next_page_number }}">Siguiente</a></li>
+                    <li class="page-item"><a class="page-link py-1 px-2" style="font-size:0.65rem;" href="?{% if subarea_id %}subarea_id={{ subarea_id }}{% endif %}{% if user_id %}&user_id={{ user_id }}{% endif %}{% if estado_filter %}&estado={{ estado_filter }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}&page={{ page_obj.next_page_number }}">Siguiente</a></li>
                     {% endif %}
                 </ul>
             </nav>
@@ -107,19 +118,21 @@
 <script>
 function filtrar() {
     var params = new URLSearchParams();
-    var selSub = document.querySelector('select[name="subarea_id"]');
-    if(selSub.value) params.set('subarea_id', selSub.value);
-    var selUsr = document.querySelector('select[name="user_id"]');
-    if(selUsr.value) params.set('user_id', selUsr.value);
-    var selEst = document.querySelector('select[name="estado"]');
-    if(selEst.value) params.set('estado', selEst.value);
-    var inpQ = document.querySelector('input[name="q"]');
-    if(inpQ.value) params.set('q', inpQ.value);
-    var fd = document.querySelector('input[name="fecha_desde"]');
-    if(fd.value) params.set('fecha_desde', fd.value);
-    var fh = document.querySelector('input[name="fecha_hasta"]');
-    if(fh.value) params.set('fecha_hasta', fh.value);
-    if(params.toString()) location.href = '?' + params.toString();
+    function grabVal(name, type) {
+        if (type === 'hidden') {
+            var h = document.querySelector('input[name="' + name + '"][type="hidden"]');
+            if (h && h.value) params.set(name, h.value);
+        } else {
+            var s = document.querySelector('[name="' + name + '"]');
+            if (s && s.value) params.set(name, s.value);
+        }
+    }
+    grabVal('subarea_id', 'hidden');
+    grabVal('user_id', 'hidden');
+    grabVal('estado', 'select');
+    grabVal('fecha_desde', 'input');
+    grabVal('fecha_hasta', 'input');
+    if (params.toString()) location.href = '?' + params.toString();
     else location.href = '.';
 }
 </script>

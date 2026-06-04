@@ -1,84 +1,55 @@
 {% extends "base.html" %}{% block content %}
 <div class="container-fluid mt-3">
-    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <h5 class="fw-bold mb-0"><i class="bi bi-list-check" style="color:var(--accent);font-size:1.2rem;"></i> Actividades</h5>
-        <a href="{% url 'actividades:actividad_create' %}" class="btn btn-primary btn-sm" style="font-size:0.78rem;"><i class="bi bi-plus-lg"></i> Nueva Actividad</a>
+    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-1">
+        <h5 class="fw-bold mb-0" style="font-size:0.95rem;"><i class="bi bi-list-check" style="color:var(--accent);font-size:0.9rem;"></i> Actividades</h5>
+        <a href="{% url 'actividades:actividad_create' %}" class="btn btn-primary btn-sm" style="font-size:0.7rem;padding:0.2rem 0.5rem;"><i class="bi bi-plus-lg"></i> Nueva</a>
     </div>
 
-    <form method="GET" class="row g-2 mb-3">
-        <div class="col-md-4">
+    <form method="GET" class="row g-1 mb-2">
+        <div class="col-md-3">
             <div class="input-group input-group-sm">
-                <span class="input-group-text bg-white"><i class="bi bi-search" style="font-size:0.75rem;"></i></span>
-                <input type="text" name="q" class="form-control" placeholder="Buscar actividad..." value="{{ q }}" style="font-size:0.78rem;">
+                <span class="input-group-text bg-white" style="font-size:0.7rem;"><i class="bi bi-search"></i></span>
+                <input type="text" name="q" class="form-control" placeholder="Buscar..." value="{{ q }}" style="font-size:0.75rem;">
             </div>
         </div>
-        <div class="col-md-3">
-            <select name="tipo" class="form-select form-select-sm" onchange="this.form.submit()" style="font-size:0.78rem;">
+        <div class="col-md-2">
+            <select name="tipo" class="form-select form-select-sm" style="font-size:0.75rem;" onchange="this.form.submit()">
                 <option value="">Todos los tipos</option>
                 {% for t in tipos %}<option value="{{ t.pk }}" {% if tipo_filter == t.pk|stringformat:'s' %}selected{% endif %}>{{ t.nombre }}</option>{% endfor %}
             </select>
         </div>
         <div class="col-auto">
-            <button class="btn btn-outline-secondary btn-sm" type="submit" style="font-size:0.78rem;">Filtrar</button>
-            {% if q or tipo_filter %}<a href="{% url 'actividades:actividad_list' %}" class="btn btn-outline-danger btn-sm" style="font-size:0.78rem;">Limpiar</a>{% endif %}
+            <button class="btn btn-outline-secondary btn-sm" type="submit" style="font-size:0.7rem;">Filtrar</button>
+            {% if q or tipo_filter %}<a href="{% url 'actividades:actividad_list' %}" class="btn btn-outline-danger btn-sm" style="font-size:0.7rem;">Limpiar</a>{% endif %}
         </div>
     </form>
 
-    {% if page_obj.paginator.count > 0 %}
-    <div class="row g-2 mb-3">
-        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.1rem;color:var(--slate-700);">{{ total_base }}</div><small class="text-muted" style="font-size:0.65rem;">Total{% if q or tipo_filter %} ({{ page_obj.paginator.count }} filtrados){% endif %}</small></div></div></div>
-    </div>
-    {% endif %}
-
     <div class="card shadow-sm">
         <div class="card-body p-0">
-            <table class="table table-hover mb-0" style="font-size:0.82rem;">
+            <table class="table table-hover mb-0" style="font-size:0.78rem;">
                 <thead class="table-light">
-                    <tr>
-                        <th class="py-2">Codigo</th>
-                        <th class="py-2">Nombre</th>
-                        <th class="py-2">Tipo</th>
-                        <th class="py-2">SubArea</th>
-                        <th class="py-2" style="width:80px;">Acciones</th>
-                    </tr>
+                    <tr><th style="font-size:0.6rem;">Codigo</th><th style="font-size:0.6rem;">Nombre</th><th style="font-size:0.6rem;">Tipo</th><th style="font-size:0.6rem;">SubArea</th><th style="font-size:0.6rem;">Flash</th><th style="font-size:0.6rem;">Entregable</th><th style="font-size:0.6rem;width:70px;">Acciones</th></tr>
                 </thead>
                 <tbody>
                     {% for a in actividades %}
                     <tr>
-                        <td class="py-2"><code style="font-size:0.7rem;color:var(--accent);">{{ a.codigo|default:"" }}</code></td>
-                        <td class="py-2 fw-semibold">{{ a.nombre }}</td>
-                        <td class="py-2"><span class="badge bg-light text-muted" style="font-size:0.65rem;">{{ a.tipo_actividad.nombre }}</span></td>
-                        <td class="py-2">
-                            <span class="text-muted" style="font-size:0.7rem;">{{ a.subarea.nombre }}</span>
-                            <small class="d-block text-muted" style="font-size:0.63rem;">{{ a.subarea.area.empresa.nombre }} > {{ a.subarea.area.nombre }}</small>
-                        </td>
-                        <td class="py-2">
-                            <div class="btn-group btn-group-sm">
-                                <a href="{% url 'actividades:actividad_edit' a.pk %}" class="btn btn-outline-secondary" title="Editar"><i class="bi bi-pencil"></i></a>
-                                <a href="{% url 'actividades:actividad_delete' a.pk %}" class="btn btn-outline-danger" title="Inactivar" onclick="return confirm('Inactivar {{ a.nombre }}?')"><i class="bi bi-trash"></i></a>
+                        <td><code style="font-size:0.7rem;color:var(--accent);">{{ a.codigo|default:"" }}</code></td>
+                        <td class="fw-semibold">{{ a.nombre }}</td>
+                        <td><span class="badge bg-light text-muted" style="font-size:0.6rem;">{{ a.tipo_actividad.nombre }}</span></td>
+                        <td><span class="text-muted" style="font-size:0.72rem;">{{ a.subarea.nombre }}</span> <small class="text-muted" style="font-size:0.6rem;">({{ a.subarea.area.nombre }})</small></td>
+                        <td>{% if a.tipo_actividad.es_flash %}<span class="badge bg-success" style="font-size:0.55rem;">Si</span>{% else %}<span class="badge bg-light text-muted" style="font-size:0.55rem;">No</span>{% endif %}</td>
+                        <td>{% if a.tipo_actividad.requiere_entregable %}<span class="badge bg-success" style="font-size:0.55rem;">Si</span>{% else %}<span class="badge bg-light text-muted" style="font-size:0.55rem;">No</span>{% endif %}</td>
+                        <td>
+                            <div class="btn-group btn-group-sm" style="gap:2px;">
+                                <a href="{% url 'actividades:actividad_edit' a.pk %}" class="btn btn-outline-secondary py-0 px-1" style="font-size:0.65rem;"><i class="bi bi-pencil"></i></a>
+                                <a href="{% url 'actividades:actividad_delete' a.pk %}" class="btn btn-outline-danger py-0 px-1" style="font-size:0.65rem;" onclick="return confirm('Inactivar?')"><i class="bi bi-trash"></i></a>
                             </div>
                         </td>
                     </tr>
-                    {% empty %}
-                    <tr><td colspan="5" class="text-center text-muted py-4" style="font-size:0.75rem;">{% if q %}Sin resultados para "{{ q }}"{% else %}No hay actividades{% endif %}</td></tr>
-                    {% endfor %}
+                    {% empty %}<tr><td colspan="7" class="text-center text-muted py-3" style="font-size:0.72rem;">{% if q %}Sin resultados{% else %}No hay actividades{% endif %}</td></tr>{% endfor %}
                 </tbody>
             </table>
         </div>
-        {% if page_obj.paginator.num_pages > 1 %}
-        <div class="card-footer py-2 px-3 d-flex justify-content-between align-items-center">
-            <small class="text-muted" style="font-size:0.7rem;">Pagina {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</small>
-            <nav>
-                <ul class="pagination pagination-sm mb-0">
-                    {% if page_obj.has_previous %}
-                    <li class="page-item"><a class="page-link py-1 px-2" style="font-size:0.7rem;" href="?q={{ q }}&tipo={{ tipo_filter }}&page={{ page_obj.previous_page_number }}">Anterior</a></li>
-                    {% endif %}
-                    {% if page_obj.has_next %}
-                    <li class="page-item"><a class="page-link py-1 px-2" style="font-size:0.7rem;" href="?q={{ q }}&tipo={{ tipo_filter }}&page={{ page_obj.next_page_number }}">Siguiente</a></li>
-                    {% endif %}
-                </ul>
-            </nav>
-        </div>
-        {% endif %}
     </div>
+    {% include "partials/pagination.html" %}
 </div>{% endblock %}

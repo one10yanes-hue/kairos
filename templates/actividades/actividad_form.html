@@ -1,3 +1,70 @@
 {% extends "base.html" %}{% block content %}
-<div class="container-fluid mt-4"><nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'actividades:actividad_list' %}">Actividades</a></li><li class="breadcrumb-item active">{{ title }}</li></ol></nav>
-<div class="row justify-content-center"><div class="col-md-8"><div class="card shadow-sm"><div class="card-header"><h5 class="mb-0 fw-bold">{{ title }}</h5></div><div class="card-body"><form method="POST">{% csrf_token %}{% for field in form %}<div class="mb-3"><label class="form-label small fw-semibold">{{ field.label }}</label>{{ field }}</div>{% endfor %}<button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Guardar</button><a href="{% url 'actividades:actividad_list' %}" class="btn btn-outline-secondary">Cancelar</a></form></div></div></div></div></div>{% endblock %}
+<div class="container-fluid mt-4">
+    <nav aria-label="breadcrumb"><ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'actividades:actividad_list' %}">Actividades</a></li>
+        <li class="breadcrumb-item active">{{ title }}</li>
+    </ol></nav>
+
+    <div class="card shadow-sm" style="max-width:900px;">
+        <div class="card-header d-flex align-items-center gap-2">
+            <i class="bi bi-list-check" style="color:var(--accent);"></i>
+            <h5 class="mb-0 fw-bold">{{ title }}</h5>
+        </div>
+        <div class="card-body p-4">
+            <script>
+            var _subareaId = '{{ subarea_id|default:"" }}';
+
+            document.addEventListener('DOMContentLoaded', function() {
+                if (_subareaId) {
+                    var tip = document.querySelector('[data-model="tipo_actividad"]');
+                    if (tip) tip.dataset.filters = 'subarea_id=' + _subareaId;
+                }
+
+                setTimeout(function() {
+                    var subareaLast = _subareaId;
+                    setInterval(function() {
+                        var h = document.querySelector('form[id="mainForm"] input[name="subarea"][type="hidden"]');
+                        if (h && h.value !== subareaLast) {
+                            subareaLast = h.value;
+                            var params = [];
+                            if (h.value) params.push('subarea_id=' + h.value);
+                            window.location.href = '?' + params.join('&');
+                        }
+                    }, 200);
+                }, 300);
+            });
+            </script>
+
+            <form method="POST" id="mainForm">
+                {% csrf_token %}
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold" style="font-size:0.85rem;">SubArea</label>
+                        {{ form.subarea }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold" style="font-size:0.85rem;">Tipo de Actividad</label>
+                        {{ form.tipo_actividad }}
+                    </div>
+                </div>
+                <div class="row g-3 mb-4">
+                    <div class="col-12">
+                        <label class="form-label fw-semibold" style="font-size:0.85rem;">Nombre</label>
+                        {{ form.nombre }}
+                    </div>
+                </div>
+                <div class="row g-3 mb-4">
+                    <div class="col-12">
+                        <label class="form-label fw-semibold" style="font-size:0.85rem;">Descripcion</label>
+                        {{ form.descripcion }}
+                    </div>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Guardar</button>
+                    <a href="{% url 'actividades:actividad_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

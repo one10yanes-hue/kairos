@@ -14,10 +14,9 @@ environ.Env.read_env(env_file)
 
 SECRET_KEY = env("SECRET_KEY")
 DEBUG = env.bool("DEBUG", default=False)
-ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[])
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default="localhost,127.0.0.1,testserver")
 
 INSTALLED_APPS = [
-    "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
@@ -44,6 +43,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "apps.auditoria.middleware.AuditLogMiddleware",
+    "apps.accounts.middleware.RoleSwitchMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -66,21 +66,45 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
+db_engine = env("DB_ENGINE", default="django.db.backends.sqlite3")
+db_name = env("DB_NAME", default="db.sqlite3")
+
+if db_engine in ["mssql", "sql_server"]:
+    db_engine = "mssql"
+
 DATABASES = {
     "default": {
-        "ENGINE": "mssql",
-        "NAME": env("DB_NAME"),
-        "USER": env("DB_USER", default=None) or None,
-        "PASSWORD": env("DB_PASSWORD", default=None) or None,
-        "HOST": env("DB_HOST"),
-        "PORT": env("DB_PORT", default=None) or None,
-        "OPTIONS": {
-            "driver": "ODBC Driver 17 for SQL Server",
-            "trusted_connection": "yes",
-            "trust_server_certificate": env.bool("DB_OPTIONS_TRUST_CERT", default=True),
-            "extra_params": "Encrypt=yes;TrustServerCertificate=yes;Trusted_Connection=yes;",
-        },
+        "ENGINE": db_engine,
+        "NAME": (BASE_DIR / db_name) if db_engine == "django.db.backends.sqlite3" else db_name,
     }
+}
+
+if db_engine == "mssql":
+    DATABASES["default"].update(
+        {
+            "HOST": env("DB_HOST", default=""),
+            "PORT": env("DB_PORT", default=""),
+            "USER": env("DB_USER", default=""),
+            "PASSWORD": env("DB_PASSWORD", default=""),
+            "OPTIONS": {
+                "driver": env("DB_OPTIONS_DRIVER", default="ODBC Driver 17 for SQL Server"),
+                "extra_params": env("DB_OPTIONS_EXTRA_PARAMS", default=""),
+            },
+        }
+    )
+
+# Base de datos externa KACTUS para integracion de empleados
+DATABASES["kactus"] = {
+    "ENGINE": "mssql",
+    "NAME": "KACTUS",
+    "USER": "seven",
+    "PASSWORD": "SevenIps1a*",
+    "HOST": "172.27.198.73",
+    "PORT": "",
+    "OPTIONS": {
+        "driver": "ODBC Driver 18 for SQL Server",
+        "extra_params": "Encrypt=no;TrustServerCertificate=yes;",
+    },
 }
 
 AUTH_USER_MODEL = "accounts.User"

@@ -1,10 +1,10 @@
 {% extends "base.html" %}{% block content %}
 <div class="container-fluid mt-3">
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <h5 class="fw-bold mb-0"><i class="bi bi-info-circle" style="color:var(--accent);font-size:1.2rem;"></i> {{ asignacion.actividad.nombre }}</h5>
+        <h5 class="fw-bold mb-0" style="font-size:0.95rem;"><i class="bi bi-info-circle" style="color:var(--accent);font-size:0.9rem;"></i> {{ asignacion.nombre_actividad|default:asignacion.actividad.nombre }}</h5>
         <div class="d-flex gap-1">
-            <span class="badge {% if asignacion.estado == 'EnCurso' %}bg-warning text-dark{% elif asignacion.estado == 'Pausada' %}bg-secondary{% elif asignacion.estado == 'Finalizada' %}bg-success{% else %}bg-light text-muted{% endif %}" style="font-size:0.65rem;">{{ asignacion.get_estado_display }}</span>
-            <span class="badge bg-light text-muted" style="font-size:0.65rem;">{{ asignacion.actividad.tipo_actividad.nombre }}</span>
+            <span class="badge {% if asignacion.estado == 'EnCurso' %}bg-warning text-dark{% elif asignacion.estado == 'Pausada' %}bg-secondary{% elif asignacion.estado == 'Finalizada' %}bg-success{% elif asignacion.estado == 'Revision' %}bg-warning text-dark{% else %}bg-light text-muted{% endif %}" style="font-size:0.65rem;">{% if asignacion.estado == 'Revision' %}En revision{% else %}{{ asignacion.get_estado_display }}{% endif %}</span>
+            <span class="badge bg-light text-muted" style="font-size:0.65rem;">{{ asignacion.nombre_tipo|default:asignacion.actividad.tipo_actividad.nombre }}</span>
         </div>
     </div>
 
@@ -13,18 +13,97 @@
             <div class="card shadow-sm mb-3">
                 <div class="card-header py-1 px-2 d-flex justify-content-between align-items-center">
                     <small class="fw-semibold"><i class="bi bi-info-circle"></i> Informacion</small>
-                    <span class="badge bg-light text-muted" style="font-size:0.55rem;">{{ asignacion.origen|default:"Manual" }}{% if asignacion.origen_user %} por {{ asignacion.origen_user.get_full_name }}{% endif %}</span>
+                    <span class="badge bg-light text-muted" style="font-size:0.55rem;">
+                        {{ asignacion.origen|default:"Manual" }}{% if asignacion.origen_user %} por {{ asignacion.origen_user.get_full_name }}{% endif %}
+                    </span>
                 </div>
                 <div class="card-body p-3">
-                    <p class="mb-1" style="font-size:0.82rem;">{{ asignacion.actividad.subarea.area.empresa.nombre }} &gt; {{ asignacion.actividad.subarea.area.nombre }} &gt; {{ asignacion.actividad.subarea.nombre }}</p>
-                    {% if asignacion.actividad.descripcion %}<p class="text-muted mb-2" style="font-size:0.78rem;">{{ asignacion.actividad.descripcion }}</p>{% endif %}
-                    <div class="d-flex gap-3" style="font-size:0.78rem;">
-                        <span class="text-muted"><i class="bi bi-clock"></i> <strong>{{ tiempo_efectivo }}</strong></span>
-                        <span class="text-muted"><i class="bi bi-calendar3"></i> {{ asignacion.fecha_asignacion|date:"d/m/Y H:i" }}</span>
-                        {% if asignacion.planificacion_detalle.fecha_limite %}
-                        <span class="text-muted"><i class="bi bi-calendar-check"></i> Limite: {{ asignacion.planificacion_detalle.fecha_limite|date:"d/m/Y" }}</span>
+                    <div class="row g-2" style="font-size:0.82rem;">
+                        <div class="col-md-6">
+                            <div class="d-flex flex-column">
+                                <small class="text-muted" style="font-size:0.6rem;">AREA / SUBAREA</small>
+                                <span class="fw-semibold">{{ asignacion.actividad.subarea.area.nombre }} &gt; {{ asignacion.actividad.subarea.nombre }}</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex flex-column">
+                                <small class="text-muted" style="font-size:0.6rem;">TIEMPO TRANSCURRIDO</small>
+                                <span class="fw-bold" style="font-size:0.95rem;">{{ tiempo_efectivo }}</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex flex-column">
+                                <small class="text-muted" style="font-size:0.6rem;">CREACION</small>
+                                <span><i class="bi bi-calendar3"></i> {{ asignacion.fecha_asignacion|date:"d/m/Y H:i" }}</span>
+                            </div>
+                        </div>
+                        {% if asignacion.planificacion_detalle.fecha_programada %}
+                        <div class="col-md-6">
+                            <div class="d-flex flex-column">
+                                <small class="text-muted" style="font-size:0.6rem;">PROGRAMADA</small>
+                                <span><i class="bi bi-calendar-event"></i> {{ asignacion.planificacion_detalle.fecha_programada|date:"d/m/Y" }}</span>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if asignacion.actividad.tipo_actividad.requiere_fecha_limite and asignacion.planificacion_detalle.fecha_vencimiento %}
+                        <div class="col-md-6">
+                            <div class="d-flex flex-column">
+                                <small class="text-muted" style="font-size:0.6rem;">FECHA LIMITE / VENCE</small>
+                                <span><i class="bi bi-clock"></i> {{ asignacion.planificacion_detalle.fecha_vencimiento|date:"d/m/Y" }}</span>
+                            </div>
+                        </div>
                         {% endif %}
                     </div>
+                    {% if asignacion.entregable or asignacion.estado_revision != 'pendiente' %}
+                    <hr class="my-2">
+                    <div class="row g-2" style="font-size:0.82rem;">
+                        {% if asignacion.entregable %}
+                        <div class="col-md-6">
+                            <div class="d-flex flex-column">
+                                <small class="text-muted" style="font-size:0.6rem;">ENTREGABLE</small>
+                                <span><a href="{{ asignacion.entregable.url }}" target="_blank" class="btn btn-sm btn-outline-primary py-0 px-1" style="font-size:0.7rem;"><i class="bi bi-download"></i> Descargar</a></span>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if asignacion.planificacion_detalle.fecha_vencimiento and asignacion.fecha_revision %}
+                        <div class="col-md-6">
+                            <div class="d-flex flex-column">
+                                <small class="text-muted" style="font-size:0.6rem;">ENTREGADO</small>
+                                <span>
+                                    {% if asignacion.fecha_revision.date <= asignacion.planificacion_detalle.fecha_vencimiento.date %}
+                                    <span class="text-success fw-semibold"><i class="bi bi-check-circle"></i> {{ asignacion.fecha_revision|timesince:asignacion.planificacion_detalle.fecha_vencimiento }} antes</span>
+                                    {% else %}
+                                    <span class="text-danger fw-semibold"><i class="bi bi-exclamation-circle"></i> {{ asignacion.fecha_revision|timeuntil:asignacion.planificacion_detalle.fecha_vencimiento }} despues</span>
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if asignacion.estado_revision == 'rechazado' and asignacion.revision_comentario %}
+                        <div class="col-12">
+                            <div class="d-flex flex-column">
+                                <small class="text-muted" style="font-size:0.6rem;">MOTIVO DE RECHAZO</small>
+                                <span class="text-danger" style="font-size:0.78rem;">{{ asignacion.revision_comentario }}</span>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if asignacion.estado_revision == 'aprobado' %}
+                        <div class="col-12">
+                            <div class="d-flex flex-column">
+                                <small class="text-muted" style="font-size:0.6rem;">REVISION</small>
+                                <span class="text-success fw-semibold" style="font-size:0.78rem;"><i class="bi bi-check-circle"></i> Aprobado</span>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    {% if asignacion.actividad.descripcion %}
+                    <hr class="my-2">
+                    <div>
+                        <small class="text-muted" style="font-size:0.6rem;">DESCRIPCION</small>
+                        <p class="mb-0 text-muted" style="font-size:0.78rem;">{{ asignacion.actividad.descripcion }}</p>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
 
@@ -70,40 +149,88 @@
         </div>
 
         <div class="col-lg-4">
+            {% if asignacion.estado == 'Revision' and request.user.rol.nombre in 'Master,Admin' %}
+            <div class="card shadow-sm mb-3">
+                <div class="card-header py-1 px-2"><small class="fw-semibold"><i class="bi bi-shield-check"></i> Revision</small></div>
+                <div class="card-body p-2">
+                    <div class="d-flex gap-2">
+                        <form method="POST" action="{% url 'dashboard:revision_aprobar' asignacion.pk %}" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-primary w-100" style="font-size:0.75rem;"><i class="bi bi-check-lg"></i> Aprobar</button>
+                        </form>
+                        <button type="button" class="btn btn-sm btn-outline-secondary w-100" style="font-size:0.75rem;" onclick="document.getElementById('rechazoDetalleModal').style.display='flex'"><i class="bi bi-x-lg"></i> Rechazar</button>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% if historial %}
+            <div class="card shadow-sm mb-3">
+                <div class="card-header py-1 px-2"><small class="fw-semibold"><i class="bi bi-clock-history"></i> Historial de Revision</small></div>
+                <div class="card-body p-2" style="max-height:200px;overflow-y:auto;">
+                    {% for h in historial %}
+                    <div class="d-flex align-items-start gap-2 mb-2 pb-2 {% if not forloop.last %}border-bottom{% endif %}">
+                        <span class="badge {% if h.accion == 'aprobado' %}bg-success{% else %}bg-danger{% endif %}" style="font-size:0.5rem;flex-shrink:0;">{{ h.get_accion_display }}</span>
+                        <div style="min-width:0;">
+                            <small class="fw-semibold d-block" style="font-size:0.65rem;">{{ h.user.get_full_name }}</small>
+                            {% if h.comentario %}<small class="text-muted d-block" style="font-size:0.65rem;">{{ h.comentario }}</small>{% endif %}
+                            <small class="text-muted" style="font-size:0.55rem;">{{ h.fecha|date:"d/m H:i" }}</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
             <div class="card shadow-sm mb-3">
                 <div class="card-header py-1 px-2"><small class="fw-semibold"><i class="bi bi-chat-dots"></i> Comentarios</small></div>
                 <div class="card-body p-3">
+                    {% if asignacion.estado_revision != 'aprobado' %}
                     <form method="POST" action="{% url 'gestion:agregar_comentario' asignacion.pk %}" class="mb-3">
                         {% csrf_token %}
                         <textarea name="texto" class="form-control form-control-sm mb-2" rows="2" placeholder="Agregar comentario..." style="font-size:0.82rem;"></textarea>
                         <button type="submit" class="btn btn-sm btn-primary w-100" style="font-size:0.78rem;">Enviar</button>
                     </form>
+                    {% else %}
+                    <p class="text-muted small mb-3"><i class="bi bi-lock"></i> Comentarios cerrados (actividad aprobada)</p>
+                    {% endif %}
                     {% for c in comentarios %}
                     <div class="border-bottom mb-2 pb-2">
                         <small class="fw-semibold" style="font-size:0.78rem;">{{ c.user.get_full_name }}</small>
                         <p class="mb-0" style="font-size:0.78rem;">{{ c.texto }}</p>
                         <small class="text-muted" style="font-size:0.65rem;">{{ c.fecha_creacion|date:"d/m H:i" }}</small>
                     </div>
-                    {% empty %}<p class="text-muted" style="font-size:0.78rem;">Sin comentarios</p>{% endfor %}
-                </div>
-            </div>
-            <div class="card shadow-sm mb-3">
-                <div class="card-header py-1 px-2"><small class="fw-semibold"><i class="bi bi-arrow-left-right"></i> Traslados</small></div>
-                <div class="card-body p-3">
-                    {% for t in traslados %}
-                    <p class="mb-1" style="font-size:0.78rem;"><strong>De:</strong> {{ t.user_origen.get_full_name }} &rarr; <strong>{{ t.user_destino.get_full_name }}</strong></p>
-                    {% if t.motivo %}<p class="text-muted" style="font-size:0.75rem;">{{ t.motivo }}</p>{% endif %}
-                    {% empty %}<p class="text-muted" style="font-size:0.78rem;">Sin traslados</p>{% endfor %}
-                </div>
-            </div>
-            <div class="card shadow-sm">
-                <div class="card-header py-1 px-2"><small class="fw-semibold"><i class="bi bi-people-fill"></i> Colaboradores</small></div>
-                <div class="card-body p-3">
-                    {% for c in colaboraciones %}
-                    <span class="badge bg-light text-muted me-1" style="font-size:0.7rem;">{{ c.user_colaborador.get_full_name }}</span>
-                    {% empty %}<p class="text-muted" style="font-size:0.78rem;">Sin colaboradores</p>{% endfor %}
-                </div>
-            </div>
-        </div>
+                    {% endfor %}
+                    {% for r in registros %}
+                    {% if r.comentario and not comentarios %}
+                    <div class="border-bottom mb-2 pb-2">
+                        <small class="fw-semibold" style="font-size:0.78rem;">{{ asignacion.user.get_full_name }}</small>
+                        <p class="mb-0" style="font-size:0.78rem;">{{ r.comentario }}</p>
+                        <small class="text-muted" style="font-size:0.65rem;">{{ r.fecha_hora|date:"d/m H:i" }} · {{ r.get_evento_display }}</small>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                    {% if not comentarios and not asignacion.revision_comentario %}<p class="text-muted" style="font-size:0.78rem;">Sin comentarios</p>{% endif %}
     </div>
-</div>{% endblock %}
+</div>
+
+{% if asignacion.estado == 'Revision' and request.user.rol.nombre in 'Master,Admin' %}
+<div id="rechazoDetalleModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:0.75rem;max-width:400px;width:90%;padding:1.5rem;box-shadow:0 8px 32px rgba(0,0,0,0.12);">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold mb-0"><i class="bi bi-x-circle"></i> Rechazar Actividad</h6>
+            <button type="button" class="btn-close" onclick="document.getElementById('rechazoDetalleModal').style.display='none'"></button>
+        </div>
+        <form method="POST" action="{% url 'dashboard:revision_rechazar' asignacion.pk %}">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="form-label small fw-semibold">Motivo del rechazo <span class="text-danger">*</span></label>
+                <textarea name="comentario" class="form-control" rows="3" placeholder="Explica por que se rechaza..." required></textarea>
+            </div>
+            <div class="d-flex justify-content-end gap-2">
+                <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('rechazoDetalleModal').style.display='none'">Cancelar</button>
+                <button type="submit" class="btn btn-sm btn-outline-secondary">Rechazar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

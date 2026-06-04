@@ -1,0 +1,136 @@
+{% extends "base.html" %}{% block content %}
+<div class="container-fluid mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-1">
+        <h5 class="fw-bold mb-0" style="font-size:0.95rem;"><i class="bi bi-file-earmark-check" style="color:var(--accent);font-size:0.9rem;"></i> Revisiones Pendientes</h5>
+    </div>
+
+    <div class="row g-1 mb-2">
+        <div class="col-md-3">
+            <select name="user_id" class="form-select form-select-sm" style="font-size:0.75rem;" onchange="filtrar()">
+                <option value="">Todos los usuarios</option>
+                {% for u in usuarios %}<option value="{{ u.pk }}" {% if user_id == u.pk %}selected{% endif %}>{{ u.get_full_name }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select name="estado" class="form-select form-select-sm" style="font-size:0.75rem;" onchange="filtrar()">
+                <option value="">Todos</option>
+                <option value="pendiente" {% if estado_filtro == 'pendiente' %}selected{% endif %}>Pendiente</option>
+                <option value="aprobado" {% if estado_filtro == 'aprobado' %}selected{% endif %}>Aprobado</option>
+                <option value="rechazado" {% if estado_filtro == 'rechazado' %}selected{% endif %}>Rechazado</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <button type="button" class="btn btn-outline-secondary btn-sm" style="font-size:0.7rem;" onclick="filtrar()"><i class="bi bi-funnel"></i></button>
+            {% if user_id or estado_filtro %}<a href="?" class="btn btn-outline-danger btn-sm" style="font-size:0.7rem;">Limpiar</a>{% endif %}
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0" style="font-size:0.78rem;">
+                <thead class="table-light">
+                    <tr>
+                        <th style="font-size:0.6rem;">Usuario</th>
+                        <th style="font-size:0.6rem;">Actividad</th>
+                        <th style="font-size:0.6rem;">Entregable</th>
+                        <th style="font-size:0.6rem;">Vence</th>
+                        <th style="font-size:0.6rem;">Estado</th>
+                        <th style="font-size:0.6rem;width:80px;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in revisiones %}
+                    <tr>
+                        <td class="fw-semibold">{{ r.user.get_full_name }}</td>
+                        <td>
+                            {{ r.nombre_actividad|default:r.actividad.nombre }}
+                            <small class="d-block text-muted" style="font-size:0.6rem;">{{ r.nombre_tipo|default:r.actividad.tipo_actividad.nombre }}</small>
+                        </td>
+                        <td>{% if r.entregable %}<a href="{{ r.entregable.url }}" target="_blank" class="btn btn-sm btn-outline-primary py-0 px-1" style="font-size:0.6rem;"><i class="bi bi-download"></i> Ver</a>{% else %}-{% endif %}</td>
+                        <td style="font-size:0.65rem;">{% if r.planificacion_detalle.fecha_vencimiento %}{{ r.planificacion_detalle.fecha_vencimiento|date:"d/m/Y" }}{% else %}-{% endif %}</td>
+                        <td>
+                            {% if r.estado_revision == 'aprobado' %}
+                            <span class="badge bg-success" style="font-size:0.55rem;">Aprobado</span>
+                            {% elif r.estado_revision == 'rechazado' %}
+                            <span class="badge bg-danger" style="font-size:0.55rem;">Rechazado</span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark" style="font-size:0.55rem;">Pendiente</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="d-flex gap-1 align-items-center">
+                                <a href="{% url 'gestion:detalle_actividad' r.pk %}" class="btn btn-sm btn-outline-secondary py-0 px-1 position-relative" style="font-size:0.65rem;" title="Ver detalle y comentarios">
+                                    <i class="bi bi-eye"></i>
+                                    {% with count=r.comentarios.count %}
+                                    {% if count > 0 %}<span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:0.4rem;padding:0.1rem 0.2rem;">{{ count }}</span>{% endif %}
+                                    {% endwith %}
+                                </a>
+                                {% if r.estado_revision == 'pendiente' %}
+                                <div class="d-flex gap-1">
+                                    <form method="POST" action="{% url 'dashboard:revision_aprobar' r.pk %}" class="d-inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-primary py-0 px-1" style="font-size:0.65rem;" title="Aprobar"><i class="bi bi-check-lg"></i></button>
+                                    </form>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" style="font-size:0.65rem;" title="Rechazar" onclick="abrirRechazo({{ r.pk }})"><i class="bi bi-x-lg"></i></button>
+                                </div>
+                                {% elif r.estado_revision == 'rechazado' %}
+                                <span class="text-muted small" style="font-size:0.6rem;"><i class="bi bi-x-circle text-danger"></i> Rechazada</span>
+                                {% else %}
+                                <span class="text-muted small" style="font-size:0.6rem;"><i class="bi bi-check-circle text-success"></i> Aprobada</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="text-center text-muted py-3" style="font-size:0.72rem;">{% if estado_filtro == 'aprobado' %}Sin actividades aprobadas{% elif estado_filtro == 'rechazado' %}Sin actividades rechazadas{% else %}Sin revisiones pendientes{% endif %}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% include "partials/pagination.html" %}
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div id="rechazoModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:0.75rem;max-width:400px;width:90%;padding:1.5rem;box-shadow:0 8px 32px rgba(0,0,0,0.12);">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold mb-0"><i class="bi bi-x-circle text-danger"></i> Rechazar Actividad</h6>
+            <button type="button" class="btn-close" onclick="cerrarRechazo()"></button>
+        </div>
+        <form method="POST" id="rechazoForm">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="form-label small fw-semibold">Motivo del rechazo <span class="text-danger">*</span></label>
+                <textarea name="comentario" class="form-control" rows="3" placeholder="Explica por que se rechaza..." required></textarea>
+            </div>
+            <div class="d-flex justify-content-end gap-2">
+                <button type="button" class="btn btn-sm btn-secondary" onclick="cerrarRechazo()">Cancelar</button>
+                <button type="submit" class="btn btn-sm btn-outline-secondary">Rechazar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function filtrar() {
+    var params = new URLSearchParams();
+    ['user_id', 'estado'].forEach(function(n) {
+        var el = document.querySelector('[name="' + n + '"]');
+        if (el && el.value) params.set(n, el.value);
+    });
+    if (params.toString()) location.href = '?' + params.toString();
+    else location.href = '.';
+}
+
+function abrirRechazo(pk) {
+    document.getElementById('rechazoForm').action = '/admin/revision/' + pk + '/rechazar/';
+    document.getElementById('rechazoModal').style.display = 'flex';
+}
+
+function cerrarRechazo() {
+    document.getElementById('rechazoModal').style.display = 'none';
+    document.getElementById('rechazoForm').querySelector('textarea').value = '';
+}
+</script>
+{% endblock %}

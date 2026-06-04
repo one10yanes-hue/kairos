@@ -1,182 +1,66 @@
-{% extends "base.html" %}{% block content %}
+{% extends "base.html" %}{% load static %}
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet">
 <style>
-.cal-cell { height: 75px; overflow: hidden; }
-.cal-cell:hover { overflow-y: auto; }
-.cal-cell::-webkit-scrollbar { width: 3px; }
-.cal-cell::-webkit-scrollbar-thumb { background: var(--slate-300); border-radius: 2px; }
+#fcCalendar { max-width:100%; }
+.fc-toolbar-title { font-size:0.95rem !important; font-weight:600 !important; }
+.fc-button { font-size:0.7rem !important; padding:0.2rem 0.45rem !important; text-transform:capitalize !important; }
+.fc-button-primary { background-color:var(--accent) !important; border-color:var(--accent) !important; }
+.fc-button-primary:not(:disabled):active,
+.fc-button-primary:not(:disabled).fc-button-active { background-color:#2563eb !important; border-color:#2563eb !important; }
+.fc .fc-button-primary:disabled { opacity:0.5 !important; }
+.fc-day-today { background:var(--accent-light) !important; }
+.fc-event { border-radius:3px !important; font-size:0.62rem !important; padding:1px 3px !important; cursor:pointer !important; border:none !important; }
+.cal-legend { display:flex;gap:0.75rem;flex-wrap:wrap;font-size:0.65rem;padding:0.4rem 0.6rem;border-top:1px solid var(--slate-200); }
+.cal-legend span { display:flex;align-items:center;gap:0.2rem; }
+.cal-dot { width:8px;height:8px;border-radius:50%;display:inline-block; }
+.fc-scroller { overflow:visible !important; }
+@media (max-width:768px) { .fc-toolbar { flex-direction:column !important; gap:4px !important; } }
 </style>
+{% endblock %}
+{% block content %}
 <div class="container-fluid mt-3">
-    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-1">
-        <h5 class="fw-bold mb-0"><i class="bi bi-calendar3" style="color:var(--accent);font-size:1.2rem;"></i> Calendario</h5>
-        <div class="d-flex gap-1">
-            <a href="?vista=mes&year={{ year }}&month={{ month }}" class="btn btn-sm py-0 px-2 {% if vista == 'mes' %}btn-primary{% else %}btn-outline-secondary{% endif %}" style="font-size:0.72rem;">Mes</a>
-            <a href="?vista=semana&year={{ year }}&month={{ month }}&dia={{ hoy.day }}" class="btn btn-sm py-0 px-2 {% if vista == 'semana' %}btn-primary{% else %}btn-outline-secondary{% endif %}" style="font-size:0.72rem;">Semana</a>
-            <a href="?vista=dia&year={{ hoy.year }}&month={{ hoy.month }}&dia={{ hoy.day }}" class="btn btn-sm py-0 px-2 {% if vista == 'dia' %}btn-primary{% else %}btn-outline-secondary{% endif %}" style="font-size:0.72rem;">Dia</a>
-            <a href="?vista=dia&year={{ hoy.year }}&month={{ hoy.month }}&dia={{ hoy.day }}" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:0.72rem;">Hoy</a>
-        </div>
-    </div>
-
     <div class="card shadow-sm">
-        <div class="card-header py-1 px-2 d-flex justify-content-between align-items-center">
-            <a href="?vista={{ vista }}&year={{ prev_year }}&month={{ prev_month }}" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:0.72rem;">&lsaquo;</a>
-            <small class="fw-semibold">
-                {% if vista == 'mes' %}{{ mes }} {{ year }}
-                {% elif vista == 'semana' %}Semana del {{ week_days.0|date:"d/m" }} al {{ week_days.6|date:"d/m/Y" }}
-                {% else %}{{ dia_sel|date:"l, d" }} de {{ mes }} {{ year }}{% endif %}
-            </small>
-            <a href="?vista={{ vista }}&year={{ next_year }}&month={{ next_month }}" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:0.72rem;">&rsaquo;</a>
+        <div class="card-body p-2">
+            <div id="fcCalendar"></div>
         </div>
-
-        <div class="card-body p-0">
-            {% if vista == 'mes' %}
-            <!-- ===== VISTA MES ===== -->
-            <div style="overflow-x:auto;">
-                <table class="table table-bordered mb-0" style="table-layout:fixed;">
-                    <thead class="table-light">
-                        <tr>{% for d in dias_semana %}<th class="text-center py-1" style="font-size:0.7rem;">{{ d }}</th>{% endfor %}</tr>
-                    </thead>
-                    <tbody>
-                        {% for week in month_cal %}
-                        <tr>
-                            {% for day in week %}
-                            <td class="align-top p-1 cal-cell" style="width:14.28%;{% if day == hoy %}background:var(--accent-light);{% endif %}">
-                                {% if day %}
-                                <a href="?vista=dia&year={{ day.year }}&month={{ day.month }}&dia={{ day.day }}" class="fw-semibold text-decoration-none {% if day == hoy %}text-primary{% else %}text-reset{% endif %}" style="font-size:0.7rem;">{{ day.day }}</a>
-                                {% for key, info in dias_con_actividades.items %}
-                                {% if key == day.isoformat %}
-                                    {% for item in info.items %}
-                                    <div class="rounded px-1 mb-1" style="font-size:0.5rem;border-left:2px solid {% if item.estado == 'EnCurso' %}var(--warning){% elif item.estado == 'Pausada' %}var(--slate-400){% elif item.estado == 'Vence' %}var(--danger){% else %}var(--accent){% endif %};">
-                                        <span class="fw-semibold">{{ item.nombre|truncatechars:12 }}</span>
-                                    </div>
-                                    {% endfor %}
-                                {% endif %}
-                                {% endfor %}
-                                {% endif %}
-                            </td>
-                            {% endfor %}
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-
-            {% elif vista == 'semana' %}
-            <!-- ===== VISTA SEMANA (Timeline) ===== -->
-            <div style="overflow:auto;max-height:70vh;">
-                <table class="table table-bordered mb-0" style="table-layout:fixed;">
-                    <thead class="table-light">
-                        <tr><th style="width:50px;font-size:0.7rem;">Hora</th>
-                        {% for d in week_days %}
-                        <th class="text-center py-1 {% if d == hoy %}bg-primary bg-opacity-10{% endif %}" style="font-size:0.7rem;">{{ d|date:"D"|capfirst }} {{ d.day }}</th>
-                        {% endfor %}</tr>
-                    </thead>
-                    <tbody>
-                        {% for h in horas %}
-                        <tr>
-                            <td class="text-end pe-1 text-muted align-top pt-1" style="font-size:0.6rem;width:50px;">{{ h }}:00</td>
-                            {% for d in week_days %}
-                            <td style="{% if d == hoy %}background:var(--accent-light);{% endif %}padding:1px;">
-                                {% for iso, hora, item in timeline_flat %}
-                                {% if iso == d.isoformat and hora == h %}
-                                <div style="font-size:0.55rem;padding:1px 2px;margin:1px 0;border-radius:2px;border-left:2px solid {% if item.estado == 'EnCurso' %}var(--warning){% elif item.estado == 'Pausada' %}var(--slate-400){% elif item.estado == 'Vence' %}var(--danger){% elif item.estado == 'Finalizada' %}var(--success){% else %}var(--accent){% endif %};background:{% if item.estado == 'EnCurso' %}var(--warning-light){% elif item.estado == 'Finalizada' %}var(--success-light){% else %}var(--slate-50){% endif %};">
-                                    <span class="fw-semibold">{{ item.nombre|truncatechars:12 }}</span>
-                                </div>
-                                {% endif %}
-                                {% endfor %}
-                            </td>
-                            {% endfor %}
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-
-            {% else %}
-            <!-- ===== VISTA DIA (Timeline) ===== -->
-            <div class="row g-0">
-                <div class="col-md-7" style="border-right:1px solid var(--slate-200);">
-                    <div style="overflow:auto;max-height:75vh;">
-                        <table class="table table-bordered mb-0" style="table-layout:fixed;">
-                            <thead class="table-light">
-                                <tr><th style="width:50px;font-size:0.7rem;">Hora</th><th style="font-size:0.7rem;">Actividades</th></tr>
-                            </thead>
-                            <tbody>
-                                {% for h in horas %}
-                                <tr>
-                                    <td class="text-end pe-1 text-muted align-top pt-1" style="font-size:0.6rem;width:50px;">{{ h }}:00</td>
-                                    <td style="padding:2px;">
-                                        {% for iso, hora, item in timeline_flat %}
-                                        {% if iso == dia_sel.isoformat and hora == h %}
-                                        <div style="padding:2px 6px;margin:1px 0;border-radius:2px;font-size:0.75rem;border-left:3px solid {% if item.estado == 'EnCurso' %}var(--warning){% elif item.estado == 'Pausada' %}var(--slate-400){% elif item.estado == 'Vence' %}var(--danger){% elif item.estado == 'Finalizada' %}var(--success){% else %}var(--accent){% endif %};background:{% if item.estado == 'EnCurso' %}var(--warning-light){% elif item.estado == 'Finalizada' %}var(--success-light){% else %}var(--slate-50){% endif %};">
-                                            <span class="fw-semibold">{{ item.nombre }}</span>
-                                            <span class="badge bg-light text-muted ms-1" style="font-size:0.55rem;">{{ item.tipo }}</span>
-                                            <span class="text-muted ms-1" style="font-size:0.55rem;">{{ item.estado }}</span>
-                                            {% if item.tiempo %}<span class="text-muted ms-1" style="font-size:0.55rem;">{{ item.tiempo }}</span>{% endif %}
-                                        </div>
-                                        {% endif %}
-                                        {% endfor %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% if dia_sel == hoy %}
-                    <div class="p-2 border-top">
-                        <small class="fw-semibold text-muted" style="font-size:0.7rem;"><i class="bi bi-clock-history"></i> Registros de hoy</small>
-                        <table class="table table-sm mb-0" style="font-size:0.75rem;">
-                            <thead class="table-light"><tr><th style="font-size:0.65rem;">Hora</th><th style="font-size:0.65rem;">Actividad</th><th style="font-size:0.65rem;">Evento</th></tr></thead>
-                            <tbody>
-                                {% for r in registros %}
-                                {% if r.fecha_hora.date == hoy %}
-                                <tr>
-                                    <td>{{ r.fecha_hora|date:"H:i" }}</td>
-                                    <td class="fw-semibold">{{ r.asignacion.actividad.nombre }}</td>
-                                    <td><span class="badge bg-light text-muted" style="font-size:0.6rem;">{{ r.get_evento_display }}</span></td>
-                                </tr>
-                                {% endif %}
-                                {% empty %}
-                                <tr><td colspan="3" class="text-center text-muted py-2" style="font-size:0.7rem;">Sin registros hoy</td></tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% endif %}
-                </div>
-                <div class="col-md-5 p-2">
-                    <small class="fw-semibold" style="font-size:0.75rem;"><i class="bi bi-info-circle"></i> Resumen del dia</small>
-                    {% for key, info in dias_con_actividades.items %}
-                    {% if key == dia_sel.isoformat %}
-                        {% for item in info.items %}
-                        <div class="card mb-1 shadow-sm" style="border-left:3px solid {% if item.estado == 'EnCurso' %}var(--warning){% elif item.estado == 'Pausada' %}var(--slate-400){% elif item.estado == 'Vence' %}var(--danger){% elif item.estado == 'Finalizada' %}var(--success){% else %}var(--accent){% endif %};">
-                            <div class="card-body py-1 px-2">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <span class="fw-semibold" style="font-size:0.75rem;">{{ item.nombre }}</span>
-                                    <span class="badge bg-light text-muted" style="font-size:0.55rem;">{{ item.estado }}</span>
-                                </div>
-                                <small class="text-muted" style="font-size:0.65rem;">{{ item.tipo }}</small>
-                                {% if item.tiempo %}<small class="text-muted ms-2" style="font-size:0.65rem;"><i class="bi bi-clock"></i> {{ item.tiempo }}</small>{% endif %}
-                            </div>
-                        </div>
-                        {% endfor %}
-                    {% endif %}
-                    {% endfor %}
-                    {% if dia_sel.isoformat not in dias_con_actividades %}
-                    <p class="text-muted" style="font-size:0.75rem;">Sin actividades para este dia</p>
-                    {% endif %}
-
-                    <hr class="my-2">
-                    <small class="fw-semibold" style="font-size:0.7rem;">Leyenda</small>
-                    <div class="d-flex flex-wrap gap-2 mt-1" style="font-size:0.65rem;">
-                        <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);"></span> Pendiente</span>
-                        <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--warning);"></span> Curso</span>
-                        <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--slate-400);"></span> Pausa</span>
-                        <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--success);"></span> Fin</span>
-                        <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--danger);"></span> Vence</span>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
+        <div class="cal-legend">
+            <span><span class="cal-dot" style="background:#93c5fd;"></span> Pendiente</span>
+            <span><span class="cal-dot" style="background:#86efac;"></span> En Curso</span>
+            <span><span class="cal-dot" style="background:#cbd5e1;"></span> Pausada</span>
+            <span><span class="cal-dot" style="background:#bbf7d0;"></span> Finalizada</span>
+            <span><span class="cal-dot" style="background:#fecaca;"></span> Vencimiento</span>
         </div>
     </div>
-</div>{% endblock %}
+</div>
+{{ events_json|json_script:"fc-events" }}
+{% endblock %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.10/locales/es.global.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var events = JSON.parse(document.getElementById('fc-events').textContent);
+    var cal = new FullCalendar.Calendar(document.getElementById('fcCalendar'), {
+        initialView: '{{ vista }}',
+        initialDate: '{{ year }}-{{ month|stringformat:"02d" }}-01',
+        locale: 'es',
+        headerToolbar: { left:'prev,next today', center:'title', right:'' },
+        buttonText: { today:'Hoy' },
+        events: events,
+        eventDidMount: function(info) {
+            var e = info.event;
+            var ep = e.extendedProps;
+            var tooltipContent = '<b>' + e.title + '</b><br><small>' + ep.tipo + ' &middot; ' + ep.estado;
+            if (ep.tiempo && ep.tiempo !== '00:00:00') tooltipContent += ' &middot; ' + ep.tiempo;
+            tooltipContent += '</small>';
+            new bootstrap.Tooltip(info.el, { title: tooltipContent, html: true, placement:'top', container:'body' });
+        },
+        height: 'auto',
+        dayMaxEvents: 3,
+        moreLinkClick: 'popover',
+    });
+    cal.render();
+});
+</script>
+{% endblock %}

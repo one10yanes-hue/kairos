@@ -1,9 +1,9 @@
 {% extends "base.html" %}{% block content %}
 <div class="container-fluid mt-4">
-  <nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item active">Importar Areas / SubAreas</li></ol></nav>
+  <nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item active">Importaciones de Areas y SubAreas</li></ol></nav>
 
   <div class="alert alert-info small">
-    <i class="bi bi-info-circle"></i> Selecciona la empresa, descarga el Excel, llena las columnas <strong>nombre_area</strong> y <strong>nombre_subarea</strong>, luego importa. Los codigos se generan solos.
+    <i class="bi bi-info-circle"></i> Descarga el Excel, llena las columnas <strong>nombre_area</strong> y <strong>nombre_subarea</strong>, luego importa. Los codigos se generan solos.
   </div>
 
   <div class="row g-4">
@@ -11,15 +11,8 @@
       <div class="card shadow-sm">
         <div class="card-header"><h5 class="mb-0 fw-bold"><i class="bi bi-download" style="color:var(--accent);"></i> 1. Descargar plantilla</h5></div>
         <div class="card-body">
-          <label class="form-label fw-semibold">Empresa</label>
-          <select id="empresa-select" class="form-select mb-3">
-            <option value="">-- Seleccionar --</option>
-            {% for e in empresas %}
-              <option value="{{ e.id }}" data-codigo="{{ e.codigo }}">{{ e.nombre }} ({{ e.codigo }})</option>
-            {% endfor %}
-          </select>
-          <a id="btn-descargar" class="btn btn-primary disabled" href="#"><i class="bi bi-file-earmark-arrow-down"></i> Descargar plantilla</a>
-          <p class="text-muted small mt-2 mb-0">El Excel ya trae el codigo de la empresa pre-cargado.</p>
+          <a id="btn-descargar" class="btn btn-primary" href="{% url 'estructura:descargar_template' %}"><i class="bi bi-file-earmark-arrow-down"></i> Descargar plantilla</a>
+          <p class="text-muted small mt-2 mb-0">El Excel tiene 2 columnas: nombre_area y nombre_subarea.</p>
         </div>
       </div>
     </div>
@@ -44,31 +37,17 @@
   <div class="card shadow-sm mt-4">
     <div class="card-header"><h6 class="mb-0 fw-semibold"><i class="bi bi-table"></i> Ejemplo de como llenar el Excel</h6></div>
     <div class="card-body">
-      <p class="small mb-2">El Excel descargado tiene 3 columnas. Solo llenas <strong>nombre_area</strong> y <strong>nombre_subarea</strong>. <code>empresa_codigo</code> ya viene con el codigo de tu empresa.</p>
-      <table class="table table-bordered small mb-0" style="max-width:500px;">
-        <thead class="table-light"><tr><th>empresa_codigo</th><th>nombre_area</th><th>nombre_subarea</th></tr></thead>
+      <p class="small mb-2">El Excel descargado tiene 2 columnas. Solo llenas <strong>nombre_area</strong> y <strong>nombre_subarea</strong>.</p>
+      <table class="table table-bordered small mb-0" style="max-width:400px;">
+        <thead class="table-light"><tr><th>nombre_area</th><th>nombre_subarea</th></tr></thead>
         <tbody>
-          <tr><td><code class="text-success">EM01</code></td><td>Financiera</td><td>Contabilidad</td></tr>
-          <tr><td><code class="text-success">EM01</code></td><td>Financiera</td><td>Tesorería</td></tr>
-          <tr><td><code class="text-success">EM01</code></td><td>Talento Humano</td><td>Nómina</td></tr>
-          <tr><td><code class="text-success">EM01</code></td><td>Talento Humano</td><td>Capacitación</td></tr>
+          <tr><td>Financiera</td><td>Contabilidad</td></tr>
+          <tr><td>Financiera</td><td>Tesorería</td></tr>
+          <tr><td>Talento Humano</td><td>Nómina</td></tr>
+          <tr><td>Talento Humano</td><td>Capacitación</td></tr>
         </tbody>
       </table>
       <p class="small text-muted mt-2 mb-0">Al importar, el sistema crea cada area (si no existe) y cada subarea, asignando codigos automaticamente (<code>AR001</code>, <code>SB001</code>...).</p>
     </div>
   </div>
-</div>
-
-<script>
-document.getElementById("empresa-select").addEventListener("change", function(){
-  var btn = document.getElementById("btn-descargar");
-  if (this.value) {
-    btn.href = "{% url 'estructura:descargar_template' 0 %}".replace("/0/", "/" + this.value + "/");
-    btn.classList.remove("disabled");
-  } else {
-    btn.href = "#";
-    btn.classList.add("disabled");
-  }
-});
-</script>
-{% endblock %}
+</div>{% endblock %}

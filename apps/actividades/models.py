@@ -4,11 +4,13 @@ from apps.estructura.models import SubArea
 
 
 class TipoActividad(models.Model):
-    codigo = models.CharField(max_length=6, unique=True, blank=True, null=True)
+    codigo = models.CharField(max_length=6, unique=True, blank=True)
     subarea = models.ForeignKey(SubArea, on_delete=models.PROTECT, related_name="tipos_actividad")
     nombre = models.CharField(max_length=200, db_index=True)
     descripcion = models.TextField(blank=True, null=True)
     requiere_fecha_limite = models.BooleanField(default=True, help_text="Si esta activo, al planificar esta actividad la fecha limite sera obligatoria")
+    requiere_entregable = models.BooleanField(default=False, help_text="Si esta activo, la actividad requiere archivo entregable al finalizar")
+    es_flash = models.BooleanField(default=False, help_text="Si esta activo, las actividades de este tipo aparecen como evento flash")
     activo = models.BooleanField(default=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_update = models.DateTimeField(auto_now=True)
@@ -29,7 +31,7 @@ class TipoActividad(models.Model):
 
 
 class Actividad(models.Model):
-    codigo = models.CharField(max_length=6, unique=True, blank=True, null=True)
+    codigo = models.CharField(max_length=6, unique=True, blank=True)
     subarea = models.ForeignKey(SubArea, on_delete=models.PROTECT, related_name="actividades")
     tipo_actividad = models.ForeignKey(TipoActividad, on_delete=models.PROTECT, related_name="actividades")
     nombre = models.CharField(max_length=300, db_index=True)

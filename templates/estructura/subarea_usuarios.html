@@ -2,7 +2,7 @@
 {% block content %}
 <div class="container-fluid mt-4">
     <nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'estructura:subarea_list' %}">SubAreas</a></li><li class="breadcrumb-item active">{{ subarea.nombre }}</li></ol></nav>
-    <h4 class="fw-bold mb-3"><i class="bi bi-people-fill"></i> Usuarios en {{ subarea.nombre }} <span class="text-muted fs-6">({{ subarea.area.empresa.nombre }})</span></h4>
+    <h4 class="fw-bold mb-3"><i class="bi bi-people-fill"></i> Usuarios en {{ subarea.nombre }} <span class="text-muted fs-6">({{ subarea.area.nombre }})</span></h4>
     <div class="row">
         <div class="col-md-5">
             <div class="card shadow-sm mb-3"><div class="card-header"><h6 class="mb-0">Asignar Usuario</h6></div>

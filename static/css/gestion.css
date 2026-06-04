@@ -58,6 +58,23 @@
     min-height: 110px;
 }
 
+.trello-card .card-body > .d-flex:first-child {
+    flex-wrap: wrap;
+    gap: 2px;
+    overflow: hidden;
+}
+
+.trello-card .card-body > .d-flex:first-child .badge {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.trello-card .card-body > .d-flex:last-child {
+    flex-wrap: wrap;
+    gap: 2px;
+}
+
 .trello-card:hover {
     transform: translateY(-1px);
     box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;

@@ -13,14 +13,14 @@
                 <div class="mb-3">
                     <label class="form-label fw-semibold" style="font-size:0.82rem;">SubArea</label>
                     {% if user_subareas|length == 1 %}
-                    <input type="text" class="form-control form-control-sm" value="{{ user_subareas.0.subarea.nombre }} ({{ user_subareas.0.subarea.area.empresa.nombre }})" readonly style="font-size:0.85rem;">
+                    <input type="text" class="form-control form-control-sm" value="{{ user_subareas.0.subarea.nombre }} ({{ user_subareas.0.subarea.area.nombre }})" readonly style="font-size:0.85rem;">
                     <input type="hidden" name="subarea_id" id="subareaSelect" value="{{ user_subareas.0.subarea.pk }}">
                     {% else %}
                     <input type="text" class="form-control form-control-sm mb-1" id="filtroSubarea" placeholder="Filtrar subareas..." onkeyup="filtrarSubareas()" style="font-size:0.85rem;">
                     <select name="subarea_id" id="subareaSelect" class="form-select form-select-sm" required onchange="cargarActividades(this.value)" size="4" style="height:auto;font-size:0.85rem;">
                         <option value="" disabled selected>Seleccione...</option>
                         {% for usa in user_subareas %}
-                        <option value="{{ usa.subarea.pk }}" class="subarea-option">{{ usa.subarea.nombre }} ({{ usa.subarea.area.empresa.nombre }})</option>
+                        <option value="{{ usa.subarea.pk }}" class="subarea-option">{{ usa.subarea.nombre }} ({{ usa.subarea.area.nombre }})</option>
                         {% endfor %}
                     </select>
                     {% endif %}
@@ -62,7 +62,7 @@ function cargarActividades(subareaId) {
     var container = document.getElementById('actividadesContainer');
     if (!subareaId) { container.innerHTML = '<p class="text-muted text-center py-3 mb-0">Primero selecciona una subarea</p>'; return; }
     container.innerHTML = '<p class="text-muted text-center py-3 mb-0">Cargando...</p>';
-    fetch('/master/api/buscar/actividad/?subarea_id=' + subareaId + '&tipo_nombre=No+Programada&_=' + Date.now(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+    fetch('/master/api/buscar/actividad/?subarea_id=' + subareaId + '&es_flash=1&_=' + Date.now(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
         .then(function(r) { return r.json(); })
         .then(function(data) {
             if (!data.length) { container.innerHTML = '<p class="text-muted text-center py-3 mb-0">No hay actividades no programadas en esta subarea</p>'; return; }

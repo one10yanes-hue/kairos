@@ -1,8 +1,8 @@
-# Kairos - Documentacion de Base de Datos
+# VIVA1A - Documentacion de Base de Datos
 
-**Ultima actualizacion**: 24/05/2026
-**Version**: 2.0
-**Motor**: SQL Server via mssql-django
+**Ultima actualizacion**: 26/05/2026
+**Version**: 3.0
+**Motor**: SQLite3 (dev) / MSSQL (prod via mssql-django)
 **Timezone**: America/Bogota (UTC-5)
 
 ---
@@ -39,21 +39,25 @@
 ## Diagrama de Relaciones
 
 ```
-Empresa ──1:N── Area ──1:N── SubArea ──1:N── TipoActividad
-                                          └──1:N── Actividad
-                                                       │
-User ──N:M── Empresa (via UserEmpresa)                  │
-User ──N:M── SubArea (via UserSubArea)                  │
-User ──1:N── Planificacion                              │
-                │                                       │
-                └──1:N── PlanificacionDetalle ──1:N── AsignacionActividad
-                                                            │
-                                                            ├──1:N── RegistroTiempo
-                                                            ├──1:N── Comentario
-                                                            ├──1:N── Colaboracion
-                                                            ├──1:N── TrasladoActividad
-                                                            │
-User ──1:N── Rol
+Empresa ──1:N── Area ──1:N── SubArea
+           │                          │
+           │                     ┌────┴────┬────────┐
+           │                     │         │        │
+           │                TipoActividad  │   UserSubArea
+           │                     │         │        │
+           │                Actividad      │   Usuario──Rol
+           │                     │         │     │  │
+           │                     │    Planificacion│  │
+           │                     │         │     │  │
+           │                     │   PlanificacionDetalle
+           │                     │         │     │
+UserEmpresa─┘                     │   AsignacionActividad
+                                  │    ├── RegistroTiempo
+                                  │    ├── TrasladoActividad
+                                  │    ├── Comentario
+                                  │    └── Colaboracion
+
+AuditLog ── Usuario
 ```
 
 ---
@@ -77,7 +81,7 @@ User ──1:N── Rol
 | fecha_creacion | DATETIME | | NO | now() | 📅 |
 | fecha_update | DATETIME | | NO | now() | 📅 |
 
-**Valores**: Master, Admin, Usuario
+**Valores**: 1=Master, 2=Admin, 3=Usuario
 
 ---
 
@@ -200,7 +204,7 @@ User ──1:N── Rol
 
 #### `tipo_actividad` — Tipos de actividad
 
-> **Logica**: Clasificacion de actividades. Ej: "Programada" (planificada por admin), "No Programada" (surge espontaneamente), "Mejora", "Procesos". Cada tipo pertenece a una SubArea. El campo `requiere_fecha_limite` controla si al planificar actividades de este tipo, la fecha limite es obligatoria u opcional.
+> **Logica**: Clasificacion de actividades. Ej: "Programada" (planificada por admin), "No Programada" (surge espontaneamente). Cada tipo pertenece a una SubArea. El campo `requiere_fecha_limite` controla si al planificar actividades de este tipo, la **fecha de vencimiento** (`fecha_vencimiento` en PlanificacionDetalle) es obligatoria.
 
 | Columna | Tipo | PK/FK | Null | Default | Constraint |
 |---------|------|-------|------|---------|------------|
@@ -209,7 +213,7 @@ User ──1:N── Rol
 | subarea_id | BIGINT | FK→subarea | NO | | 🔗 related_name="tipos_actividad" |
 | nombre | VARCHAR(200) | | NO | | 🔍 db_index |
 | descripcion | TEXT | | SI | NULL | |
-| requiere_fecha_limite | BOOLEAN | | NO | TRUE | Si TRUE, fecha limite obligatoria en planificacion |
+| requiere_fecha_limite | BOOLEAN | | NO | TRUE | Si TRUE, `fecha_vencimiento` obligatoria |
 | activo | BOOLEAN | | NO | TRUE | 🗑 |
 | fecha_creacion | DATETIME | | NO | now() | 📅 |
 | fecha_update | DATETIME | | NO | now() | 📅 |
@@ -218,7 +222,7 @@ User ──1:N── Rol
 
 #### `actividad` — Actividades operativas
 
-> **Logica**: Las actividades concretas que los usuarios ejecutan. Ej: "Causacion de Viaticos", "Programacion de Pagos", "Informe Mensual". Cada actividad pertenece a una SubArea y a un TipoActividad. La validacion `clean()` asegura que la actividad este en la misma subarea que su tipo (consistencia jerarquica).
+> **Logica**: Las actividades concretas que los usuarios ejecutan. Ej: "Causacion de Viaticos", "Informe AF", "Reunion Gerencia". Cada actividad pertenece a una SubArea y a un TipoActividad. La validacion `clean()` asegura que la actividad este en la misma subarea que su tipo (consistencia jerarquica).
 
 | Columna | Tipo | PK/FK | Null | Default | Constraint |
 |---------|------|-------|------|---------|------------|
@@ -240,7 +244,7 @@ User ──1:N── Rol
 
 #### `planificacion` — Planificaciones creadas por Admin
 
-> **Logica**: Representa una "planificacion" o "sprint" creado por un Admin para asignar actividades a usuarios de su subarea. Al crearse, se cierra automaticamente (`cerrada=True`) y no se pueden agregar mas actividades. Cada planificacion pertenece a una SubArea y tiene un Admin responsable. Las actividades asignadas se almacenan en `PlanificacionDetalle`.
+> **Logica**: Representa una "planificacion" o "sprint" creado por un Admin/Master para asignar actividades a usuarios de su subarea. Al crearse, se cierra automaticamente (`cerrada=True`). Si todas las actividades estan Pendiente, el admin puede inactivar la planificacion. Si alguna actividad fue iniciada (EnCurso, Pausada, Finalizada), la planificacion no se puede inactivar.
 
 | Columna | Tipo | PK/FK | Null | Default | Constraint |
 |---------|------|-------|------|---------|------------|
@@ -258,7 +262,11 @@ User ──1:N── Rol
 
 #### `planificacion_detalle` — Actividades asignadas dentro de una planificacion
 
-> **Logica**: Cada registro vincula una actividad especifica a un usuario dentro de una planificacion, con una fecha limite opcional. La combinacion (planificacion, actividad, user) es unica para evitar duplicados. Al crear un detalle, el sistema crea automaticamente una `AsignacionActividad` para que la actividad aparezca en el tablero del usuario.
+> **Logica**: Cada registro vincula una actividad especifica a un usuario dentro de una planificacion. La combinacion (planificacion, actividad, user) es unica. Al crear un detalle, el sistema crea automaticamente una `AsignacionActividad` para que la actividad aparezca en el tablero del usuario.
+
+> **Dos fechas de control**:
+> - `fecha_limite`: **Fecha de planificacion** (opcional). Controla cuando la actividad aparece en el tablero del usuario. Si es null o pasada, aparece inmediatamente.
+> - `fecha_vencimiento`: **Fecha limite / deadline** (obligatoria si el tipo `requiere_fecha_limite=True`). Controla la fecha maxima de entrega. Se usa para el badge de proximidad/vencimiento en el tablero y dashboard, y para el indicador "Vencidas". El admin puede extenderla via `reprogramar_pendiente`, que incrementa `prorroga_count`.
 
 | Columna | Tipo | PK/FK | Null | Default | Constraint |
 |---------|------|-------|------|---------|------------|
@@ -267,12 +275,13 @@ User ──1:N── Rol
 | actividad_id | BIGINT | FK→actividad | NO | | 🔗 |
 | user_id | BIGINT | FK→usuario | NO | | 🔗 |
 | fecha_asignacion | DATETIME | | NO | now() | |
-| fecha_limite | DATETIME | | SI | NULL | Nullable segun `requiere_fecha_limite` |
+| fecha_limite | DATETIME | | SI | NULL | Aparece en tablero (planning date) |
+| fecha_vencimiento | DATETIME | | SI | NULL | Deadline / vencimiento (obligatorio si tipo lo requiere) |
 | activo | BOOLEAN | | NO | TRUE | 🗑 |
 | fecha_creacion | DATETIME | | NO | now() | 📅 |
 | fecha_update | DATETIME | | NO | now() | 📅 |
 
-**🔒 Unique**: `(planificacion, actividad, user)` — No se puede asignar la misma actividad al mismo usuario en la misma planificacion
+**🔒 Unique**: `(planificacion, actividad, user)`
 
 ---
 
@@ -280,7 +289,7 @@ User ──1:N── Rol
 
 #### `asignacion_actividad` — Asignaciones activas en el tablero del usuario
 
-> **Logica**: Tabla central del sistema. Cada registro representa una actividad que un usuario tiene en su tablero Trello. El `estado` determina en que columna aparece: Pendiente (Planificadas), EnCurso (En Curso), Pausada, Finalizada, Cancelada o Trasladada. El campo `origen` indica como llego: "Planificacion" (asignada por admin), "Traslado" (recibida de otro usuario), "Manual" (iniciada por el usuario mismo), "Reasignado" (cambiada por admin). `origen_user` es quien la asigno/traslado/reasigno. La constraint `unique_en_curso_por_usuario` garantiza que un usuario solo tenga UNA actividad en curso simultaneamente. Los campos `tiempo_total_segundos` y `tiempo_pausado_segundos` cachean los tiempos calculados para rendimiento. `prorroga_count` cuenta cuantas veces fue reprogramada por el admin.
+> **Logica**: Tabla central del sistema. Cada registro representa una actividad que un usuario tiene en su tablero. El `estado` determina en que columna aparece: Pendiente, EnCurso, Pausada, Finalizada, Cancelada o Trasladada. La constraint `unique_en_curso_por_usuario` garantiza que un usuario solo tenga UNA actividad en curso simultaneamente. `tiempo_total_segundos` y `tiempo_pausado_segundos` cachean los tiempos para rendimiento. `prorroga_count` cuenta reprogramaciones del admin sobre la `fecha_vencimiento`.
 
 | Columna | Tipo | PK/FK | Null | Default | Constraint |
 |---------|------|-------|------|---------|------------|
@@ -289,33 +298,33 @@ User ──1:N── Rol
 | user_id | BIGINT | FK→usuario | NO | | 🔗 related_name="asignaciones" |
 | actividad_id | BIGINT | FK→actividad | NO | | 🔗 |
 | estado | VARCHAR(20) | | NO | Pendiente | Pendiente/EnCurso/Pausada/Finalizada/Cancelada/Trasladada |
-| origen | VARCHAR(20) | | SI | NULL | Planificacion / Traslado / Manual |
+| origen | VARCHAR(20) | | SI | NULL | Planificacion / Traslado / Manual / Reasignado |
 | origen_user_id | BIGINT | FK→usuario | SI | NULL | 🔗 SET_NULL — Quien origino la asignacion |
 | fecha_asignacion | DATETIME | | NO | now() | |
 | tiempo_total_segundos | INTEGER | | NO | 0 | Cache: tiempo activo acumulado |
 | tiempo_pausado_segundos | INTEGER | | NO | 0 | Cache: tiempo en pausa acumulado |
-| prorroga_count | INTEGER | | NO | 0 | Veces reprogramado por admin |
+| prorroga_count | INTEGER | | NO | 0 | Veces reprogramado (fecha_vencimiento extendida) |
 | activo | BOOLEAN | | NO | TRUE | 🗑 |
 | fecha_creacion | DATETIME | | NO | now() | 📅 |
 | fecha_update | DATETIME | | NO | now() | 📅 |
 
-**🔒 UniqueConstraint**: `fields=["user"], condition=Q(estado="EnCurso", activo=True)` — Un usuario solo puede tener 1 actividad EnCurso
+**🔒 UniqueConstraint**: `fields=["user"], condition=Q(estado="EnCurso", activo=True)` — Un usuario solo puede tener 1 EnCurso
 
 ---
 
 #### `registro_tiempo` — Time tracking por evento
 
-> **Logica**: Almacena cada evento de tiempo de una asignacion: cuando se inicio (`Inicio`), cuando se pauso (`Pausa` con motivo), cuando se reanudo (`Reanudacion`), cuando se finalizo (`Finalizacion` con comentario y nro_actividad), y cuando se traslado (`Traslado`). Con estos registros se calcula el tiempo efectivo (Inicio→Pausa + Reanudacion→Fin) y el tiempo pausado (Pausa→Reanudacion). Cada vez que se guarda un `RegistroTiempo`, se recalcula y cachea el tiempo en `AsignacionActividad` via `recalcular_tiempo()`.
+> **Logica**: Registra cada evento de tiempo: `Inicio`, `Pausa` (con motivo), `Reanudacion`, `Finalizacion` (con nro_actividad), `Traslado`. Con estos registros se calcula el tiempo efectivo y tiempo pausado. Cada `save()` recalcula y cachea en `AsignacionActividad` via `recalcular_tiempo()`.
 
 | Columna | Tipo | PK/FK | Null | Default | Constraint |
 |---------|------|-------|------|---------|------------|
 | id | BIGINT | PK | NO | AUTO | |
 | asignacion_id | BIGINT | FK→asignacion_actividad | NO | | 🔗 related_name="registros" |
 | evento | VARCHAR(20) | | NO | | Inicio/Pausa/Reanudacion/Finalizacion/Traslado |
-| motivo_pausa | VARCHAR(50) | | SI | NULL | Almuerzo/Descanso / Interrupcion / Cambio de prioridad / Otro |
+| motivo_pausa | VARCHAR(50) | | SI | NULL | Almuerzo / Interrupcion / Cambio de prioridad / Otro |
 | fecha_hora | DATETIME | | NO | now() | |
 | comentario | TEXT | | SI | NULL | |
-| nro_actividad | VARCHAR(50) | | SI | NULL | Cantidad realizada (ingresada manual por usuario) |
+| nro_actividad | VARCHAR(50) | | SI | NULL | Cantidad realizada (ingresada por usuario al finalizar) |
 | activo | BOOLEAN | | NO | TRUE | 🗑 |
 | fecha_creacion | DATETIME | | NO | now() | 📅 |
 | fecha_update | DATETIME | | NO | now() | 📅 |
@@ -324,29 +333,27 @@ User ──1:N── Rol
 
 #### `traslado_actividad` — Solicitudes de traslado entre usuarios
 
-> **Logica**: Cuando un usuario quiere transferir una actividad a otro usuario, se crea una solicitud con estado `Pendiente`. El usuario destino ve la solicitud en su tablero y puede Aceptar (la actividad se transfiere, el origen inicia su reemplazo) o Rechazar (la solicitud se cancela). El origen tambien puede Cancelar la solicitud en cualquier momento. La constraint `unique_traslado_pendiente` evita multiples solicitudes pendientes para la misma combinacion (actividad_origen, usuario_destino).
+> **Logica**: Un usuario transfiere una actividad a otro. Estado `Pendiente` hasta que el destino Acepte o Rechace. Al aceptar, el origen obtiene una actividad de reemplazo. No puede haber 2 solicitudes pendientes para la misma (origen, destino).
 
 | Columna | Tipo | PK/FK | Null | Default | Constraint |
 |---------|------|-------|------|---------|------------|
 | id | BIGINT | PK | NO | AUTO | |
 | asignacion_origen_id | BIGINT | FK→asignacion_actividad | NO | | 🔗 related_name="traslados_origen" |
-| asignacion_destino_id | BIGINT | FK→asignacion_actividad | SI | NULL | 🔗 SET_NULL — Se setea al aceptar |
+| asignacion_destino_id | BIGINT | FK→asignacion_actividad | SI | NULL | 🔗 SET_NULL |
 | user_origen_id | BIGINT | FK→usuario | NO | | 🔗 related_name="traslados_hechos" |
 | user_destino_id | BIGINT | FK→usuario | NO | | 🔗 related_name="traslados_recibidos" |
-| actividad_reemplazo_id | BIGINT | FK→actividad | SI | NULL | 🔗 — Actividad que el origen iniciara al aceptarse |
+| actividad_reemplazo_id | BIGINT | FK→actividad | SI | NULL | 🔗 |
 | estado | VARCHAR(20) | | NO | Pendiente | Pendiente/Aceptado/Cancelado/Rechazado |
 | motivo | TEXT | | SI | NULL | |
 | activo | BOOLEAN | | NO | TRUE | 🗑 |
 | fecha_creacion | DATETIME | | NO | now() | 📅 |
 | fecha_update | DATETIME | | NO | now() | 📅 |
 
-**🔒 UniqueConstraint**: `fields=["asignacion_origen", "user_destino"], condition=Q(estado="Pendiente", activo=True)` — No hay 2 traslados pendientes para la misma (origen, destino)
+**🔒 UniqueConstraint**: `fields=["asignacion_origen", "user_destino"], condition=Q(estado="Pendiente", activo=True)`
 
 ---
 
 #### `colaboracion` — Colaboracion entre usuarios en una asignacion
-
-> **Logica**: Permite que un usuario colabore en la actividad de otro. No afecta el time tracking del colaborador, solo esta registrado como ayuda. La combinacion (asignacion, user_colaborador) es unica para evitar duplicados.
 
 | Columna | Tipo | PK/FK | Null | Default | Constraint |
 |---------|------|-------|------|---------|------------|
@@ -362,8 +369,6 @@ User ──1:N── Rol
 ---
 
 #### `comentario` — Comentarios en asignaciones
-
-> **Logica**: Almacena los comentarios que los usuarios hacen sobre una asignacion especifica, visibles en el detalle de la actividad. Cada comentario tiene un autor (user_id) y pertenece a una asignacion.
 
 | Columna | Tipo | PK/FK | Null | Default | Constraint |
 |---------|------|-------|------|---------|------------|
@@ -381,7 +386,7 @@ User ──1:N── Rol
 
 #### `audit_log` — Log de auditoria de acciones
 
-> **Logica**: Registra automaticamente via middleware todas las acciones POST/PUT/DELETE del sistema. Almacena que usuario hizo que accion sobre que modelo, con detalle JSON adicional y direccion IP. Los logs son inmutables (no tienen soft-delete ni fecha_update). Sirven para trazabilidad y auditoria.
+> **Logica**: Registra via middleware todas las acciones POST/PUT/DELETE. Inmutable (sin soft-delete ni fecha_update).
 
 | Columna | Tipo | PK/FK | Null | Default | Constraint |
 |---------|------|-------|------|---------|------------|
@@ -390,57 +395,63 @@ User ──1:N── Rol
 | accion | VARCHAR(50) | | NO | | CREATE / UPDATE / DELETE |
 | modelo_afectado | VARCHAR(100) | | NO | | Nombre del modelo |
 | id_registro | INTEGER | | SI | NULL | PK del registro afectado |
-| detalle | JSON | | NO | {} | Metadata adicional |
-| ip_address | GENERIC_IP | | SI | NULL | |
+| detalle | TEXT | | NO | | Metadata |
+| ip_address | CHAR(39) | | SI | NULL | |
 | fecha_creacion | DATETIME | | NO | now() | 📅 (sin update) |
-
-**Sin soft-delete**: Los logs de auditoria nunca se eliminan
 
 ---
 
 ## Resumen de Normalizacion
 
 ### 1FN (Atomicidad) ✅
-Todas las columnas son atomicas. No hay arreglos ni JSON para datos de negocio (JSONField solo en auditoria).
+Todas las columnas son atomicas. Sin grupos repetidos.
 
 ### 2FN (Dependencia parcial) ✅
-Todas las tablas tienen PK simple (`id`). Ninguna dependencia parcial.
+PK simple (`id`). Sin dependencias parciales.
 
 ### 3FN (Dependencia transitiva) ⚠️
 
 | Tabla | Columna | Dependencia | Estado |
 |-------|---------|------------|--------|
-| `actividad` | `subarea_id` | Derivable de `tipo_actividad.subarea_id` | ⚠️ Denormalizacion aceptable (performance). Validada por `clean()`. |
-| `traslado_actividad` | `user_origen_id` | Derivable de `asignacion_origen.user_id` | ⚠️ Denormalizacion aceptable (auditoria historica). |
-| `asignacion_actividad` | `actividad_id` | Derivable de `planificacion_detalle.actividad_id` | ⚠️ Denormalizacion aceptable (existe sin plan_detalle). |
+| `actividad` | `subarea_id` | Derivable de `tipo_actividad.subarea_id` | ⚠️ Aceptable (performance). Validada por `clean()`. |
+| `traslado_actividad` | `user_origen_id` | Derivable de `asignacion_origen.user_id` | ⚠️ Aceptable (auditoria historica). |
+| `asignacion_actividad` | `actividad_id` | Derivable de `planificacion_detalle.actividad_id` | ⚠️ Aceptable (FK directa para asignaciones sin plan_detalle). |
+| `asignacion_actividad` | `tiempo_total_segundos` + `tiempo_pausado_segundos` | Calculables desde `registro_tiempo` | ⚠️ Aceptable (cache para rendimiento). Recalculado via `recalcular_tiempo()`. |
 
-### Totales
+### Totales — Auditoria 26/05/2026
 
 | Metrica | Valor |
 |---------|-------|
-| Tablas | 17 |
+| Tablas totales | **26** (18 app + 8 Django) |
+| Tablas de aplicacion | 18 |
 | Apps | 7 |
-| Foreign Keys | 35 |
-| Unique Constraints | 9 (incluyendo 2 condicionales) |
-| Soft-delete | 15/17 tablas |
+| Foreign Keys | **37** (app-to-app) |
+| Indexes (app) | 45 |
+| Unique Constraints | **11** (incluyendo 3 condicionales) |
+| Soft-delete | 16/18 tablas |
 | Campos `codigo` auto-generados | 5 tablas |
-| Indices de busqueda (`db_index`) | 9 campos |
-| Cache de tiempo | `tiempo_total_segundos` + `tiempo_pausado_segundos` (AsignacionActividad) |
+| Indices de busqueda (`db_index`) | 9 |
+| FK violations | **0** |
+| DB integrity | **ok** |
 
 ---
 
 ## Reglas de Negocio en BD
 
 1. **Unico EnCurso**: Un usuario no puede tener mas de una actividad "EnCurso" simultaneamente (UniqueConstraint condicional)
-2. **Unico Traslado Pendiente**: No puede haber 2 solicitudes de traslado pendientes para la misma combinacion (origen, destino)
-3. **Unico (plan, act, user)**: En una planificacion, no se puede asignar la misma actividad al mismo usuario dos veces
-4. **Validacion Jerarquica**: Actividad.subarea debe coincidir con TipoActividad.subarea (validacion via clean())
+2. **Unico Traslado Pendiente**: No puede haber 2 solicitudes de traslado pendientes para la misma (origen, destino)
+3. **Unico (plan, act, user)**: No se puede asignar la misma actividad al mismo usuario dos veces en la misma planificacion
+4. **Validacion Jerarquica**: `Actividad.subarea_id == Actividad.tipo_actividad.subarea_id` (validado via `clean()`)
 5. **Sincronizacion is_active**: `User.save()` sincroniza `is_active = activo`
 6. **Soft-delete**: Ningun registro se elimina fisicamente, solo se marca `activo=False`
 7. **Auditoria**: Toda accion POST/PUT/DELETE queda registrada en `audit_log`
-8. **Cache de Tiempo**: Cada `RegistroTiempo.save()` recalcula `tiempo_total_segundos` y `tiempo_pausado_segundos` en la `AsignacionActividad` correspondiente
-9. **Prorroga**: El admin puede reprogramar una actividad pendiente. Cada reprogramacion incrementa `prorroga_count`
-10. **Reasignacion**: El admin puede reasignar una actividad a otro usuario. Se marca `origen="Reasignado"` y `origen_user=admin`
+8. **Cache de Tiempo**: Cada `RegistroTiempo.save()` recalcula `tiempo_total_segundos` y `tiempo_pausado_segundos` en la `AsignacionActividad`
+9. **Prorroga**: El admin reprograma `fecha_vencimiento` e incrementa `prorroga_count`
+10. **Reasignacion**: El admin reasigna actividad a otro usuario. Se marca `origen="Reasignado"`
+11. **Fecha de Planificacion vs Vencimiento**: `fecha_limite` controla cuando aparece en el tablero (opcional, si vacia = inmediato). `fecha_vencimiento` es el deadline (obligatorio si `requiere_fecha_limite=True` en el TipoActividad)
+12. **Inactivar Planificacion**: Solo si todas las actividades estan "Pendiente" (sin iniciar, pausar, finalizar). Backend bloquea via `planificacion_delete`
+13. **Tiempo muerto**: Calculado en dashboard como gaps entre `Finalizacion/Traslado` y `Inicio/Reanudacion` del mismo dia. Excluye gaps entre dias diferentes.
+14. **Importaciones**: Importacion masiva de Areas/SubAreas y Usuarios via Excel con validacion de codigos (empresa_codigo, area_codigo, subarea_codigo, rol_id)
 
 ---
 
@@ -449,4 +460,6 @@ Todas las tablas tienen PK simple (`id`). Ninguna dependencia parcial.
 | Fecha | Version | Cambio |
 |------|---------|--------|
 | 23/05/2026 | 1.0 | Documentacion inicial completa de las 17 tablas |
-| 24/05/2026 | 2.0 | Kairos rebrand. Agregados: `cargo` en usuario, `tiempo_total_segundos`, `tiempo_pausado_segundos`, `prorroga_count` en asignacion_actividad. `db_index=True` en 9 campos de busqueda. `Empresa.save()` ahora auto-genera codigo. Cache de tiempo activo/pausado con `recalcular_tiempo()`. Reglas de negocio 8-10 (cache, prorroga, reasignacion). |
+| 24/05/2026 | 2.0 | Kairos rebrand. `cargo` en usuario, `tiempo_total_segundos`, `tiempo_pausado_segundos`, `prorroga_count` en asignacion_actividad. `db_index` en 9 campos. Cache de tiempo. Reglas 8-10. |
+| 26/05/2026 | 3.0 | **VIVA1A rebrand**. +`fecha_vencimiento` en PlanificacionDetalle (separacion planificacion vs vencimiento). Removido `django.contrib.admin`. Auditoria completa de BD (26 tablas, 37 FK, 0 violaciones). Reglas 11-14 (fecha_planificacion/vencimiento, inactivar planificacion, tiempo muerto, importaciones). Actualizados conteos y diagrama. |
+

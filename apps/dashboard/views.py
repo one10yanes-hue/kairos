@@ -7,7 +7,7 @@ from django.utils import timezone
 from datetime import date, timedelta
 from apps.gestion.models import AsignacionActividad, RegistroTiempo
 from apps.estructura.models import UserSubArea, SubArea
-from apps.accounts.models import User
+from apps.accounts.models import User, Empresa
 
 
 def admin_required(view_func):
@@ -29,6 +29,14 @@ def get_admin_subareas(user):
 @admin_required
 def dashboard_admin(request):
     subareas = get_admin_subareas(request.user)
+
+    empresa_id = request.GET.get("empresa_id")
+    if empresa_id:
+        try:
+            empresa_id = int(empresa_id)
+        except (ValueError, TypeError):
+            empresa_id = None
+
     subarea_id = request.GET.get("subarea_id")
     if subarea_id:
         subareas = subareas.filter(id=subarea_id)
@@ -39,7 +47,9 @@ def dashboard_admin(request):
 
     usuarios = User.objects.filter(
         subareas__subarea__in=subareas, subareas__activo=True, activo=True
-    ).exclude(rol__nombre__in=["Master", "Admin"]).distinct()
+    ).filter(
+        Q(rol__nombre="Usuario") | Q(roles_adicionales__nombre="Usuario")
+    ).distinct()
 
     if user_id:
         usuarios = usuarios.filter(id=user_id)
@@ -48,13 +58,21 @@ def dashboard_admin(request):
         actividad__subarea__in=subareas, activo=True
     )
 
+    # Todas las asignaciones (inclusive inactivas) para calcular tiempo real
+    asignaciones_tiempo = AsignacionActividad.objects.filter(
+        actividad__subarea__in=subareas
+    )
+
     if user_id:
         asignaciones = asignaciones.filter(user_id=user_id)
+        asignaciones_tiempo = asignaciones_tiempo.filter(user_id=user_id)
 
     if fecha_desde:
         asignaciones = asignaciones.filter(fecha_asignacion__date__gte=fecha_desde)
+        asignaciones_tiempo = asignaciones_tiempo.filter(fecha_asignacion__date__gte=fecha_desde)
     if fecha_hasta:
         asignaciones = asignaciones.filter(fecha_asignacion__date__lte=fecha_hasta)
+        asignaciones_tiempo = asignaciones_tiempo.filter(fecha_asignacion__date__lte=fecha_hasta)
 
     registros_base = RegistroTiempo.objects.filter(
         asignacion__actividad__subarea__in=subareas, activo=True
@@ -68,13 +86,26 @@ def dashboard_admin(request):
 
     total_actividades = asignaciones.count()
     actividades_curso = asignaciones.filter(estado="EnCurso").count()
-    actividades_finalizadas = asignaciones.filter(estado="Finalizada").count()
+    actividades_finalizadas = asignaciones.filter(estado__in=["Finalizada", "Trasladada"]).count()
     actividades_pausadas = asignaciones.filter(estado="Pausada").count()
     actividades_pendientes = asignaciones.filter(estado="Pendiente").count()
-    prorrogas_total = asignaciones.filter(prorroga_count__gt=0).count()
+    prorrogas_total = sum(asignaciones.filter(prorroga_count__gt=0).values_list("prorroga_count", flat=True))
+    vencidas_total = asignaciones.filter(
+        planificacion_detalle__fecha_vencimiento__lt=timezone.now(),
+        actividad__tipo_actividad__requiere_fecha_limite=True,
+        estado__in=["Pendiente", "Pausada"]
+    ).count()
 
-    # Tiempo total trabajado desde RegistroTiempo
-    tiempo_total_seg = sum(a.tiempo_efectivo() for a in asignaciones)
+    vencidas_detalle = asignaciones.filter(
+        planificacion_detalle__fecha_vencimiento__lt=timezone.now(),
+        actividad__tipo_actividad__requiere_fecha_limite=True,
+        estado__in=["Pendiente", "Pausada"]
+    ).select_related("user", "actividad", "planificacion_detalle").order_by(
+        "planificacion_detalle__fecha_vencimiento"
+    )[:10]
+
+    # Tiempo total trabajado: incluye asignaciones inactivas/canceladas
+    tiempo_total_seg = sum(a.tiempo_efectivo() for a in asignaciones_tiempo)
     horas_total = int(tiempo_total_seg // 3600)
     mins_total = int((tiempo_total_seg % 3600) // 60)
 
@@ -102,20 +133,50 @@ def dashboard_admin(request):
         evento="Finalizacion", fecha_hora__date=hoy
     ).count()
 
+    def _dead_time(usuario):
+        regs = list(RegistroTiempo.objects.filter(
+            asignacion__actividad__subarea__in=subareas,
+            asignacion__user=usuario, activo=True,
+            evento__in=["Inicio", "Reanudacion", "Finalizacion", "Traslado"],
+        ))
+        if fecha_desde:
+            regs = [r for r in regs if r.fecha_hora.date() >= date.fromisoformat(fecha_desde)]
+        if fecha_hasta:
+            regs = [r for r in regs if r.fecha_hora.date() <= date.fromisoformat(fecha_hasta)]
+        regs.sort(key=lambda r: r.fecha_hora)
+        dead = 0
+        for i in range(len(regs) - 1):
+            r1, r2 = regs[i], regs[i + 1]
+            if r1.fecha_hora.date() != r2.fecha_hora.date():
+                continue
+            if r1.evento in ("Finalizacion", "Traslado") and r2.evento in ("Inicio", "Reanudacion"):
+                gap = (r2.fecha_hora - r1.fecha_hora).total_seconds()
+                if gap > 0:
+                    dead += gap
+        return dead
+
     usuarios_stats = []
     for usuario in usuarios:
         user_asignaciones = asignaciones.filter(user=usuario)
-        user_finalizadas = user_asignaciones.filter(estado="Finalizada").count()
+        user_asignaciones_tiempo = asignaciones_tiempo.filter(user=usuario)
+        user_finalizadas = user_asignaciones.filter(estado__in=["Finalizada", "Trasladada"]).count()
         user_curso = user_asignaciones.filter(estado="EnCurso").count()
         user_pausadas = user_asignaciones.filter(estado="Pausada").count()
         user_pendientes = user_asignaciones.filter(estado="Pendiente").count()
-        user_prorrogas = user_asignaciones.filter(prorroga_count__gt=0).count()
-        total_tiempo = sum(a.tiempo_efectivo() for a in user_asignaciones)
-        total_pausado = sum(a.tiempo_pausado() for a in user_asignaciones)
+        user_prorrogas = sum(user_asignaciones.filter(prorroga_count__gt=0).values_list("prorroga_count", flat=True))
+        user_vencidas = user_asignaciones.filter(
+            planificacion_detalle__fecha_vencimiento__lt=timezone.now(),
+            estado__in=["Pendiente", "Pausada"]
+        ).count()
+        total_tiempo = sum(a.tiempo_efectivo() for a in user_asignaciones_tiempo)
+        total_pausado = sum(a.tiempo_pausado() for a in user_asignaciones_tiempo)
         horas = int(total_tiempo // 3600)
         minutos = int((total_tiempo % 3600) // 60)
         horas_p = int(total_pausado // 3600)
         mins_p = int((total_pausado % 3600) // 60)
+        total_muerto = _dead_time(usuario)
+        horas_m = int(total_muerto // 3600)
+        mins_m = int((total_muerto % 3600) // 60)
         # Nro de items finalizados por este usuario
         nro_vals = registros_base.filter(
             asignacion__user=usuario, evento="Finalizacion", nro_actividad__isnull=False
@@ -134,31 +195,52 @@ def dashboard_admin(request):
             "en_curso": user_curso,
             "pausadas": user_pausadas,
             "pendientes": user_pendientes,
+            "vencidas": user_vencidas,
             "prorrogas": user_prorrogas,
             "tiempo": f"{horas:02d}:{minutos:02d}",
             "tiempo_pausado": f"{horas_p:02d}:{mins_p:02d}",
+            "tiempo_inactividad": f"{horas_m:02d}:{mins_m:02d}",
             "nro_items": nro_user,
             "promedio": prom,
             "productividad": round((user_finalizadas / total_user * 100) if total_user > 0 else 0, 1),
         })
 
+    tm_total = 0
+    for u in usuarios_stats:
+        h, m = u["tiempo_inactividad"].split(":")
+        tm_total += int(h) * 3600 + int(m) * 60
+
+    paginator = Paginator(usuarios_stats, 10)
+    page = request.GET.get("page", 1)
+    usuarios_page = paginator.get_page(page)
+
     context = {
         "subareas": subareas,
+        "empresas": Empresa.objects.filter(
+            areas_funcionales__area__subareas__in=get_admin_subareas(request.user)
+        ).distinct().order_by("nombre"),
+        "empresa_id": empresa_id,
         "usuarios_select": User.objects.filter(
             subareas__subarea__in=subareas, subareas__activo=True, activo=True
-        ).exclude(rol__nombre__in=["Master", "Admin"]).distinct(),
+        ).filter(
+        Q(rol__nombre="Usuario") | Q(roles_adicionales__nombre="Usuario")
+    ).distinct(),
         "total_actividades": total_actividades,
         "actividades_curso": actividades_curso,
         "actividades_finalizadas": actividades_finalizadas,
         "actividades_pausadas": actividades_pausadas,
         "actividades_pendientes": actividades_pendientes,
+        "actividades_vencidas": vencidas_total,
+        "vencidas_detalle": vencidas_detalle,
         "prorrogas_total": prorrogas_total,
         "tiempo_total": f"{horas_total:02d}:{mins_total:02d}",
+        "tiempo_inactividad_total": f"{tm_total // 3600:02d}:{(tm_total % 3600) // 60:02d}",
         "productividad_media": productividad_media,
         "nro_total_items": nro_total,
         "promedio_item": promedio_item,
         "finalizadas_hoy": finalizadas_hoy,
-        "usuarios_stats": usuarios_stats,
+        "usuarios_stats": usuarios_page,
+        "page_obj": usuarios_page,
         "subarea_id": int(subarea_id) if subarea_id else None,
         "user_id": int(user_id) if user_id else None,
         "fecha_desde": fecha_desde or "",
@@ -171,6 +253,14 @@ def dashboard_admin(request):
 @admin_required
 def progreso(request):
     subareas = get_admin_subareas(request.user)
+
+    empresa_id = request.GET.get("empresa_id")
+    if empresa_id:
+        try:
+            empresa_id = int(empresa_id)
+        except (ValueError, TypeError):
+            empresa_id = None
+
     subarea_id = request.GET.get("subarea_id")
     if subarea_id:
         subareas = subareas.filter(id=subarea_id)
@@ -188,7 +278,7 @@ def progreso(request):
         actividad__subarea__in=subareas, activo=True
     ).select_related(
         "user", "actividad", "actividad__tipo_actividad",
-        "actividad__subarea__area__empresa",
+        "actividad__subarea__area",
         "planificacion_detalle__planificacion",
     ).annotate(
         primer_inicio=Subquery(
@@ -205,7 +295,13 @@ def progreso(request):
 
     if user_id:
         asignaciones = asignaciones.filter(user_id=user_id)
-    if estado_filter:
+    if estado_filter == "Vencidas":
+        asignaciones = asignaciones.filter(
+            planificacion_detalle__fecha_vencimiento__lt=timezone.now(),
+            actividad__tipo_actividad__requiere_fecha_limite=True,
+            estado__in=["Pendiente", "Pausada"]
+        )
+    elif estado_filter:
         asignaciones = asignaciones.filter(estado=estado_filter)
     if q:
         asignaciones = asignaciones.filter(
@@ -227,7 +323,9 @@ def progreso(request):
 
     usuarios_filtro = User.objects.filter(
         subareas__subarea__in=subareas, subareas__activo=True, activo=True
-    ).exclude(rol__nombre__in=["Master", "Admin"]).distinct()
+    ).filter(
+        Q(rol__nombre="Usuario") | Q(roles_adicionales__nombre="Usuario")
+    ).distinct()
 
     # Resumen
     total_qs = AsignacionActividad.objects.filter(
@@ -244,6 +342,10 @@ def progreso(request):
         "page_obj": page_obj,
         "asignaciones": page_obj.object_list,
         "subareas": subareas,
+        "empresas": Empresa.objects.filter(
+            areas_funcionales__area__subareas__in=get_admin_subareas(request.user)
+        ).distinct().order_by("nombre"),
+        "empresa_id": empresa_id,
         "usuarios_filtro": usuarios_filtro,
         "resumen_total": resumen_total,
         "resumen_curso": resumen_curso,
@@ -271,11 +373,40 @@ def linea_tiempo(request):
         dia = hoy
     manana = dia + timedelta(days=1)
 
+    user_filter = request.GET.get("user_id")
+    if user_filter:
+        try:
+            user_filter = int(user_filter)
+        except (ValueError, TypeError):
+            user_filter = None
+
+    subarea_filter = request.GET.get("subarea_id")
+    if subarea_filter:
+        try:
+            subarea_filter = int(subarea_filter)
+        except (ValueError, TypeError):
+            subarea_filter = None
+
+    usuarios_disponibles = User.objects.filter(
+        id__in=UserSubArea.objects.filter(subarea__in=subareas, activo=True).values_list("user_id", flat=True),
+        activo=True, is_active=True
+    ).filter(
+        Q(rol__nombre="Usuario") | Q(roles_adicionales__nombre="Usuario")
+    ).order_by("nombre")
+
+    subareas_disponibles = subareas.select_related("area")
+
     asignaciones = AsignacionActividad.objects.filter(
         actividad__subarea__in=subareas, activo=True
-    ).select_related(
+    )
+    if user_filter:
+        asignaciones = asignaciones.filter(user_id=user_filter)
+    if subarea_filter:
+        asignaciones = asignaciones.filter(actividad__subarea_id=subarea_filter)
+
+    asignaciones = asignaciones.select_related(
         "user", "actividad", "actividad__tipo_actividad",
-        "actividad__subarea__area__empresa",
+        "actividad__subarea__area",
     )
 
     # Actividades con actividad en el dia o relevantes para la fecha
@@ -310,34 +441,56 @@ def linea_tiempo(request):
         else:
             # Construir segmentos desde los eventos
             segmentos = []
-            inicio_seg = None
-            tipo_actual = None
+            inicio_dia_dt = timezone.make_aware(timezone.datetime(dia.year, dia.month, dia.day, 0, 0), tz_local)
+            ultimo_antes = a.registros.filter(activo=True, fecha_hora__lt=inicio_dia_dt).order_by("-fecha_hora").first()
+            if ultimo_antes and ultimo_antes.evento in ("Inicio", "Reanudacion"):
+                inicio_seg = inicio_dia_dt
+                tipo_actual = "activo"
+            elif ultimo_antes and ultimo_antes.evento == "Pausa":
+                inicio_seg = inicio_dia_dt
+                tipo_actual = "pausado"
+            else:
+                inicio_seg = None
+                tipo_actual = None
             ultima_fecha = None
 
             for r in registros:
                 r_dt = r.fecha_hora.astimezone(tz_local)
                 if r.evento in ("Inicio", "Reanudacion"):
-                    if inicio_seg is not None and tipo_actual:
-                        segmentos.append({"tipo": tipo_actual, "inicio": inicio_seg, "fin": r_dt})
+                    if inicio_seg is not None and tipo_actual and (r_dt - inicio_seg).total_seconds() >= 60:
+                        seg_tipo = "finz" if tipo_actual == "pausado" and a.estado == "Finalizada" else tipo_actual
+                        segmentos.append({"tipo": seg_tipo, "inicio": inicio_seg, "fin": r_dt})
                     inicio_seg = r_dt
                     tipo_actual = "activo"
                 elif r.evento == "Pausa":
-                    if inicio_seg is not None and tipo_actual:
+                    if inicio_seg is not None and tipo_actual and (r_dt - inicio_seg).total_seconds() >= 60:
                         segmentos.append({"tipo": tipo_actual, "inicio": inicio_seg, "fin": r_dt})
                     inicio_seg = r_dt
                     tipo_actual = "pausado"
                 elif r.evento in ("Finalizacion", "Traslado"):
-                    if inicio_seg is not None and tipo_actual:
-                        segmentos.append({"tipo": tipo_actual, "inicio": inicio_seg, "fin": r_dt})
+                    if inicio_seg is not None and tipo_actual and (r_dt - inicio_seg).total_seconds() >= 60:
+                        seg_tipo = "finz" if r.evento == "Finalizacion" and tipo_actual == "pausado" else tipo_actual
+                        segmentos.append({"tipo": seg_tipo, "inicio": inicio_seg, "fin": r_dt})
                     inicio_seg = None
                     tipo_actual = None
                 ultima_fecha = r_dt
 
             # Si quedo abierto (EnCurso o Pausada al final del dia)
             if inicio_seg is not None and tipo_actual:
-                now_local = timezone.localtime(timezone.now())
-                seg_fin = now_local if a.estado in ("EnCurso", "Pausada") else inicio_seg + timedelta(hours=1)
-                segmentos.append({"tipo": tipo_actual, "inicio": inicio_seg, "fin": seg_fin})
+                if a.estado in ("EnCurso", "Pausada"):
+                    seg_fin = timezone.localtime(timezone.now())
+                else:
+                    siguiente_cierre = a.registros.filter(
+                        activo=True, fecha_hora__gt=inicio_seg,
+                        evento__in=["Reanudacion", "Finalizacion", "Traslado"]
+                    ).order_by("fecha_hora").first()
+                    if siguiente_cierre and siguiente_cierre.fecha_hora.date() == dia:
+                        seg_fin = siguiente_cierre.fecha_hora.astimezone(tz_local)
+                    else:
+                        seg_fin = inicio_dia_dt + timedelta(days=1)
+                if (seg_fin - inicio_seg).total_seconds() >= 60:
+                    seg_tipo = "finz" if a.estado in ("Finalizada", "Cancelada") and tipo_actual == "pausado" else tipo_actual
+                    segmentos.append({"tipo": seg_tipo, "inicio": inicio_seg, "fin": seg_fin})
 
             if not segmentos and tiene_registros_hoy:
                 # Hay registros pero no se formaron segmentos (ej: solo evento Traslado)
@@ -380,15 +533,11 @@ def linea_tiempo(request):
     # Ordenar por usuario, luego por inicio
     items.sort(key=lambda x: (x["asignacion"].user.get_full_name(), x["inicio"]))
 
-    # Agrupar por usuario
-    from collections import OrderedDict
-    grupos = OrderedDict()
+    # Agrupar por usuario para ver si se solapan
+    from collections import defaultdict
+    items_por_usuario = defaultdict(list)
     for item in items:
-        u = item["asignacion"].user
-        key = u.pk
-        if key not in grupos:
-            grupos[key] = {"user": u, "items": []}
-        grupos[key]["items"].append(item)
+        items_por_usuario[item["asignacion"].user.pk].append(item)
 
     timeline_groups = []
     timeline_items = []
@@ -398,30 +547,69 @@ def linea_tiempo(request):
         "activo": "actv",
         "pausado": "paus",
         "pendiente": "pend",
+        "finz": "finz",
     }
-    for g in grupos.values():
-        user = g["user"]
-        timeline_groups.append({
-            "id": user.pk,
-            "content": f"{user.get_full_name()} ({len(g['items'])})",
-        })
-        for item in g["items"]:
-            actividad_nombre = item["asignacion"].actividad.nombre
-            for seg in item["segmentos"]:
-                if seg["fin"] <= seg["inicio"]:
-                    seg["fin"] = seg["inicio"] + timedelta(minutes=1)
-                class_name = class_map.get(seg["tipo"], "")
-                tooltip_text = f"{actividad_nombre}|{seg['inicio'].strftime('%H:%M')}-{seg['fin'].strftime('%H:%M')}"
-                tooltip_map[item_id] = tooltip_text
-                timeline_items.append({
-                    "id": item_id,
-                    "group": user.pk,
-                    "content": "",
-                    "start": seg["inicio"].strftime("%Y-%m-%dT%H:%M:%S"),
-                    "end": seg["fin"].strftime("%Y-%m-%dT%H:%M:%S"),
-                    "className": class_name,
+    for user_pk, user_items in items_por_usuario.items():
+        user = user_items[0]["asignacion"].user
+
+        # Determinar si las actividades del usuario se solapan en el tiempo
+        solapan = False
+        for i in range(len(user_items)):
+            for j in range(i + 1, len(user_items)):
+                ai, bi = user_items[i], user_items[j]
+                if not (ai["fin"] <= bi["inicio"] or bi["fin"] <= ai["inicio"]):
+                    solapan = True
+                    break
+            if solapan:
+                break
+
+        if solapan:
+            # Apilado: una fila por actividad
+            for item in user_items:
+                asignacion = item["asignacion"]
+                actividad_nombre = asignacion.actividad.nombre
+                timeline_groups.append({
+                    "id": asignacion.pk,
+                    "content": f"{user.get_full_name()} — {actividad_nombre}",
                 })
-                item_id += 1
+                for seg in item["segmentos"]:
+                    if seg["fin"] <= seg["inicio"]:
+                        seg["fin"] = seg["inicio"] + timedelta(minutes=1)
+                    class_name = class_map.get(seg["tipo"], "")
+                    tooltip_text = f"{actividad_nombre}|{seg['inicio'].strftime('%H:%M')}-{seg['fin'].strftime('%H:%M')}"
+                    tooltip_map[item_id] = tooltip_text
+                    timeline_items.append({
+                        "id": item_id,
+                        "group": asignacion.pk,
+                        "content": "",
+                        "start": seg["inicio"].strftime("%Y-%m-%dT%H:%M:%S"),
+                        "end": seg["fin"].strftime("%Y-%m-%dT%H:%M:%S"),
+                        "className": class_name,
+                    })
+                    item_id += 1
+        else:
+            # Secuencial: una sola fila por usuario
+            timeline_groups.append({
+                "id": user_pk,
+                "content": f"{user.get_full_name()} ({len(user_items)})",
+            })
+            for item in user_items:
+                actividad_nombre = item["asignacion"].actividad.nombre
+                for seg in item["segmentos"]:
+                    if seg["fin"] <= seg["inicio"]:
+                        seg["fin"] = seg["inicio"] + timedelta(minutes=1)
+                    class_name = class_map.get(seg["tipo"], "")
+                    tooltip_text = f"{actividad_nombre}|{seg['inicio'].strftime('%H:%M')}-{seg['fin'].strftime('%H:%M')}"
+                    tooltip_map[item_id] = tooltip_text
+                    timeline_items.append({
+                        "id": item_id,
+                        "group": user_pk,
+                        "content": "",
+                        "start": seg["inicio"].strftime("%Y-%m-%dT%H:%M:%S"),
+                        "end": seg["fin"].strftime("%Y-%m-%dT%H:%M:%S"),
+                        "className": class_name,
+                    })
+                    item_id += 1
 
     dia_inicio = timezone.make_aware(timezone.datetime(dia.year, dia.month, dia.day, 0, 0), tz_local)
     dia_fin = dia_inicio + timedelta(days=1)
@@ -445,4 +633,98 @@ def linea_tiempo(request):
         "ayer": ayer,
         "maniana": maniana,
         "fecha_str": dia.isoformat(),
+        "usuarios_disponibles": usuarios_disponibles,
+        "user_filter": user_filter,
+        "subareas_disponibles": subareas_disponibles,
+        "subarea_filter": subarea_filter,
+    })
+
+
+@login_required
+@admin_required
+def tiempo_inactividad(request):
+    from apps.gestion.models import TiempoInactividad
+    from django.core.paginator import Paginator
+    user_id = request.GET.get("user_id")
+    subarea_id = request.GET.get("subarea_id")
+
+    subareas = get_admin_subareas(request.user)
+    usuarios_subarea = User.objects.filter(
+        subareas__subarea__in=subareas, subareas__activo=True, activo=True
+    ).distinct()
+
+    if subarea_id:
+        usuarios_subarea = usuarios_subarea.filter(subareas__subarea_id=subarea_id)
+
+    from apps.gestion.models import AsignacionActividad, TiempoInactividad
+    # Cerrar TMs abiertos para usuarios que ahora tienen EnCurso (todos los usuarios)
+    for tm in TiempoInactividad.objects.filter(activo=True, fin__isnull=True).select_related('user'):
+        if AsignacionActividad.objects.filter(user=tm.user, activo=True, estado="EnCurso").exists():
+            ahora = timezone.now()
+            if tm.inicio:
+                tm.duracion_segundos += int((ahora - tm.inicio).total_seconds())
+            tm.fin = ahora
+            tm.activo = False
+            tm.save()
+    # Crear TMs solo para usuarios en subareas que no tengan EnCurso ni TM abierto
+    for u in usuarios_subarea if not user_id else usuarios_subarea.filter(pk=user_id):
+        tiene_curso = AsignacionActividad.objects.filter(user=u, activo=True, estado="EnCurso").exists()
+        if not tiene_curso and not TiempoInactividad.objects.filter(user=u, activo=True, fin__isnull=True).exists():
+            ultimo = RegistroTiempo.objects.filter(
+                asignacion__user=u, activo=True,
+                evento__in=["Finalizacion", "Pausa", "Inicio", "Reanudacion"]
+            ).order_by("-fecha_hora").first()
+            inicio = ultimo.fecha_hora if ultimo else timezone.now()
+            TiempoInactividad.objects.create(user=u, fecha=inicio.date(), inicio=inicio)
+
+    tiempos = TiempoInactividad.objects.filter(
+        user__in=usuarios_subarea
+    ).select_related("user").order_by("-fecha", "-inicio")
+    if user_id:
+        tiempos = tiempos.filter(user_id=user_id)
+
+    total_seg = sum(
+        t.duracion_segundos + (int((timezone.now() - t.inicio).total_seconds()) if t.activo and not t.fin and t.inicio else 0)
+        for t in tiempos
+    )
+    horas_t = int(total_seg // 3600)
+    mins_t = int((total_seg % 3600) // 60)
+    seg_t = int(total_seg % 60)
+
+    paginator = Paginator(tiempos, 15)
+    page = request.GET.get("page", 1)
+    tiempos_page = paginator.get_page(page)
+
+    tiempos_list = []
+    for t in tiempos_page:
+        secs = t.duracion_segundos
+        if not t.fin and t.inicio:
+            secs += int((timezone.now() - t.inicio).total_seconds())
+        dias = secs // 86400
+        horas = (secs % 86400) // 3600
+        mins = (secs % 3600) // 60
+        if dias > 0:
+            duracion = f"{dias}d {horas}h {mins}m"
+        elif horas > 0:
+            duracion = f"{horas}h {mins}m"
+        else:
+            duracion = f"{mins}m" if mins > 0 else "< 1m"
+        estado = "abierto"
+        if t.fin:
+            dias_diff = (t.fin.date() - t.inicio.date()).days if t.inicio else 0
+            estado = f"cerrado ({dias_diff}d)" if dias_diff > 0 else "cerrado"
+        elif t.inicio and (timezone.now().date() - t.inicio.date()).days > 0:
+            estado = "abierto (multi-dia)"
+        tiempos_list.append({"objeto": t, "duracion": duracion, "estado": estado})
+
+    usuarios = usuarios_subarea.order_by("nombre")
+
+    return render(request, "dashboard/tiempo_inactividad.html", {
+        "tiempos_list": tiempos_list,
+        "page_obj": tiempos_page,
+        "usuarios": usuarios,
+        "subareas": subareas,
+        "total_tiempo": f"{horas_t:02d}:{mins_t:02d}:{seg_t:02d}",
+        "user_id": int(user_id) if user_id else None,
+        "subarea_id": int(subarea_id) if subarea_id else None,
     })

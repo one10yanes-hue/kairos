@@ -18,19 +18,40 @@
           </div>
         </div>
         <div class="tl-controls d-flex flex-wrap align-items-center gap-2">
+          <div class="d-flex align-items-center gap-1">
+            <input type="text" class="form-control form-control-sm" id="filtroSubareasTL" placeholder="Subarea..." style="width:100px;font-size:0.78rem;" onkeyup="filtrarSelect('filtroSubareasTL','selSubareasTL')">
+            <select name="subarea_id" id="selSubareasTL" class="form-select form-select-sm" style="width:auto;font-size:0.78rem;" onchange="tlNavegar()">
+              <option value="">Todas</option>
+              {% for s in subareas_disponibles %}
+              <option value="{{ s.pk }}" data-search="{{ s.nombre|lower }}"{% if subarea_filter == s.pk %} selected{% endif %}>{{ s.nombre }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="d-flex align-items-center gap-1">
+            <input type="text" class="form-control form-control-sm" id="filtroUsuariosTL" placeholder="Usuario..." style="width:100px;font-size:0.78rem;" onkeyup="filtrarSelect('filtroUsuariosTL','selUsuariosTL')">
+            <select name="user_id" id="selUsuariosTL" class="form-select form-select-sm" style="width:auto;font-size:0.78rem;" onchange="tlNavegar()">
+              <option value="">Todos</option>
+              {% for u in usuarios_disponibles %}
+              <option value="{{ u.pk }}" data-search="{{ u.get_full_name|lower }} {{ u.cedula }}"{% if user_filter == u.pk %} selected{% endif %}>{{ u.get_full_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
           <div class="btn-group btn-group-sm" role="group" aria-label="Navegacion de fecha">
-            <a href="?fecha={{ ayer.isoformat }}" class="btn btn-outline-secondary">&lsaquo; Ayer</a>
-            <a href="?fecha={{ maniana.isoformat }}" class="btn btn-outline-secondary">Mañana &rsaquo;</a>
+            <a href="?fecha={{ ayer.isoformat }}{% if user_filter %}&amp;user_id={{ user_filter }}{% endif %}{% if subarea_filter %}&amp;subarea_id={{ subarea_filter }}{% endif %}" class="btn btn-outline-secondary">&lsaquo; Ayer</a>
+            <a href="?fecha={{ maniana.isoformat }}{% if user_filter %}&amp;user_id={{ user_filter }}{% endif %}{% if subarea_filter %}&amp;subarea_id={{ subarea_filter }}{% endif %}" class="btn btn-outline-secondary">Mañana &rsaquo;</a>
           </div>
           <form method="GET" class="tl-date-form">
             <input type="date" name="fecha" value="{{ fecha_str }}" class="form-control form-control-sm tl-date-input" onchange="this.form.submit()">
+            {% if user_filter %}<input type="hidden" name="user_id" value="{{ user_filter }}">{% endif %}
+            {% if subarea_filter %}<input type="hidden" name="subarea_id" value="{{ subarea_filter }}">{% endif %}
           </form>
-          <a href="?fecha=" class="btn btn-sm btn-outline-primary">Hoy</a>
+          <a href="?fecha={% if user_filter %}&amp;user_id={{ user_filter }}{% endif %}{% if subarea_filter %}&amp;subarea_id={{ subarea_filter }}{% endif %}" class="btn btn-sm btn-outline-primary">Hoy</a>
         </div>
       </div>
       <div class="tl-legend">
         <div class="tl-legend-item"><span class="tl-legend-dot actv"></span>Activo</div>
         <div class="tl-legend-item"><span class="tl-legend-dot paus"></span>Pausado</div>
+        <div class="tl-legend-item"><span class="tl-legend-dot finz"></span>Fin. desde pausa</div>
         <div class="tl-legend-item"><span class="tl-legend-dot pend"></span>Pendiente</div>
       </div>
     </div>
@@ -56,6 +77,26 @@
 </div>
 {% endblock %}
 {% block extra_js %}
+<script>
+function filtrarSelect(inputId, selectId) {
+    var q = document.getElementById(inputId).value.toLowerCase();
+    var sel = document.getElementById(selectId);
+    for (var i = 0; i < sel.options.length; i++) {
+        var opt = sel.options[i];
+        var txt = (opt.getAttribute('data-search') || opt.text.toLowerCase());
+        opt.style.display = txt.includes(q) ? '' : 'none';
+    }
+}
+
+function tlNavegar() {
+    var qs = ['fecha={{ fecha_str }}'];
+    var s = document.getElementById('selSubareasTL');
+    if (s.value) qs.push('subarea_id=' + s.value);
+    var u = document.getElementById('selUsuariosTL');
+    if (u.value) qs.push('user_id=' + u.value);
+    window.location.href = '?' + qs.join('&');
+}
+</script>
 <script src="https://cdn.jsdelivr.net/npm/vis-timeline@7.7.3/standalone/umd/vis-timeline-graph2d.min.js"></script>
 <script src="{% static 'js/linea_tiempo.js' %}"></script>
 {% endblock %}

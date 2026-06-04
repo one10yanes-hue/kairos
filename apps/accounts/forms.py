@@ -11,16 +11,17 @@ class LoginForm(forms.Form):
 class UserForm(forms.ModelForm):
     class Meta:
         model = User
-        fields = ["cedula", "fecha_expedicion", "nombre", "apellido", "cargo", "email", "telefono", "rol"]
+        fields = ["cedula", "fecha_expedicion", "nombre", "apellido", "cargo", "email", "telefono", "rol", "roles_adicionales"]
         widgets = {
             "cedula": forms.TextInput(attrs={"class": "form-control"}),
-            "fecha_expedicion": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+            "fecha_expedicion": forms.DateInput(attrs={"class": "form-control", "type": "date"}, format="%Y-%m-%d"),
             "nombre": forms.TextInput(attrs={"class": "form-control"}),
             "apellido": forms.TextInput(attrs={"class": "form-control"}),
             "cargo": forms.TextInput(attrs={"class": "form-control"}),
             "email": forms.EmailInput(attrs={"class": "form-control"}),
             "telefono": forms.TextInput(attrs={"class": "form-control"}),
             "rol": forms.Select(attrs={"class": "form-control"}),
+            "roles_adicionales": forms.SelectMultiple(attrs={"class": "form-control", "size": "3"}),
         }
 
 

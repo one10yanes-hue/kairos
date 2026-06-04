@@ -1,5 +1,11 @@
+import os
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
+
+
+def foto_upload_path(instance, filename):
+    ext = os.path.splitext(filename)[1] or ".jpg"
+    return f"profile/{instance.cedula}{ext}"
 
 
 class Rol(models.Model):
@@ -50,7 +56,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(blank=True, null=True)
     telefono = models.CharField(max_length=20, blank=True, null=True, db_index=True)
     cargo = models.CharField(max_length=200, blank=True, null=True)
-    rol = models.ForeignKey(Rol, on_delete=models.PROTECT, related_name="usuarios", null=True, blank=True)
+    foto = models.ImageField(upload_to=foto_upload_path, blank=True, null=True)
+    rol = models.ForeignKey(Rol, on_delete=models.PROTECT, related_name="usuarios")
+    roles_adicionales = models.ManyToManyField(Rol, blank=True, related_name="usuarios_extra")
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     activo = models.BooleanField(default=True)
@@ -76,13 +84,21 @@ class User(AbstractBaseUser, PermissionsMixin):
     def get_short_name(self):
         return self.nombre
 
+    def tiene_rol(self, rol_id):
+        return self.rol_id == rol_id or self.roles_adicionales.filter(pk=rol_id).exists()
+
+    def roles_disponibles(self):
+        return Rol.objects.filter(
+            models.Q(pk=self.rol_id) | models.Q(usuarios_extra=self)
+        ).distinct()
+
     def save(self, *args, **kwargs):
         self.is_active = self.activo
         super().save(*args, **kwargs)
 
 
 class Empresa(models.Model):
-    codigo = models.CharField(max_length=6, unique=True, blank=True, null=True)
+    codigo = models.CharField(max_length=6, unique=True, blank=True)
     nombre = models.CharField(max_length=200, db_index=True)
     nit = models.CharField(max_length=50, unique=True)
     direccion = models.TextField(blank=True, null=True)

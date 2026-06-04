@@ -1,0 +1,385 @@
+{% extends "base.html" %}{% block content %}
+<div class="container-fluid mt-4">
+    <nav aria-label="breadcrumb"><ol class="breadcrumb">
+        <li class="breadcrumb-item active">Integracion</li>
+        <li class="breadcrumb-item active">Habilitaciones por Cargo</li>
+    </ol></nav>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-header border-bottom d-flex align-items-center gap-3" style="background:linear-gradient(135deg, #f8fafc 0%, #fff 100%);">
+            <div class="d-flex align-items-center justify-content-center rounded-circle" style="width:36px;height:36px;background:rgba(var(--bs-primary-rgb,13,110,253),0.1);flex-shrink:0;">
+                <i class="bi bi-person-plus fs-5" style="color:var(--accent);"></i>
+            </div>
+            <div>
+                <h5 class="mb-0 fw-bold">Habilitaciones por Cargo</h5>
+                <small class="text-muted" style="font-size:0.75rem;">Importar empleados desde KACTUS por cargo</small>
+            </div>
+        </div>
+        <div class="card-body p-0">
+
+            <form method="POST" id="mainForm">
+                {% csrf_token %}
+                <input type="hidden" name="empleados" id="empleadosSelected">
+
+                <div class="p-4 border-bottom">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small text-secondary">Buscar y seleccionar cargos</label>
+                            <div class="position-relative">
+                                <i class="bi bi-search position-absolute top-50 translate-middle-y text-muted" style="left:10px;z-index:5;font-size:0.8rem;"></i>
+                                <input type="text" class="form-control form-control-sm ps-4" id="buscarCargo" placeholder="Escriba para filtrar cargos..." autocomplete="off">
+                            </div>
+                            <div id="cargosContainer" class="border rounded-3 mt-2 shadow-sm" style="max-height:250px;overflow-y:auto;display:none;background:#fff;"></div>
+                        </div>
+                    </div>
+
+                    <div id="cargosSeleccionados" class="mt-3" style="display:none;">
+                        <hr class="my-2">
+                        <div class="d-flex align-items-center gap-2 flex-wrap" id="cargosTags"></div>
+                        <button type="button" class="btn btn-sm btn-primary mt-2" id="btnCargarEmpleados" onclick="cargarEmpleados()">
+                            <i class="bi bi-people"></i> Cargar Empleados
+                        </button>
+                        <small id="cargosCountInfo" class="text-muted ms-2" style="font-size:0.75rem;"></small>
+                    </div>
+                </div>
+
+                <div id="empleadosSection" style="display:none;">
+                    <div class="p-4 border-bottom">
+                        <div class="d-flex align-items-center gap-2 mb-3">
+                            <span class="badge rounded-pill fs-6 px-2 py-1" style="background:var(--accent);color:#fff;">1</span>
+                            <h6 class="mb-0 fw-semibold text-secondary">
+                                Empleados encontrados <span id="cargoNombre" class="fw-normal" style="font-size:0.8rem;"></span>
+                            </h6>
+                            <span id="empleadosCount" class="badge bg-secondary rounded-pill ms-2" style="font-size:0.65rem;display:none;"></span>
+                        </div>
+                        <div class="table-responsive rounded-3 border">
+                            <table class="table table-hover align-middle mb-0" style="font-size:0.8rem;">
+                                <thead style="background:#f8fafc;">
+                                    <tr>
+                                        <th class="ps-3" style="width:40px;"><input type="checkbox" class="form-check-input" id="selectAll" onchange="toggleAll(this)" style="margin:0;"></th>
+                                        <th class="text-secondary" style="font-size:0.65rem;">Cedula</th>
+                                        <th class="text-secondary" style="font-size:0.65rem;">Nombre</th>
+                                        <th class="text-secondary" style="font-size:0.65rem;">Apellido</th>
+                                        <th class="text-secondary" style="font-size:0.65rem;">F. Expedicion</th>
+                                        <th class="text-secondary" style="font-size:0.65rem;">Email</th>
+                                        <th class="text-secondary" style="font-size:0.65rem;">Cargo</th>
+                                        <th class="text-secondary pe-3" style="font-size:0.65rem;">Area Kactus</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="empleadosTable"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="p-4">
+                        <div class="row g-3 align-items-start">
+                            <div class="col-md-3">
+                                <label class="form-label fw-semibold small text-secondary">Rol a asignar <span class="text-danger">*</span></label>
+                                <select name="rol_id" id="rolSelect" class="form-select form-select-sm">
+                                    <option value="">Seleccione rol...</option>
+                                    {% for r in roles %}
+                                    <option value="{{ r.pk }}">{{ r.nombre }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-5">
+                                <div id="subareaExisting" style="display:none;">
+                                    <label class="form-label fw-semibold small text-secondary">SubArea existente <span class="text-danger">*</span></label>
+                                    <div class="d-flex gap-2">
+                                        <select name="subarea_id" id="subareaSelect" class="form-select form-select-sm" style="flex:1;">
+                                            <option value="">Seleccione subarea...</option>
+                                        </select>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="mostrarCrearSubarea()" title="Crear nueva" style="white-space:nowrap;">
+                                            <i class="bi bi-plus-lg"></i> Nueva
+                                        </button>
+                                    </div>
+                                </div>
+                                <div id="subareaNew" style="display:none;">
+                                    <label class="form-label fw-semibold small text-secondary">SubArea a crear <span class="text-danger">*</span></label>
+                                    <div class="row g-2">
+                                        <div class="col-6">
+                                            <input type="text" name="area_nombre" id="areaNombreInput" class="form-control form-control-sm" placeholder="Area (existente o nueva)" list="areasList" autocomplete="off">
+                                            <datalist id="areasList"></datalist>
+                                            <small class="text-muted" style="font-size:0.6rem;">Selecciona o escribe el nombre del area</small>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="d-flex gap-2">
+                                                <input type="text" name="subarea_nombre" class="form-control form-control-sm" placeholder="Nombre de la SubArea">
+                                                <button type="button" class="btn btn-sm btn-light border" onclick="mostrarSubareaExistente()" title="Usar existente">
+                                                    <i class="bi bi-x-lg"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <small class="text-muted" style="font-size:0.7rem;">Si el area ya existe, se reutiliza. La subarea se crea bajo esa area.</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                <button type="submit" class="btn w-100 d-flex align-items-center justify-content-center gap-2" style="background:var(--accent);color:#fff;border:none;font-weight:600;">
+                                    <i class="bi bi-person-check fs-5"></i>
+                                    <span>Habilitar Seleccionados</span>
+                                    <span id="selectedCount" class="badge bg-white text-dark rounded-pill ms-1" style="font-size:0.65rem;display:none;">0</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+var timerCargo = null;
+var empleadosData = [];
+var cargosSeleccionados = {};  // { cod: { nom, total } }
+
+function resetSeleccion() {
+    document.getElementById('buscarCargo').value = '';
+    document.getElementById('empleadosSection').style.display = 'none';
+    document.getElementById('subareaNew').style.display = 'none';
+    document.getElementById('subareaExisting').style.display = 'none';
+    cargosSeleccionados = {};
+    actualizarCargosSeleccionados();
+    cargarSubareasEmpresa();
+    buscarCargos('');
+}
+
+function cargarSubareasEmpresa() {
+    var sel = document.getElementById('subareaSelect');
+    sel.innerHTML = '<option value="">Cargando...</option>';
+    fetch('/master/integracion/api/subareas/?_=' + Date.now(), {headers:{'X-Requested-With':'XMLHttpRequest'}})
+        .then(function(r){return r.json()})
+        .then(function(d){
+            document.getElementById('subareaExisting').style.display = '';
+            document.getElementById('subareaNew').style.display = 'none';
+            if (d.has_subareas) {
+                sel.innerHTML = '<option value="">Seleccione subarea...</option>';
+                d.items.forEach(function(s){ sel.innerHTML += '<option value="'+s.id+'">'+s.nombre+' ('+s.area+')</option>'; });
+            } else {
+                document.getElementById('subareaExisting').style.display = 'none';
+                document.getElementById('subareaNew').style.display = '';
+            }
+        });
+}
+
+function mostrarCrearSubarea() {
+    document.getElementById('subareaExisting').style.display = 'none';
+    document.getElementById('subareaNew').style.display = '';
+    document.getElementById('subareaSelect').value = '';
+    document.querySelector('input[name="area_nombre"]').value = '';
+    document.querySelector('input[name="subarea_nombre"]').value = '';
+    // Cargar areas existentes en el datalist
+    fetch('/master/integracion/api/subareas/?_=' + Date.now(), {headers:{'X-Requested-With':'XMLHttpRequest'}})
+        .then(function(r){return r.json()})
+        .then(function(d){
+            var dl = document.getElementById('areasList');
+            var areas = {};
+            d.items.forEach(function(s){ areas[s.area] = true; });
+            dl.innerHTML = '';
+            for (var a in areas) {
+                var opt = document.createElement('option');
+                opt.value = a;
+                dl.appendChild(opt);
+            }
+        });
+}
+
+function mostrarSubareaExistente() {
+    document.getElementById('subareaExisting').style.display = '';
+    document.getElementById('subareaNew').style.display = 'none';
+    document.querySelector('input[name="area_nombre"]').value = '';
+    document.querySelector('input[name="subarea_nombre"]').value = '';
+}
+
+document.getElementById('buscarCargo').addEventListener('input', function() {
+    clearTimeout(timerCargo);
+    var q = this.value;
+    document.getElementById('cargosContainer').style.display = 'block';
+    timerCargo = setTimeout(function() { buscarCargos(q); }, 300);
+});
+
+document.getElementById('buscarCargo').addEventListener('focus', function() {
+    document.getElementById('cargosContainer').style.display = 'block';
+    buscarCargos(this.value);
+});
+
+document.addEventListener('click', function(e) {
+    var container = document.getElementById('cargosContainer');
+    var input = document.getElementById('buscarCargo');
+    if (container.style.display !== 'none' && !container.contains(e.target) && e.target !== input) {
+        container.style.display = 'none';
+    }
+});
+
+function buscarCargos(q) {
+    var cont = document.getElementById('cargosContainer');
+    cont.style.display = 'block';
+    cont.innerHTML = '<p class="text-muted small text-center py-3 mb-0"><span class="spinner-border spinner-border-sm me-1"></span>Buscando...</p>';
+    var url = '/master/integracion/api/cargos/?q=' + encodeURIComponent(q || '') + '&_=' + Date.now();
+    fetch(url, {headers:{'X-Requested-With':'XMLHttpRequest'}})
+        .then(function(r){return r.json()})
+        .then(function(d){
+            if (!d.length) {
+                cont.innerHTML = '<div class="text-center py-4"><i class="bi bi-inbox fs-3 text-muted d-block mb-1"></i><span class="text-muted small">No se encontraron cargos con empleados activos</span></div>';
+                actualizarCargosSeleccionados();
+                return;
+            }
+            var h = '<div class="px-3 py-2 small text-muted d-flex justify-content-between" style="background:#f8fafc;font-size:0.7rem;border-bottom:1px solid #eee;">';
+            h += '<span><strong>' + d.length + '</strong> cargo(s)</span></div>';
+            d.forEach(function(c) {
+                var checked = cargosSeleccionados[c.cod] ? 'checked' : '';
+                h += '<div class="cargo-item px-3 py-2 d-flex justify-content-between align-items-center"';
+                h += ' style="cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:0.82rem;transition:background 0.15s;"';
+                h += ' data-cod="'+c.cod+'" data-nom="'+c.nom.replace(/"/g,'&quot;')+'"';
+                h += '>';
+                h += '<div class="d-flex align-items-center gap-2" style="flex:1;min-width:0;">';
+                h += '<input type="checkbox" class="cargo-check" value="'+c.cod+'" '+checked+' data-nom="'+c.nom.replace(/"/g,'&quot;')+'" data-total="'+c.total+'" onchange="toggleCargo(this)">';
+                h += '<label class="mb-0 text-truncate" style="cursor:pointer;flex:1;">';
+                h += '<span class="fw-semibold">'+c.cod+'</span> <span class="text-secondary">- '+c.nom+'</span>';
+                h += '</label></div>';
+                h += '<span class="badge rounded-pill fw-normal" style="font-size:0.65rem;background:#e9ecef;color:#495057;flex-shrink:0;">' + c.total + ' emp.</span>';
+                h += '</div>';
+            });
+            cont.innerHTML = h;
+            d.forEach(function(c) {
+                if (cargosSeleccionados[c.cod]) {
+                    cargosSeleccionados[c.cod].total = c.total;
+                }
+            });
+            actualizarCargosSeleccionados();
+        });
+}
+
+function toggleCargo(cb) {
+    var cod = cb.value;
+    var nom = cb.dataset.nom;
+    var total = parseInt(cb.dataset.total || 0);
+    if (cb.checked) {
+        cargosSeleccionados[cod] = { nom: nom, total: total };
+    } else {
+        delete cargosSeleccionados[cod];
+    }
+    actualizarCargosSeleccionados();
+}
+
+function actualizarCargosSeleccionados() {
+    var container = document.getElementById('cargosSeleccionados');
+    var tags = document.getElementById('cargosTags');
+    var count = Object.keys(cargosSeleccionados).length;
+    if (count === 0) { container.style.display = 'none'; return; }
+    container.style.display = '';
+    var totalEmp = 0;
+    var h = '<small class="text-muted me-2" style="font-size:0.75rem;">Seleccionados:</small>';
+    for (var cod in cargosSeleccionados) {
+        var c = cargosSeleccionados[cod];
+        totalEmp += c.total;
+        h += '<span class="badge d-inline-flex align-items-center gap-1 py-1 px-2" style="background:#e8f4fd;color:#1a56db;font-size:0.75rem;border:1px solid #b8daff;">';
+        h += c.nom;
+        h += ' <i class="bi bi-x" style="cursor:pointer;" onclick="quitarCargo(\''+cod+'\')"></i>';
+        h += '</span> ';
+    }
+    tags.innerHTML = h;
+    document.getElementById('cargosCountInfo').textContent = count + ' cargo(s) - ' + totalEmp + ' empleado(s)';
+    document.getElementById('btnCargarEmpleados').disabled = false;
+}
+
+function quitarCargo(cod) {
+    delete cargosSeleccionados[cod];
+    var cb = document.querySelector('.cargo-check[value="'+cod+'"]');
+    if (cb) cb.checked = false;
+    actualizarCargosSeleccionados();
+}
+
+function cargarEmpleados() {
+    var cods = Object.keys(cargosSeleccionados);
+    if (!cods.length) return;
+    if (cods.length === 1) {
+        var c = cargosSeleccionados[cods[0]];
+        document.getElementById('cargoNombre').innerHTML = '- <strong>' + c.nom + '</strong> <span class="text-muted small">(' + cods[0] + ')</span>';
+    } else {
+        document.getElementById('cargoNombre').innerHTML = '- <strong>' + cods.length + ' cargos seleccionados</strong>';
+    }
+    document.getElementById('empleadosSection').style.display = 'block';
+    document.getElementById('empleadosTable').innerHTML = '<tr><td colspan="8" class="text-center text-muted py-5"><span class="spinner-border spinner-border-sm me-2"></span>Cargando empleados...</td></tr>';
+
+    cargarSubareasEmpresa();
+
+    var url = '/master/integracion/api/empleados/?cargos=' + encodeURIComponent(cods.join(','));
+
+    fetch(url + '&_=' + Date.now(), {headers:{'X-Requested-With':'XMLHttpRequest'}})
+        .then(function(r){return r.json()})
+        .then(function(d){
+            empleadosData = d;
+            renderEmpleados();
+            updateSelectedCount();
+        });
+}
+
+function renderEmpleados() {
+    var tbody = document.getElementById('empleadosTable');
+    var countEl = document.getElementById('empleadosCount');
+    if (!empleadosData.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-5"><i class="bi bi-people fs-3 d-block mb-1 opacity-50"></i>No se encontraron empleados activos para estos cargos</td></tr>';
+        countEl.style.display = 'none';
+        return;
+    }
+    countEl.textContent = empleadosData.length + ' empleado(s)';
+    countEl.style.display = '';
+    var h = '';
+    empleadosData.forEach(function(e) {
+        var disabled = e.habilitado ? ' disabled' : '';
+        var rowClass = e.habilitado ? 'table-secondary' : '';
+        var badgeHtml = e.habilitado
+            ? ' <span class="badge bg-success bg-opacity-75" style="font-size:0.55rem;">Ya habilitado</span>'
+            : ' <span class="badge bg-light border text-secondary fw-normal" style="font-size:0.55rem;">Nuevo</span>';
+        h += '<tr class="'+rowClass+'">';
+        h += '<td class="ps-3"><input type="checkbox" class="form-check-input empleado-check" value="'+e.cod+'"'+disabled+'></td>';
+        h += '<td class="fw-semibold">'+e.cod+badgeHtml+'</td>';
+        h += '<td>'+e.nom+'</td>';
+        h += '<td>'+e.ape+'</td>';
+        h += '<td><small>'+e.fecha+'</small></td>';
+        h += '<td><small class="text-muted">'+e.email+'</small></td>';
+        h += '<td><small class="fw-semibold">'+(e.cargo_nom||'')+'</small></td>';
+        h += '<td class="pe-3"><small class="text-muted">'+e.area+'</small></td>';
+        h += '</tr>';
+    });
+    tbody.innerHTML = h;
+    document.querySelectorAll('.empleado-check').forEach(function(cb) {
+        cb.addEventListener('change', updateSelectedCount);
+    });
+}
+
+function toggleAll(cb) {
+    document.querySelectorAll('.empleado-check:not([disabled])').forEach(function(c){ c.checked = cb.checked; });
+    updateSelectedCount();
+}
+
+function updateSelectedCount() {
+    var count = document.querySelectorAll('.empleado-check:checked').length;
+    var el = document.getElementById('selectedCount');
+    el.textContent = count;
+    el.style.display = count > 0 ? '' : 'none';
+}
+
+document.getElementById('mainForm').addEventListener('submit', function(e) {
+    var checked = document.querySelectorAll('.empleado-check:checked');
+    if (!checked.length) { e.preventDefault(); alert('Selecciona al menos un empleado.'); return; }
+    if (!document.getElementById('rolSelect').value) { e.preventDefault(); alert('Selecciona un rol.'); return; }
+    var subareaSel = document.getElementById('subareaSelect');
+    var subareaEx = document.getElementById('subareaExisting');
+    var areaNom = document.querySelector('input[name="area_nombre"]');
+    var subareaNom = document.querySelector('input[name="subarea_nombre"]');
+    var hasExisting = subareaSel.value && subareaEx.style.display !== 'none';
+    var hasNew = areaNom.value.trim() && subareaNom.value.trim();
+    if (!hasExisting && !hasNew) { e.preventDefault(); alert('Selecciona una subarea existente o crea una nueva.'); return; }
+    var ids = [];
+    checked.forEach(function(c){ ids.push(c.value); });
+    document.getElementById('empleadosSelected').value = ids.join(',');
+});
+
+// Cargar cargos y subareas inicialmente
+buscarCargos('');
+cargarSubareasEmpresa();
+</script>
+{% endblock %}

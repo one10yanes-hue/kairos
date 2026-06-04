@@ -16,9 +16,10 @@ class PlanificacionForm(forms.ModelForm):
 class PlanificacionDetalleForm(forms.ModelForm):
     class Meta:
         model = PlanificacionDetalle
-        fields = ["actividad", "user", "fecha_limite"]
+        fields = ["actividad", "user", "fecha_programada", "fecha_vencimiento"]
         widgets = {
             "actividad": forms.Select(attrs={"class": "form-control dynamic-select", "data-model": "actividad", "data-placeholder": "Buscar actividad..."}),
             "user": forms.Select(attrs={"class": "form-control dynamic-select", "data-model": "user", "data-placeholder": "Buscar usuario..."}),
-            "fecha_limite": forms.DateTimeInput(attrs={"class": "form-control", "type": "datetime-local"}),
+            "fecha_programada": forms.DateTimeInput(attrs={"class": "form-control", "type": "datetime-local"}),
+            "fecha_vencimiento": forms.DateTimeInput(attrs={"class": "form-control", "type": "datetime-local"}),
         }

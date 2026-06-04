@@ -1,79 +1,67 @@
-{% extends "base.html" %}
-{% block content %}
-<div class="container-fluid mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <h3 class="fw-bold mb-0"><i class="bi bi-people-fill" style="color: var(--accent);"></i> Usuarios</h3>
-        <a href="{% url 'accounts:master_usuario_create' %}" class="btn btn-primary btn-sm">
-            <i class="bi bi-person-plus"></i> Nuevo Usuario
-        </a>
+{% extends "base.html" %}{% block content %}
+<div class="container-fluid mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-1">
+        <h5 class="fw-bold mb-0" style="font-size:0.95rem;"><i class="bi bi-people-fill" style="color:var(--accent);font-size:0.9rem;"></i> Usuarios</h5>
+        <a href="{% url 'accounts:master_usuario_create' %}" class="btn btn-primary btn-sm" style="font-size:0.7rem;padding:0.2rem 0.5rem;"><i class="bi bi-person-plus"></i> Nuevo</a>
     </div>
 
-    <form class="row g-2 mb-3" method="GET">
-        <div class="col-md-6">
-            <div class="input-group">
-                <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-                <input type="text" name="q" class="form-control" placeholder="Buscar por cedula, nombre, apellido o email..." value="{{ q }}">
+    <form class="row g-1 mb-2" method="GET">
+        <div class="col-md-3">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white" style="font-size:0.7rem;"><i class="bi bi-search"></i></span>
+                <input type="text" name="q" class="form-control" placeholder="Buscar..." value="{{ q }}" style="font-size:0.75rem;">
             </div>
         </div>
-        <div class="col-md-3">
-            <select name="rol" class="form-select" onchange="this.form.submit()">
+        <div class="col-md-2">
+            <select name="area" class="form-select form-select-sm" style="font-size:0.75rem;" onchange="this.form.submit()">
+                <option value="">Todas las areas</option>
+                {% for a in areas %}<option value="{{ a.pk }}" {% if area_filter == a.pk %}selected{% endif %}>{{ a.nombre }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select name="subarea" class="form-select form-select-sm" style="font-size:0.75rem;" onchange="this.form.submit()">
+                <option value="">Todas las subareas</option>
+                {% for s in subareas %}<option value="{{ s.pk }}" {% if subarea_filter == s.pk %}selected{% endif %}>{{ s.nombre }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select name="rol" class="form-select form-select-sm" style="font-size:0.75rem;" onchange="this.form.submit()">
                 <option value="">Todos los roles</option>
                 {% for r in roles %}<option value="{{ r.pk }}" {% if rol_filter == r.pk|stringformat:'s' %}selected{% endif %}>{{ r.nombre }}</option>{% endfor %}
             </select>
         </div>
         <div class="col-auto">
-            <button class="btn btn-outline-secondary" type="submit">Filtrar</button>
-            {% if q or rol_filter %}<a href="{% url 'accounts:master_usuarios' %}" class="btn btn-outline-danger">Limpiar</a>{% endif %}
+            <button class="btn btn-outline-secondary btn-sm" type="submit" style="font-size:0.7rem;">Filtrar</button>
+            {% if q or rol_filter or area_filter or subarea_filter %}<a href="{% url 'accounts:master_usuarios' %}" class="btn btn-outline-danger btn-sm" style="font-size:0.7rem;">Limpiar</a>{% endif %}
         </div>
     </form>
 
     <div class="card shadow-sm">
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-hover mb-0">
+                <table class="table table-hover mb-0" style="font-size:0.78rem;">
                     <thead class="table-light">
-                        <tr>
-                            <th>Cedula</th>
-                            <th>Nombre</th>
-                            <th>Apellido</th>
-                            <th>Cargo</th>
-                            <th>Rol</th>
-                            <th>Empresas</th>
-                            <th>SubAreas</th>
-                            <th>Email</th>
-                            <th>Acciones</th>
-                        </tr>
+                        <tr><th style="font-size:0.6rem;">Cedula</th><th style="font-size:0.6rem;">Nombre</th><th style="font-size:0.6rem;">Apellido</th><th style="font-size:0.6rem;">Cargo</th><th style="font-size:0.6rem;">Rol</th><th style="font-size:0.6rem;">Empresas</th><th style="font-size:0.6rem;">SubAreas</th><th style="font-size:0.6rem;">Email</th><th style="font-size:0.6rem;width:80px;">Acciones</th></tr>
                     </thead>
                     <tbody>
                         {% for u in usuarios %}
                         <tr>
-                            <td><span class="fw-semibold">{{ u.cedula }}</span></td>
+                            <td class="fw-semibold" style="font-size:0.75rem;">{{ u.cedula }}</td>
                             <td>{{ u.nombre }}</td>
                             <td>{{ u.apellido }}</td>
-                            <td><span class="text-muted small">{{ u.cargo|default:"-" }}</span></td>
-                            <td><span class="badge bg-light text-muted">{{ u.rol.nombre|default:"Sin rol" }}</span></td>
+                            <td class="text-muted" style="font-size:0.72rem;">{{ u.cargo|default:"-" }}</td>
+                            <td><span class="badge bg-light text-muted" style="font-size:0.6rem;">{{ u.rol.nombre|default:"Sin rol" }}</span></td>
+                            <td style="font-size:0.7rem;">{% for ue in u.empresas.all %}{% if ue.activo %}<span class="badge bg-light text-muted me-1" style="font-size:0.55rem;">{{ ue.empresa.nombre|truncatechars:15 }}</span>{% endif %}{% empty %}<span class="text-muted">-</span>{% endfor %}</td>
+                            <td style="font-size:0.7rem;">{% for usa in u.subareas.all %}{% if usa.activo %}<span class="badge bg-light text-muted me-1" style="font-size:0.55rem;">{{ usa.subarea.nombre|truncatechars:12 }}</span>{% endif %}{% empty %}<span class="text-muted">-</span>{% endfor %}</td>
+                            <td class="text-muted" style="font-size:0.7rem;">{{ u.email|default:"-"|truncatechars:20 }}</td>
                             <td>
-                                {% for ue in u.empresas.all %}
-                                {% if ue.activo %}<span class="badge bg-light text-muted me-1">{{ ue.empresa.nombre }}</span>{% endif %}
-                                {% empty %}<span class="text-muted small">-</span>{% endfor %}
-                            </td>
-                            <td>
-                                {% for usa in u.subareas.all %}
-                                {% if usa.activo %}<span class="badge bg-light text-muted me-1">{{ usa.subarea.nombre }}</span>{% endif %}
-                                {% empty %}<span class="text-muted small">-</span>{% endfor %}
-                            </td>
-                            <td class="text-muted small">{{ u.email|default:"-" }}</td>
-                            <td>
-                                <div class="btn-group btn-group-sm">
-                                    <a href="{% url 'accounts:master_usuario_edit' u.pk %}" class="btn btn-outline-secondary" title="Editar"><i class="bi bi-pencil"></i></a>
-                                    <a href="{% url 'accounts:master_usuario_empresas' u.pk %}" class="btn btn-outline-primary" title="Empresas"><i class="bi bi-building"></i></a>
-                                    <a href="{% url 'accounts:master_usuario_delete' u.pk %}" class="btn btn-outline-danger" title="Inactivar" onclick="return confirm('Inactivar este usuario?')"><i class="bi bi-trash"></i></a>
+                                <div class="btn-group btn-group-sm" style="gap:2px;">
+                                    <a href="{% url 'accounts:master_usuario_edit' u.pk %}" class="btn btn-outline-secondary py-0 px-1" style="font-size:0.65rem;" title="Editar"><i class="bi bi-pencil"></i></a>
+                                    <a href="{% url 'accounts:master_usuario_delete' u.pk %}" class="btn btn-outline-danger py-0 px-1" style="font-size:0.65rem;" title="Inactivar" onclick="return confirm('Inactivar?')"><i class="bi bi-trash"></i></a>
                                 </div>
                             </td>
                         </tr>
-                        {% empty %}
-                        <tr><td colspan="9" class="text-center text-muted py-4">{% if q %}Sin resultados para "{{ q }}"{% else %}No hay usuarios registrados{% endif %}</td></tr>
-                        {% endfor %}
+                        {% empty %}<tr><td colspan="9" class="text-center text-muted py-3" style="font-size:0.72rem;">{% if q %}Sin resultados{% else %}No hay usuarios{% endif %}</td></tr>{% endfor %}
                     </tbody>
                 </table>
             </div>

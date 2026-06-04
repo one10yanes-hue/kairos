@@ -1,9 +1,16 @@
 from django.urls import path
 from . import views
+from . import integracion_views
 
 app_name = "estructura"
 
 urlpatterns = [
+    path("integracion/habilitaciones/", integracion_views.integracion_cargo, name="integracion_cargo"),
+    path("integracion/api/cargos/", integracion_views.api_integracion_cargos, name="api_integracion_cargos"),
+    path("integracion/api/empleados/", integracion_views.api_integracion_empleados, name="api_integracion_empleados"),
+    path("integracion/api/subareas/", integracion_views.api_integracion_subareas, name="api_integracion_subareas"),
+    path("integracion/sync/", integracion_views.sync_cargo, name="sync_cargo"),
+    path("integracion/api/sync/comparar/", integracion_views.api_sync_comparar, name="api_sync_comparar"),
     path("empresas/", views.empresa_list, name="empresa_list"),
     path("empresas/crear/", views.empresa_create, name="empresa_create"),
     path("empresas/editar/<int:pk>/", views.empresa_edit, name="empresa_edit"),
@@ -19,7 +26,10 @@ urlpatterns = [
     path("subareas/<int:pk>/usuarios/", views.subarea_usuarios, name="subarea_usuarios"),
     path("subareas/<int:pk>/usuarios/<int:user_pk>/remover/", views.subarea_usuario_remove, name="subarea_usuario_remove"),
     path("api/buscar/<str:modelo>/", views.api_buscar, name="api_buscar"),
-    path("importar/", views.importar_exportar, name="importar_exportar"),
-    path("importar/template/<int:empresa_id>/", views.descargar_template, name="descargar_template"),
-    path("importar/subir/", views.importar_datos, name="importar_datos"),
+    path("importaciones/", views.importar_exportar, name="importar_exportar"),
+    path("importaciones/template/", views.descargar_template, name="descargar_template"),
+    path("importaciones/subir/", views.importar_datos, name="importar_datos"),
+    path("importaciones/usuarios/", views.importar_usuarios, name="importar_usuarios"),
+    path("importaciones/usuarios/template/", views.descargar_template_usuarios, name="descargar_template_usuarios"),
+    path("importaciones/usuarios/subir/", views.importar_usuarios_datos, name="importar_usuarios_datos"),
 ]

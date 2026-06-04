@@ -4,12 +4,58 @@ from django.contrib import messages
 from django.utils import timezone
 from django.http import JsonResponse
 from django.db.models import Q
+from datetime import timedelta, date as dt_date
+from apps.actividades.views import get_admin_subareas
 from apps.actividades.models import Actividad, TipoActividad
 from apps.estructura.models import SubArea, UserSubArea
 from apps.planificacion.models import PlanificacionDetalle
 from apps.accounts.models import User
-from .models import AsignacionActividad, RegistroTiempo, TrasladoActividad, Colaboracion, Comentario
+from .models import AsignacionActividad, RegistroTiempo, TrasladoActividad, Colaboracion, Comentario, TiempoInactividad, RevisionHistorial
 from .forms import RegistroTiempoForm, ComentarioForm
+
+
+def _gestionar_tiempo_inactividad(user):
+    """Si el usuario no tiene actividad EnCurso, abre periodo de inactividad.
+       Si tiene EnCurso, cierra cualquier periodo abierto."""
+    ahora = timezone.now()
+    tiene_curso = AsignacionActividad.objects.filter(user=user, activo=True, estado="EnCurso").exists()
+    if tiene_curso:
+        for tm in TiempoInactividad.objects.filter(user=user, activo=True, fin__isnull=True):
+            if tm.inicio:
+                tm.duracion_segundos += int((ahora - tm.inicio).total_seconds())
+            tm.fin = ahora
+            tm.activo = False
+            tm.save()
+        # Si tenia EnCurso pero no habia TM abierto, hubo inactividad no registrada.
+        # Crear TM retroactivo desde el ultimo evento hasta ahora y cerrarlo.
+        if not TiempoInactividad.objects.filter(user=user, activo=True, fin__isnull=True).exists():
+            ultimo = RegistroTiempo.objects.filter(
+                asignacion__user=user, activo=True,
+                evento__in=["Finalizacion", "Pausa", "Inicio", "Reanudacion"]
+            ).order_by("-fecha_hora").first()
+            if ultimo and not AsignacionActividad.objects.filter(
+                user=user, activo=True, estado="EnCurso"
+            ).exclude(fecha_update__gte=ultimo.fecha_hora).exists():
+                # El ultimo evento fue hace tiempo, el usuario estuvo inactivo
+                tm = TiempoInactividad.objects.create(
+                    user=user, fecha=ultimo.fecha_hora.date(),
+                    inicio=ultimo.fecha_hora
+                )
+                tm.duracion_segundos = int((ahora - tm.inicio).total_seconds())
+                tm.fin = ahora
+                tm.activo = False
+                tm.save()
+    else:
+        if not TiempoInactividad.objects.filter(user=user, activo=True, fin__isnull=True).exists():
+            # Usar ultimo evento como inicio si existe
+            ultimo = RegistroTiempo.objects.filter(
+                asignacion__user=user, activo=True,
+                evento__in=["Finalizacion", "Pausa", "Inicio", "Reanudacion"]
+            ).order_by("-fecha_hora").first()
+            inicio = ultimo.fecha_hora if ultimo else ahora
+            TiempoInactividad.objects.create(
+                user=user, fecha=inicio.date(), inicio=inicio
+            )
 
 
 def _pausar_activas(user, motivo=None):
@@ -31,16 +77,22 @@ def tablero(request):
     empresa_id = request.GET.get("empresa_id")
     subarea_id = request.GET.get("subarea_id")
 
-    user_subareas = UserSubArea.objects.filter(user=request.user, activo=True).select_related("subarea__area__empresa")
+    user_subareas = UserSubArea.objects.filter(user=request.user, activo=True).select_related("subarea__area")
 
     if not subarea_id and user_subareas.exists():
         subarea_id = user_subareas.first().subarea_id
-    if not empresa_id and user_subareas.exists():
-        empresa_id = user_subareas.first().subarea.area.empresa_id
 
+    ahora = timezone.now()
     asignaciones = AsignacionActividad.objects.filter(
-        user=request.user, activo=True
-    ).select_related("actividad__tipo_actividad", "actividad__subarea__area__empresa", "planificacion_detalle__planificacion")
+        user=request.user, activo=True,
+    ).filter(
+        Q(estado__in=["EnCurso", "Pausada", "Finalizada", "Cancelada", "Trasladada", "Revision"]) |
+        Q(planificacion_detalle__isnull=True) |
+        Q(planificacion_detalle__fecha_programada__isnull=True) |
+        Q(planificacion_detalle__fecha_programada__lte=ahora) |
+        Q(actividad__tipo_actividad__requiere_entregable=True)
+    ).select_related("actividad__tipo_actividad", "actividad__subarea__area", "planificacion_detalle__planificacion"
+    ).prefetch_related("comentarios")
 
     if subarea_id:
         asignaciones = asignaciones.filter(
@@ -51,30 +103,28 @@ def tablero(request):
     planificadas = asignaciones.filter(estado="Pendiente")
     en_curso = asignaciones.filter(estado="EnCurso")
     pausadas = asignaciones.filter(estado="Pausada")
+    revision = asignaciones.filter(estado="Revision")
 
-    hoy = timezone.now().date()
-    # Solo finalizadas del dia actual, ordenadas por ultimo evento
+    # Finalizadas de las ultimas 24 horas
+    un_dia_atras = ahora - timedelta(hours=24)
     finalizadas = asignaciones.filter(
-        estado="Finalizada",
+        estado__in=["Finalizada", "Revision"],
         registros__evento="Finalizacion",
-        registros__fecha_hora__date=hoy
+        registros__fecha_hora__gte=un_dia_atras
     ).order_by("-registros__fecha_hora").distinct()
 
+    hoy = ahora.date()
     actividades_hoy = asignaciones.filter(estado__in=["Pendiente", "EnCurso", "Pausada"])
-
-    actividad_no_programada_tipo = TipoActividad.objects.filter(
-        subarea__in=user_subareas.values("subarea"),
-        nombre__icontains="No Programada",
-        activo=True
-    ).first()
 
     context = {
         "user_subareas": user_subareas,
         "subarea_id": int(subarea_id) if subarea_id else None,
         "empresa_id": int(empresa_id) if empresa_id else None,
         "planificadas": planificadas,
+        "planificadas": planificadas,
         "en_curso": en_curso,
         "pausadas": pausadas,
+        "revision": revision,
         "finalizadas": finalizadas,
         "actividades_hoy": actividades_hoy,
         "hoy": hoy,
@@ -115,6 +165,7 @@ def activar_actividad(request, pk):
     )
 
     messages.success(request, f"Actividad {'iniciada' if evento == 'Inicio' else 'reanudada'}.")
+    _gestionar_tiempo_inactividad(request.user)
     return redirect("gestion:tablero")
 
 
@@ -157,6 +208,8 @@ def pausar_actividad(request, pk):
         nueva_asignacion = AsignacionActividad.objects.create(
             user=request.user, actividad=nueva, estado="EnCurso",
             origen="Manual", origen_user=request.user,
+            nombre_actividad=nueva.nombre,
+            nombre_tipo=nueva.tipo_actividad.nombre,
         )
         RegistroTiempo.objects.create(
             asignacion=nueva_asignacion, evento="Inicio", fecha_hora=timezone.now()
@@ -168,6 +221,7 @@ def pausar_actividad(request, pk):
     else:
         messages.success(request, "Actividad pausada.")
 
+    _gestionar_tiempo_inactividad(request.user)
     return redirect("gestion:tablero")
 
 
@@ -181,39 +235,87 @@ def finalizar_actividad(request, pk):
         messages.error(request, f"Solo puedes finalizar actividades En Curso o Pausadas. Estado actual: '{asignacion.get_estado_display()}'.")
         return redirect("gestion:tablero")
 
-    form = RegistroTiempoForm(request.POST)
+    reemplazo = request.POST.get("reemplazo_actividad")
+    entregable_file = request.FILES.get("entregable")
+
+    form = RegistroTiempoForm(request.POST, request.FILES)
     if form.is_valid():
-        if not form.cleaned_data.get("nro_actividad", "").strip():
+        requiere_ent = asignacion.actividad.tipo_actividad.requiere_entregable
+        if not requiere_ent and not form.cleaned_data.get("nro_actividad", "").strip():
             messages.error(request, "El numero de actividad (cantidad realizada) es obligatorio para finalizar.")
             return redirect("gestion:tablero")
-        asignacion.estado = "Finalizada"
+        if requiere_ent and not entregable_file:
+            messages.error(request, "Esta actividad requiere un archivo entregable.")
+            return redirect("gestion:tablero")
+        if (asignacion.planificacion_detalle and asignacion.planificacion_detalle.fecha_vencimiento
+                and asignacion.actividad.tipo_actividad.requiere_fecha_limite):
+            venc = asignacion.planificacion_detalle.fecha_vencimiento
+            if venc < timezone.now():
+                asignacion.dias_vencida = ((timezone.now() - venc).days)
+        if requiere_ent and entregable_file:
+            asignacion.entregable = entregable_file
+            asignacion.estado = "Revision"
+            asignacion.estado_revision = "pendiente"
+        else:
+            asignacion.estado = "Finalizada"
         asignacion.save()
         registro = form.save(commit=False)
         registro.asignacion = asignacion
         registro.evento = "Finalizacion"
         registro.fecha_hora = timezone.now()
         registro.save()
-        # Iniciar actividad de reemplazo si se selecciono
-        reemplazo_pk = request.POST.get("reemplazo_actividad")
-        if reemplazo_pk:
-            reemplazo = AsignacionActividad.objects.filter(
-                pk=reemplazo_pk, user=request.user, activo=True, estado="Pendiente"
-            ).first()
-            if reemplazo:
+
+        comentario_texto = form.cleaned_data.get("comentario", "").strip()
+        if comentario_texto:
+            Comentario.objects.create(
+                asignacion=asignacion, user=request.user,
+                texto=comentario_texto,
+                detalle=asignacion.planificacion_detalle
+            )
+
+        if reemplazo == "flash":
+            flash_actividad_id = request.POST.get("flash_actividad_id")
+            flash_subarea_id = request.POST.get("flash_subarea")
+            if flash_actividad_id and flash_subarea_id:
+                flash_actividad = get_object_or_404(Actividad, pk=flash_actividad_id, subarea_id=flash_subarea_id, activo=True)
                 _pausar_activas(request.user)
-                reemplazo.estado = "EnCurso"
-                reemplazo.save()
-                RegistroTiempo.objects.create(
-                    asignacion=reemplazo, evento="Inicio", fecha_hora=timezone.now(),
-                    comentario=f"Iniciada tras finalizar '{asignacion.actividad.nombre}'"
+                flash_asignacion = AsignacionActividad.objects.create(
+                    user=request.user,
+                    actividad=flash_actividad,
+                    estado="EnCurso",
+                    origen="Manual",
+                    origen_user=request.user,
+                    nombre_actividad=flash_actividad.nombre,
+                    nombre_tipo=flash_actividad.tipo_actividad.nombre,
                 )
-                messages.success(request, f"Actividad '{asignacion.actividad.nombre}' finalizada. Ahora estas trabajando en '{reemplazo.actividad.nombre}'.")
+                RegistroTiempo.objects.create(
+                    asignacion=flash_asignacion,
+                    evento="Inicio",
+                    fecha_hora=timezone.now(),
+                    comentario=f"Flash iniciada tras finalizar '{asignacion.actividad.nombre}'",
+                )
+                messages.success(request, f"Actividad '{asignacion.actividad.nombre}' finalizada. Flash '{flash_actividad.nombre}' iniciada.")
             else:
-                messages.success(request, f"Actividad '{asignacion.actividad.nombre}' finalizada.")
+                messages.error(request, "Error al iniciar la actividad flash.")
+            return redirect("gestion:tablero")
+
+        reemplazo_asig = AsignacionActividad.objects.filter(
+            pk=reemplazo, user=request.user, activo=True, estado="Pendiente"
+        ).first()
+        if reemplazo_asig:
+            _pausar_activas(request.user)
+            reemplazo_asig.estado = "EnCurso"
+            reemplazo_asig.save()
+            RegistroTiempo.objects.create(
+                asignacion=reemplazo_asig, evento="Inicio", fecha_hora=timezone.now(),
+                comentario=f"Iniciada tras finalizar '{asignacion.actividad.nombre}'"
+            )
+            messages.success(request, f"Actividad '{asignacion.actividad.nombre}' finalizada. Ahora estas trabajando en '{reemplazo_asig.actividad.nombre}'.")
         else:
-            messages.success(request, f"Actividad '{asignacion.actividad.nombre}' finalizada con {registro.nro_actividad or '0'} unidades registradas.")
+            messages.success(request, f"Actividad '{asignacion.actividad.nombre}' finalizada.")
     else:
         messages.error(request, "El numero de actividad (cantidad realizada) es obligatorio para finalizar.")
+    _gestionar_tiempo_inactividad(request.user)
     return redirect("gestion:tablero")
 
 
@@ -232,6 +334,13 @@ def crear_no_programada(request):
 
         actividad = get_object_or_404(Actividad, pk=actividad_id, subarea_id=subarea_id, activo=True)
 
+        duplicada = AsignacionActividad.objects.filter(
+            user=request.user, actividad=actividad, activo=True
+        ).exclude(estado__in=["Finalizada", "Cancelada", "Trasladada"]).exists()
+        if duplicada:
+            messages.warning(request, f"Ya tienes la actividad '{actividad.nombre}' pendiente o en curso.")
+            return redirect("gestion:crear_no_programada")
+
         _pausar_activas(request.user)
 
         asignacion = AsignacionActividad.objects.create(
@@ -240,6 +349,8 @@ def crear_no_programada(request):
             estado="EnCurso",
             origen="Manual",
             origen_user=request.user,
+            nombre_actividad=actividad.nombre,
+            nombre_tipo=actividad.tipo_actividad.nombre,
         )
         RegistroTiempo.objects.create(
             asignacion=asignacion,
@@ -248,6 +359,7 @@ def crear_no_programada(request):
             comentario=comentario or None,
         )
         messages.success(request, f"Actividad '{actividad.nombre}' iniciada.")
+        _gestionar_tiempo_inactividad(request.user)
         return redirect("gestion:tablero")
 
     context = {
@@ -260,24 +372,34 @@ def crear_no_programada(request):
 def trasladar_actividad(request, pk):
     if request.method != "POST":
         return redirect("gestion:tablero")
-    asignacion = get_object_or_404(AsignacionActividad, pk=pk, user=request.user, activo=True)
+    asignacion = get_object_or_404(AsignacionActividad, pk=pk, activo=True)
+    if asignacion.user != request.user and request.user.rol.nombre not in ["Master", "Admin"]:
+        return redirect("gestion:tablero")
 
     if asignacion.estado not in ["Pendiente", "EnCurso", "Pausada"]:
         messages.error(request, f"Solo puedes trasladar actividades Pendientes, En Curso o Pausadas. Esta actividad esta '{asignacion.get_estado_display()}'.")
+        return redirect("gestion:tablero")
+
+    if asignacion.actividad.tipo_actividad.requiere_entregable:
+        messages.error(request, "No puedes trasladar actividades que requieren entregable.")
         return redirect("gestion:tablero")
 
     user_destino_id = request.POST.get("user_destino")
     actividad_reemplazo_id = request.POST.get("actividad_reemplazo")
     motivo = request.POST.get("motivo", "")
 
-    if not user_destino_id or not actividad_reemplazo_id:
-        messages.error(request, "Debes seleccionar un usuario destino y tu actividad de reemplazo.")
+    if not user_destino_id:
+        messages.error(request, "Debes seleccionar un usuario destino.")
         return redirect("gestion:tablero")
 
     user_destino = get_object_or_404(User, pk=user_destino_id, activo=True)
-    actividad_reemplazo = get_object_or_404(Actividad, pk=actividad_reemplazo_id, activo=True)
+    actividad_reemplazo = None
+    if actividad_reemplazo_id:
+        actividad_reemplazo = get_object_or_404(Actividad, pk=actividad_reemplazo_id, activo=True)
+        if actividad_reemplazo.pk == asignacion.actividad.pk:
+            messages.error(request, "No puedes seleccionar la misma actividad como reemplazo.")
+            return redirect("gestion:tablero")
 
-    # Evitar solicitudes duplicadas pendientes
     if TrasladoActividad.objects.filter(
         asignacion_origen=asignacion, user_destino=user_destino, estado="Pendiente", activo=True
     ).exists():
@@ -317,6 +439,11 @@ def aceptar_traslado(request, pk):
         )
 
     # Marcar origen como trasladada
+    if (asignacion.planificacion_detalle and asignacion.planificacion_detalle.fecha_vencimiento
+            and asignacion.actividad.tipo_actividad.requiere_fecha_limite):
+        venc = asignacion.planificacion_detalle.fecha_vencimiento
+        if venc < timezone.now():
+            asignacion.dias_vencida = ((timezone.now() - venc).days)
     asignacion.estado = "Trasladada"
     asignacion.save()
     RegistroTiempo.objects.create(
@@ -335,6 +462,8 @@ def aceptar_traslado(request, pk):
         planificacion_detalle=asignacion.planificacion_detalle,
         origen="Traslado",
         origen_user=traslado.user_origen,
+        nombre_actividad=asignacion.actividad.nombre,
+        nombre_tipo=asignacion.actividad.tipo_actividad.nombre,
     )
     if estado_destino == "EnCurso":
         RegistroTiempo.objects.create(
@@ -357,6 +486,8 @@ def aceptar_traslado(request, pk):
             estado="EnCurso" if not tiene_curso_origen else "Pendiente",
             origen="Traslado",
             origen_user=request.user,
+            nombre_actividad=traslado.actividad_reemplazo.nombre,
+            nombre_tipo=traslado.actividad_reemplazo.tipo_actividad.nombre,
         )
         if not tiene_curso_origen:
             RegistroTiempo.objects.create(
@@ -379,6 +510,7 @@ def aceptar_traslado(request, pk):
             )
 
     messages.success(request, f"Traslado aceptado. Actividad '{asignacion.actividad.nombre}' agregada a tu tablero.")
+    _gestionar_tiempo_inactividad(traslado.user_origen)
     return redirect("gestion:tablero")
 
 
@@ -387,14 +519,12 @@ def cancelar_traslado(request, pk):
     traslado = get_object_or_404(
         TrasladoActividad, pk=pk, estado="Pendiente", activo=True
     )
-    # Solo el origen o el destino pueden cancelar
     if request.user not in [traslado.user_origen, traslado.user_destino]:
         return redirect("gestion:tablero")
 
     traslado.estado = "Cancelado" if request.user == traslado.user_origen else "Rechazado"
     traslado.save()
     messages.success(request, "Solicitud de traslado cancelada.")
-    return redirect("gestion:tablero")
     return redirect("gestion:tablero")
 
 
@@ -462,9 +592,10 @@ def agregar_comentario(request, pk):
         comentario = form.save(commit=False)
         comentario.asignacion = asignacion
         comentario.user = request.user
+        comentario.detalle = asignacion.planificacion_detalle
         comentario.save()
         messages.success(request, "Comentario agregado.")
-    return redirect("gestion:tablero")
+    return redirect("gestion:detalle_actividad", pk=pk)
 
 
 @login_required
@@ -476,12 +607,14 @@ def detalle_actividad(request, pk):
     comentarios = Comentario.objects.filter(asignacion=asignacion, activo=True).order_by("-fecha_creacion")
     traslados = TrasladoActividad.objects.filter(asignacion_origen=asignacion, activo=True)
     colaboraciones = Colaboracion.objects.filter(asignacion=asignacion, activo=True)
+    historial = RevisionHistorial.objects.filter(asignacion=asignacion).select_related("user").order_by("-fecha")
     context = {
         "asignacion": asignacion,
         "registros": registros,
         "comentarios": comentarios,
         "traslados": traslados,
         "colaboraciones": colaboraciones,
+        "historial": historial,
         "tiempo_efectivo": asignacion.tiempo_formateado(),
     }
     return render(request, "gestion/detalle_actividad.html", context)
@@ -490,98 +623,64 @@ def detalle_actividad(request, pk):
 @login_required
 def calendario(request):
     from datetime import timedelta, date as dt_date
-    import calendar as cal_mod
     hoy = timezone.now().date()
     year = int(request.GET.get("year", hoy.year))
     month = int(request.GET.get("month", hoy.month))
-    vista = request.GET.get("vista", "mes")  # mes, semana, dia
+    vista = request.GET.get("vista", "dayGridMonth")
 
-    # Rango segun vista
-    week_days = []
-    if vista == "dia":
-        dia_sel = dt_date(year, month, int(request.GET.get("dia", hoy.day)))
-        first_day = last_day = dia_sel
-    elif vista == "semana":
-        # Encontrar el lunes de la semana
-        dia_sel = dt_date(year, month, int(request.GET.get("dia", hoy.day)))
-        inicio_semana = dia_sel - timedelta(days=dia_sel.weekday())
-        first_day = inicio_semana
-        last_day = inicio_semana + timedelta(days=6)
-    else:
-        first_day = dt_date(year, month, 1)
-        if month == 12:
-            last_day = dt_date(year + 1, 1, 1) - timedelta(days=1)
-        else:
-            last_day = dt_date(year, month + 1, 1) - timedelta(days=1)
-
-    # Poblar week_days solo para vista semana
-    if vista == "semana":
-        d = first_day
-        while d <= last_day:
-            week_days.append(d)
-            d += timedelta(days=1)
-
-    # Asignaciones del usuario
     asignaciones = AsignacionActividad.objects.filter(user=request.user, activo=True).select_related(
         "actividad", "actividad__tipo_actividad", "planificacion_detalle"
     )
 
-    # Registros de tiempo del usuario
     registros = RegistroTiempo.objects.filter(
         asignacion__user=request.user, activo=True
     ).select_related("asignacion__actividad").order_by("fecha_hora")
 
-    # Construir datos por dia
-    dias_con_actividades = {}
+    # Construir eventos FullCalendar
+    color_map = {
+        "Pendiente": {"bg": "#93c5fd", "txt": "#1e40af"},
+        "EnCurso": {"bg": "#86efac", "txt": "#166534"},
+        "Pausada": {"bg": "#cbd5e1", "txt": "#475569"},
+        "Finalizada": {"bg": "#bbf7d0", "txt": "#166534"},
+        "Vence": {"bg": "#fecaca", "txt": "#991b1b"},
+    }
+    events = []
     for a in asignaciones:
-        dia = a.fecha_asignacion.date() if hasattr(a.fecha_asignacion, 'date') else a.fecha_asignacion
-        iso = dia.isoformat()
-        dias_con_actividades.setdefault(iso, {"count": 0, "items": []})
-        dias_con_actividades[iso]["count"] += 1
-        dias_con_actividades[iso]["items"].append({
-            "nombre": a.actividad.nombre,
-            "tipo": a.actividad.tipo_actividad.nombre,
-            "estado": a.estado,
-            "tiempo": a.tiempo_formateado(),
-            "hora": 8,  # hora por defecto si no hay registros
+        color = color_map.get(a.estado, {"bg": "#e2e8f0", "txt": "#334155"})
+        events.append({
+            "id": str(a.pk),
+            "title": a.actividad.nombre,
+            "start": a.fecha_asignacion.strftime("%Y-%m-%d"),
+            "allDay": True,
+            "backgroundColor": color["bg"],
+            "textColor": color["txt"],
+            "borderColor": color["bg"],
+            "extendedProps": {
+                "tipo": a.actividad.tipo_actividad.nombre,
+                "estado": a.estado,
+                "tiempo": a.tiempo_formateado(),
+                "origen": a.origen or "Manual",
+            },
         })
         pd = a.planificacion_detalle
-        if pd and pd.fecha_limite:
-            ld = pd.fecha_limite.date() if hasattr(pd.fecha_limite, 'date') else pd.fecha_limite
-            liso = ld.isoformat()
-            dias_con_actividades.setdefault(liso, {"count": 0, "items": []})
-            dias_con_actividades[liso]["count"] += 1
-            dias_con_actividades[liso]["items"].append({
-                "nombre": a.actividad.nombre,
-                "tipo": a.actividad.tipo_actividad.nombre,
-                "estado": "Vence",
-                "tiempo": "",
-                "hora": 8,
+        if pd and pd.fecha_vencimiento:
+            ld = pd.fecha_vencimiento.date() if hasattr(pd.fecha_vencimiento, 'date') else pd.fecha_vencimiento
+            events.append({
+                "id": f"v{a.pk}",
+                "title": f"Vence: {a.actividad.nombre}",
+                "start": ld.isoformat(),
+                "allDay": True,
+                "backgroundColor": "#fecaca",
+                "textColor": "#991b1b",
+                "borderColor": "#fca5a5",
+                "extendedProps": {
+                    "tipo": a.actividad.tipo_actividad.nombre,
+                    "estado": "Vence",
+                    "tiempo": "",
+                },
             })
 
-    # Asignar hora real desde RegistroTiempo (primer evento del dia)
-    for r in registros:
-        rd = r.fecha_hora.date()
-        iso = rd.isoformat()
-        if iso in dias_con_actividades:
-            h = r.fecha_hora.hour
-            for item in dias_con_actividades[iso]["items"]:
-                if item["nombre"] == r.asignacion.actividad.nombre and item["hora"] == 8:
-                    item["hora"] = h
-                    break
-
-    # Construir timeline por hora para vistas dia/semana
-    horas = list(range(24))
-    timeline_flat = []  # [(iso, hora, item_dict)]
-    if vista in ("dia", "semana"):
-        rango = [first_day + timedelta(days=i) for i in range((last_day - first_day).days + 1)]
-        for d in rango:
-            iso = d.isoformat()
-            if iso in dias_con_actividades:
-                for item in dias_con_actividades[iso]["items"]:
-                    timeline_flat.append((iso, item["hora"], item))
-
-    # Grid del mes (necesario para navegacion en todas las vistas)
+    # Grid del mes para navegacion
     month_cal = []
     week = [None] * dt_date(year, month, 1).weekday()
     if month == 12:
@@ -599,26 +698,20 @@ def calendario(request):
 
     meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
              "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
-    dias_semana = ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"]
 
-    # Determinar fecha actual para navegacion
-    nav_date = dt_date(year, month, first_day.day if vista != "dia" else dia_sel.day)
+    prev_month = month - 1 if month > 1 else 12
+    prev_year = year if month > 1 else year - 1
+    next_month = month + 1 if month < 12 else 1
+    next_year = year if month < 12 else year + 1
 
     return render(request, "gestion/calendario.html", {
         "vista": vista,
-        "month_cal": month_cal,
-        "week_days": week_days if vista == "semana" else [],
-        "dia_sel": dia_sel if vista in ("semana", "dia") else first_day,
-        "dias_con_actividades": dias_con_actividades,
-        "timeline_flat": timeline_flat if vista in ("dia", "semana") else [],
-        "horas": horas,
+        "events_json": events,
         "year": year, "month": month, "mes": meses[month - 1],
+        "prev_month": prev_month, "prev_year": prev_year,
+        "next_month": next_month, "next_year": next_year,
         "hoy": hoy,
         "registros": registros,
-        "prev_month": month - 1 if month > 1 else 12,
-        "prev_year": year if month > 1 else year - 1,
-        "next_month": month + 1 if month < 12 else 1,
-        "next_year": year if month < 12 else year + 1,
     })
 
 
@@ -630,6 +723,8 @@ def perfil(request):
     from django.db.models import Sum, Count
 
     asignaciones = AsignacionActividad.objects.filter(user=user, activo=True)
+    # Incluye inactivas para el tiempo real acumulado
+    asignaciones_tiempo = AsignacionActividad.objects.filter(user=user)
     registros = RegistroTiempo.objects.filter(asignacion__user=user, activo=True)
 
     total_asignaciones = asignaciones.count()
@@ -639,11 +734,11 @@ def perfil(request):
     pendientes = asignaciones.filter(estado="Pendiente").count()
     prorrogas = asignaciones.filter(prorroga_count__gt=0).count()
 
-    tiempo_total = sum(a.tiempo_efectivo() for a in asignaciones)
+    tiempo_total = sum(a.tiempo_efectivo() for a in asignaciones_tiempo)
     horas = int(tiempo_total // 3600)
     minutos = int((tiempo_total % 3600) // 60)
 
-    tiempo_pausado = sum(a.tiempo_pausado() for a in asignaciones)
+    tiempo_pausado = sum(a.tiempo_pausado() for a in asignaciones_tiempo)
     horas_p = int(tiempo_pausado // 3600)
     mins_p = int((tiempo_pausado % 3600) // 60)
 
@@ -668,3 +763,100 @@ def perfil(request):
         "hoy_registros": hoy_registros,
         "ultimas": ultimas,
     })
+
+
+@login_required
+def revisiones_list(request):
+    from apps.estructura.models import SubArea, UserSubArea
+    from django.core.paginator import Paginator
+
+    subareas = get_admin_subareas(request.user) if request.user.rol.nombre in ["Master", "Admin"] else SubArea.objects.filter(
+        usuarios__user=request.user, activo=True
+    )
+
+    user_id = request.GET.get("user_id")
+    estado_filtro = request.GET.get("estado", "")
+
+    revisiones = AsignacionActividad.objects.filter(
+        actividad__subarea__in=subareas,
+        actividad__tipo_actividad__requiere_entregable=True,
+        activo=True,
+    ).select_related(
+        "user", "actividad__tipo_actividad", "actividad__subarea__area"
+    ).prefetch_related("comentarios").order_by("-fecha_asignacion")
+
+    # Si no hay filtro o es pendiente: solo actividades en estado Revision (pendientes de revision)
+    # Si filtro aprobado/rechazado: todas las que tengan ese estado_revision
+    if estado_filtro == "pendiente":
+        revisiones = revisiones.filter(estado="Revision", estado_revision="pendiente")
+    elif estado_filtro:
+        revisiones = revisiones.filter(estado_revision=estado_filtro)
+    else:
+        revisiones = revisiones.filter(estado="Revision")
+
+    if user_id:
+        revisiones = revisiones.filter(user_id=user_id)
+
+    paginator = Paginator(revisiones, 20)
+    page = request.GET.get("page", 1)
+    revisiones_page = paginator.get_page(page)
+
+    usuarios = User.objects.filter(
+        Q(asignaciones__actividad__subarea__in=subareas, asignaciones__estado="Revision", asignaciones__estado_revision="pendiente") |
+        Q(asignaciones__actividad__subarea__in=subareas, asignaciones__estado_revision__in=["aprobado", "rechazado"]),
+        activo=True
+    ).distinct().order_by("nombre")
+
+    return render(request, "gestion/revisiones.html", {
+        "revisiones": revisiones_page,
+        "page_obj": revisiones_page,
+        "usuarios": usuarios,
+        "user_id": int(user_id) if user_id else None,
+        "estado_filtro": estado_filtro,
+    })
+
+
+@login_required
+def revision_aprobar(request, pk):
+    if request.method != "POST":
+        return redirect("gestion:revisiones")
+    asignacion = get_object_or_404(AsignacionActividad, pk=pk, activo=True, estado="Revision")
+    if request.user.rol.nombre not in ["Master", "Admin"]:
+        return redirect("gestion:revisiones")
+    comentario = request.POST.get("comentario", "")
+    asignacion.estado = "Finalizada"
+    asignacion.estado_revision = "aprobado"
+    asignacion.revision_comentario = comentario or None
+    asignacion.fecha_revision = timezone.now()
+    asignacion.save()
+    RevisionHistorial.objects.create(
+        asignacion=asignacion, user=request.user,
+        accion="aprobado", comentario=comentario or ""
+    )
+    messages.success(request, f"Actividad '{asignacion.actividad.nombre}' aprobada.")
+    return redirect("gestion:revisiones")
+
+
+@login_required
+def revision_rechazar(request, pk):
+    if request.method != "POST":
+        return redirect("gestion:revisiones")
+    asignacion = get_object_or_404(AsignacionActividad, pk=pk, activo=True, estado="Revision")
+    if request.user.rol.nombre not in ["Master", "Admin"]:
+        return redirect("gestion:revisiones")
+    comentario = request.POST.get("comentario", "")
+    if not comentario:
+        messages.error(request, "Debes indicar el motivo del rechazo.")
+        return redirect("gestion:revisiones")
+    asignacion.estado = "Pendiente"
+    asignacion.estado_revision = "rechazado"
+    asignacion.revision_comentario = comentario
+    asignacion.fecha_revision = timezone.now()
+    asignacion.prorroga_count += 1
+    asignacion.save()
+    RevisionHistorial.objects.create(
+        asignacion=asignacion, user=request.user,
+        accion="rechazado", comentario=comentario
+    )
+    messages.warning(request, f"Actividad '{asignacion.actividad.nombre}' rechazada. Se ha regresado a pendiente.")
+    return redirect("gestion:revisiones")

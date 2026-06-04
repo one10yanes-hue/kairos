@@ -68,6 +68,7 @@
 .tl-legend-dot.actv { background: #86efac; }
 .tl-legend-dot.paus { background: #94a3b8; }
 .tl-legend-dot.pend { background: #93c5fd; }
+.tl-legend-dot.finz { background: #fef3c7; border: 1px dashed #f59e0b; }
 
 /* Timeline body */
 .tl-body {
@@ -124,6 +125,12 @@
     opacity: 0.5;
 }
 
+.vis-item.vis-range.finz {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px dashed #f59e0b;
+}
+
 .vis-item .vis-item-content {
     padding: 1px 6px !important;
     font-size: 0.6rem !important;
@@ -133,8 +140,9 @@
 }
 
 .vis-labelset .vis-label {
-    font-size: 0.72rem !important;
+    font-size: 0.68rem !important;
     font-weight: 500;
+    white-space: nowrap;
 }
 
 .vis-time-axis .vis-text {
@@ -146,6 +154,8 @@
     background: #ef4444 !important;
     width: 2px !important;
 }
+
+
 
 .vis-panel.vis-center,
 .vis-panel.vis-left {

@@ -1,4 +1,6 @@
-{% extends "base.html" %}{% block content %}
+{% extends "base.html" %}{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css" rel="stylesheet">
+{% endblock %}{% block content %}
 <div class="container-fluid mt-3">
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <h5 class="fw-bold mb-0"><i class="bi bi-person-circle" style="color:var(--accent);font-size:1.2rem;"></i> Mi Perfil</h5>
@@ -9,10 +11,22 @@
         <div class="col-md-4">
             <div class="card shadow-sm">
                 <div class="card-body text-center p-3">
-                    <div class="mx-auto mb-2 d-flex align-items-center justify-content-center" style="width:64px;height:64px;border-radius:50%;background:var(--accent-light);color:var(--accent-dark);font-size:1.5rem;font-weight:600;">
-                        {{ user.nombre|first|upper }}{{ user.apellido|first|upper }}
+                    <div class="mx-auto mb-2 position-relative d-flex align-items-center justify-content-center" style="width:72px;height:72px;border-radius:50%;overflow:hidden;{% if user.foto %}background:#fff;{% else %}background:var(--accent-light);color:var(--accent-dark);{% endif %}font-size:1.5rem;font-weight:600;cursor:pointer;" onclick="document.getElementById('fotoInput').click()" onmouseenter="this.querySelector('.foto-overlay').style.display='flex'" onmouseleave="this.querySelector('.foto-overlay').style.display='none'">
+                        {% if user.foto %}
+                        <img id="avatarImg" src="{{ user.foto.url }}" alt="Foto" style="width:100%;height:100%;object-fit:cover;">
+                        {% else %}
+                        <div id="avatarInitials">{{ user.nombre|first|upper }}{{ user.apellido|first|upper }}</div>
+                        {% endif %}
+                        <div class="foto-overlay" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,0.4);align-items:center;justify-content:center;border-radius:50%;">
+                            <i class="bi bi-camera-fill text-white" style="font-size:1.2rem;"></i>
+                        </div>
                     </div>
-                    <h6 class="fw-bold mb-0">{{ user.get_full_name }}</h6>
+                    <form method="POST" action="{% url 'gestion:subir_foto' %}" enctype="multipart/form-data" id="fotoForm" style="display:none;">
+                        {% csrf_token %}
+                        <input type="file" name="foto" id="fotoInput" accept="image/jpeg,image/png,image/gif,image/webp">
+                        <input type="hidden" name="foto_cropped" id="fotoCropped">
+                    </form>
+                    <h6 class="fw-bold mb-0 mt-2">{{ user.get_full_name }}</h6>
                     <small class="text-muted">{{ user.rol.nombre|default:"" }}{% if user.cargo %} &middot; {{ user.cargo }}{% endif %}</small>
                     {% if user.email %}<p class="text-muted mt-1 mb-0" style="font-size:0.72rem;"><i class="bi bi-envelope"></i> {{ user.email }}</p>{% endif %}
                     <p class="text-muted mb-0" style="font-size:0.72rem;"><i class="bi bi-person-badge"></i> {{ user.cedula }}</p>
@@ -28,7 +42,7 @@
                             {% for a in ultimas %}
                             <tr>
                                 <td>{{ a.actividad.nombre|truncatechars:22 }}</td>
-                                <td><span class="badge {% if a.estado == 'EnCurso' %}bg-warning text-dark{% elif a.estado == 'Finalizada' %}bg-success{% elif a.estado == 'Pausada' %}bg-secondary{% else %}bg-light text-muted{% endif %}" style="font-size:0.55rem;">{{ a.get_estado_display }}</span></td>
+                                <td><span class="badge {% if a.estado == 'Trasladada' %}bg-info text-white{% elif a.estado == 'Revision' %}bg-warning text-dark{% elif a.estado == 'EnCurso' %}bg-warning text-dark{% elif a.estado == 'Finalizada' %}bg-success{% elif a.estado == 'Pausada' %}bg-secondary{% else %}bg-light text-muted{% endif %}" style="font-size:0.55rem;">{% if a.estado == 'Trasladada' %}Completada por otro{% elif a.estado == 'Revision' %}En revision{% else %}{{ a.get_estado_display }}{% endif %}</span></td>
                             </tr>
                             {% empty %}<tr><td colspan="2" class="text-center text-muted py-2">Sin actividades</td></tr>{% endfor %}
                         </tbody>
@@ -74,4 +88,67 @@
             </div>
         </div>
     </div>
-</div>{% endblock %}
+</div>
+
+<!-- Crop Modal -->
+<div id="cropModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:0.75rem;max-width:500px;width:90%;padding:1rem;box-shadow:0 8px 32px rgba(0,0,0,0.15);">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="fw-bold mb-0">Ajustar foto</h6>
+            <button type="button" class="btn-close" onclick="cerrarCrop()"></button>
+        </div>
+        <div style="max-height:400px;overflow:hidden;">
+            <img id="cropImage" style="max-width:100%;">
+        </div>
+        <div class="d-flex justify-content-end gap-2 mt-2">
+            <button type="button" class="btn btn-sm btn-secondary" onclick="cerrarCrop()">Cancelar</button>
+            <button type="button" class="btn btn-sm btn-primary" onclick="guardarCrop()"><i class="bi bi-check-lg"></i> Guardar</button>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
+<script>
+var cropper = null;
+
+document.getElementById('fotoInput').addEventListener('change', function(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+        var img = document.getElementById('cropImage');
+        img.src = ev.target.result;
+        document.getElementById('cropModal').style.display = 'flex';
+        if (cropper) cropper.destroy();
+        cropper = new Cropper(img, {
+            aspectRatio: 1, viewMode: 1, dragMode: 'move',
+            cropBoxResizable: false, toggleDragModeOnDblclick: false,
+            background: false, autoCropArea: 0.8
+        });
+    };
+    reader.readAsDataURL(file);
+    this.value = '';
+});
+
+function cerrarCrop() {
+    document.getElementById('cropModal').style.display = 'none';
+    if (cropper) { cropper.destroy(); cropper = null; }
+}
+
+function guardarCrop() {
+    if (!cropper) return;
+    var canvas = cropper.getCroppedCanvas({ width: 256, height: 256, imageSmoothingQuality: 'high' });
+    canvas.toBlob(function(blob) {
+        var formData = new FormData();
+        formData.append('foto', blob, 'foto.jpg');
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+        fetch('{% url "gestion:subir_foto" %}', { method: 'POST', body: formData })
+            .then(function(r) {
+                if (r.redirected) window.location.href = r.url;
+                else location.reload();
+            });
+    }, 'image/jpeg', 0.92);
+    cerrarCrop();
+}
+</script>
+{% endblock %}

@@ -35,10 +35,10 @@
                         </select>
                     </div>
                     <div class="col-md-3">
-                        <select name="user" class="form-select form-select-sm" style="font-size:0.78rem;">
-                            <option value="">Todos los usuarios</option>
-                            {% for u in users %}<option value="{{ u.pk }}">{{ u.get_full_name }}</option>{% endfor %}
-                        </select>
+            <select name="user" class="form-select form-select-sm" style="font-size:0.78rem;">
+                <option value="">Todos los usuarios</option>
+                {% for u in users %}<option value="{{ u.pk }}">{{ u.get_full_name }}</option>{% endfor %}
+            </select>
                     </div>
                     <div class="col-md-2">
                         <select name="estado" class="form-select form-select-sm" style="font-size:0.78rem;">

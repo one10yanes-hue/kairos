@@ -6,12 +6,13 @@
     </ol></nav>
 
     <div class="row justify-content-center">
-        <div class="col-md-8 col-lg-7">
+        <div class="col-lg-10">
             <div class="card shadow-sm">
                 <div class="card-header"><h5 class="mb-0 fw-bold"><i class="bi bi-person-gear"></i> {{ title }}</h5></div>
                 <div class="card-body">
-                    <form method="POST" novalidate>
+                    <form method="POST" novalidate onsubmit="return validarFormulario()">
                         {% csrf_token %}
+                        {% if form.non_field_errors %}<div class="alert alert-danger py-1 small">{{ form.non_field_errors }}</div>{% endif %}
                         <div class="row g-3 mb-4">
                             {% for field in form %}
                             <div class="col-md-6">
@@ -24,31 +25,44 @@
                         </div>
 
                         <hr>
-                        <h6 class="fw-semibold mb-3" style="color:var(--accent);"><i class="bi bi-building"></i> Empresas</h6>
-                        <input type="text" class="form-control mb-2" id="filtroEmpresas" placeholder="Filtrar empresas..." onkeyup="filtrarLista('empresasContainer', this.value)">
-                        <div id="empresasContainer" class="border rounded p-2 mb-4" style="max-height:160px;overflow-y:auto;">
+                        <h6 class="fw-semibold mb-3" style="color:var(--accent);"><i class="bi bi-building"></i> Contratos</h6>
+                        <div class="d-flex flex-wrap gap-2 mb-4">
                             {% for e in empresas %}
-                            <label class="d-flex align-items-center gap-2 px-2 py-1 emp-item" style="cursor:pointer;font-size:0.85rem;">
-                                <input type="checkbox" name="empresas" value="{{ e.pk }}" class="form-check-input mt-0"
-                                    {% if e.pk in user_empresas %}checked{% endif %}>
-                                <span>{{ e.nombre }} <small class="text-muted">({{ e.nit }})</small></span>
-                            </label>
-                            {% empty %}<p class="text-muted small text-center mb-0">No hay empresas disponibles</p>{% endfor %}
+                            {% if e.pk in user_empresas %}
+                            <span class="badge d-inline-flex align-items-center gap-1 py-1 px-2" style="background:#e8f4fd;color:#1a56db;font-size:0.8rem;border:1px solid #b8daff;">
+                                {{ e.nombre }}
+                            </span>
+                            {% endif %}
+                            {% empty %}
+                            <span class="text-muted small">Sin contratos asignados</span>
+                            {% endfor %}
+                        </div>
+                        <input type="hidden" name="empresas" value="">
+                        {% for e in empresas %}
+                        {% if e.pk in user_empresas %}
+                        <input type="hidden" name="empresas" value="{{ e.pk }}">
+                        {% endif %}
+                        {% endfor %}
+
+                        <hr>
+                        <div class="row g-4">
+                            <div class="col-md-12">
+                                <h6 class="fw-semibold mb-3" style="color:var(--accent);"><i class="bi bi-diagram-2"></i> Areas / SubAreas <small class="text-muted fw-normal">(asignacion funcional)</small></h6>
+                                <input type="text" class="form-control mb-2" id="filtroSubareas" placeholder="Filtrar por subarea o area..." onkeyup="filtrarLista('subareasContainer', this.value)">
+                                <div id="subareasContainer" class="border rounded p-2 mb-2" style="max-height:300px;overflow-y:auto;">
+                                    {% for s in subareas %}
+                                    <label class="d-flex align-items-center gap-2 px-2 py-1 subarea-item" style="cursor:pointer;font-size:0.85rem;">
+                                        <input type="checkbox" name="subareas" value="{{ s.pk }}" class="form-check-input mt-0"
+                                            {% if s.pk in user_subareas %}checked{% endif %}>
+                                        <span><strong>{{ s.nombre }}</strong> <small class="text-muted">({{ s.area.nombre }})</small></span>
+                                    </label>
+                                    {% empty %}<p class="text-muted small text-center mb-0">No hay subareas disponibles</p>{% endfor %}
+                                </div>
+                                <small id="subareasError" class="text-danger" style="display:none;font-size:0.7rem;">Selecciona al menos una subarea.</small>
+                            </div>
                         </div>
 
-                        <h6 class="fw-semibold mb-3" style="color:var(--accent);"><i class="bi bi-diagram-2"></i> SubAreas</h6>
-                        <input type="text" class="form-control mb-2" id="filtroSubareas" placeholder="Filtrar subareas..." onkeyup="filtrarLista('subareasContainer', this.value)">
-                        <div id="subareasContainer" class="border rounded p-2 mb-3" style="max-height:200px;overflow-y:auto;">
-                            {% for s in subareas %}
-                            <label class="d-flex align-items-center gap-2 px-2 py-1 subarea-item" style="cursor:pointer;font-size:0.85rem;">
-                                <input type="checkbox" name="subareas" value="{{ s.pk }}" class="form-check-input mt-0"
-                                    {% if s.pk in user_subareas %}checked{% endif %}>
-                                <span>{{ s.nombre }} <small class="text-muted">({{ s.area.nombre }} - {{ s.area.empresa.nombre }})</small></span>
-                            </label>
-                            {% empty %}<p class="text-muted small text-center mb-0">No hay subareas disponibles</p>{% endfor %}
-                        </div>
-
-                        <div class="d-flex gap-2">
+                        <div class="d-flex gap-2 mt-4">
                             <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Guardar</button>
                             <a href="{% url 'accounts:master_usuarios' %}" class="btn btn-outline-secondary">Cancelar</a>
                         </div>
@@ -61,9 +75,21 @@
 <script>
 function filtrarLista(containerId, value) {
     var f = value.toLowerCase();
-    document.querySelectorAll('#' + containerId + ' label').forEach(function(e) {
+    document.querySelectorAll('#' + containerId + ' > label').forEach(function(e) {
         e.style.display = e.textContent.toLowerCase().includes(f) ? '' : 'none';
     });
 }
+
+function validarFormulario() {
+    var subs = document.querySelectorAll('#subareasContainer input[name="subareas"]:checked').length;
+    if (subs === 0) {
+        document.getElementById('subareasError').style.display = 'block';
+        return false;
+    }
+    document.getElementById('subareasError').style.display = 'none';
+    return true;
+}
+
+
 </script>
 {% endblock %}

@@ -1,27 +1,63 @@
 {% extends "base.html" %}{% block content %}
 <div class="container-fluid mt-4">
-    <nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'actividades:tipo_list' %}">Tipos</a></li><li class="breadcrumb-item active">{{ title }}</li></ol></nav>
-    <div class="row justify-content-center"><div class="col-md-6"><div class="card shadow-sm"><div class="card-header"><h5 class="mb-0 fw-bold">{{ title }}</h5></div>
-    <div class="card-body">
-        <form method="POST">{% csrf_token %}
-            {% for field in form %}
-            {% if field.widget_type == 'CheckboxInput' %}
-            <div class="mb-3 form-check">
-                {{ field }}
-                <label class="form-check-label fw-semibold small" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                {% if field.help_text %}<div class="text-muted small">{{ field.help_text }}</div>{% endif %}
-            </div>
-            {% else %}
-            <div class="mb-3">
-                <label class="form-label small fw-semibold">{{ field.label }}</label>
-                {{ field }}
-                {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}
-                {% if field.help_text %}<div class="text-muted small">{{ field.help_text }}</div>{% endif %}
-            </div>
-            {% endif %}
-            {% endfor %}
-            <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Guardar</button>
-            <a href="{% url 'actividades:tipo_list' %}" class="btn btn-outline-secondary">Cancelar</a>
-        </form>
-    </div></div></div></div>
-</div>{% endblock %}
+    <nav aria-label="breadcrumb"><ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'actividades:tipo_list' %}">Tipos</a></li>
+        <li class="breadcrumb-item active">{{ title }}</li>
+    </ol></nav>
+
+    <div class="card shadow-sm" style="max-width:900px;">
+        <div class="card-header d-flex align-items-center gap-2">
+            <i class="bi bi-tags" style="color:var(--accent);"></i>
+            <h5 class="mb-0 fw-bold">{{ title }}</h5>
+        </div>
+        <div class="card-body p-4">
+
+
+            <form method="POST">
+                {% csrf_token %}
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold" style="font-size:0.85rem;">SubArea</label>
+                        {{ form.subarea }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold" style="font-size:0.85rem;">Nombre</label>
+                        {{ form.nombre }}
+                    </div>
+                </div>
+                <div class="row g-3 mb-4">
+                    <div class="col-12">
+                        <label class="form-label fw-semibold" style="font-size:0.85rem;">Descripcion</label>
+                        {{ form.descripcion }}
+                    </div>
+                </div>
+                <div class="mb-4 form-check">
+                    {{ form.requiere_fecha_limite }}
+                    <label class="form-check-label fw-semibold" style="font-size:0.85rem;" for="{{ form.requiere_fecha_limite.id_for_label }}">
+                        {{ form.requiere_fecha_limite.label }}
+                    </label>
+                    <div class="text-muted small" style="font-size:0.72rem;">{{ form.requiere_fecha_limite.help_text }}</div>
+                </div>
+                <div class="form-check mb-3">
+                    {{ form.requiere_entregable }}
+                    <label class="form-check-label fw-semibold" style="font-size:0.85rem;" for="{{ form.requiere_entregable.id_for_label }}">
+                        {{ form.requiere_entregable.label }}
+                    </label>
+                    <div class="text-muted small" style="font-size:0.72rem;">{{ form.requiere_entregable.help_text }}</div>
+                </div>
+                <div class="form-check mb-3">
+                    {{ form.es_flash }}
+                    <label class="form-check-label fw-semibold" style="font-size:0.85rem;" for="{{ form.es_flash.id_for_label }}">
+                        {{ form.es_flash.label }}
+                    </label>
+                    <div class="text-muted small" style="font-size:0.72rem;">{{ form.es_flash.help_text }}</div>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Guardar</button>
+                    <a href="{% url 'actividades:tipo_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
