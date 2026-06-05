@@ -656,7 +656,10 @@ def agregar_comentario(request, pk):
 @login_required
 def detalle_actividad(request, pk):
     asignacion = get_object_or_404(AsignacionActividad, pk=pk, activo=True)
-    if asignacion.user != request.user and request.user.rol.nombre not in ["Admin", "Master"]:
+    es_traslado_destino = TrasladoActividad.objects.filter(
+        asignacion_origen=asignacion, user_destino=request.user, estado="Pendiente", activo=True
+    ).exists()
+    if asignacion.user != request.user and request.user.rol.nombre not in ["Admin", "Master"] and not es_traslado_destino:
         return redirect("gestion:tablero")
     registros = RegistroTiempo.objects.filter(asignacion=asignacion, activo=True).order_by("-fecha_hora")
     comentarios = Comentario.objects.filter(asignacion=asignacion, activo=True).order_by("-fecha_creacion")

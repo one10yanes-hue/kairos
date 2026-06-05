@@ -8,9 +8,15 @@ class RegistroTiempoForm(forms.ModelForm):
         model = RegistroTiempo
         fields = ["comentario", "nro_actividad"]
         widgets = {
-            "comentario": forms.Textarea(attrs={"class": "form-control", "rows": 2, "placeholder": "Comentario"}),
-            "nro_actividad": forms.TextInput(attrs={"class": "form-control", "placeholder": "Cantidad o nro de actividad"})
+            "comentario": forms.Textarea(attrs={"class": "form-control", "rows": 3, "placeholder": "Opcional"}),
+            "nro_actividad": forms.NumberInput(attrs={"class": "form-control", "min": "0", "step": "1", "placeholder": "Cantidad o nro de actividad"}),
         }
+
+    def clean_nro_actividad(self):
+        val = self.cleaned_data.get("nro_actividad")
+        if val and val < 0:
+            raise forms.ValidationError("Debe ser un numero positivo.")
+        return val
 
 
 class ActividadNoProgramadaForm(forms.ModelForm):

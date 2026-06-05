@@ -68,6 +68,7 @@
                             <small class="d-block text-muted" style="font-size:0.7rem;">De: {{ t.user_origen.get_full_name }}</small>
                             {% if t.motivo %}<small class="d-block text-muted" style="font-size:0.65rem;">{{ t.motivo }}</small>{% endif %}
                             <div class="d-flex gap-1 mt-1">
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:0.7rem;" title="Revisar" onclick="window.location.href='{% url 'gestion:detalle_actividad' t.asignacion_origen.pk %}'"><i class="bi bi-eye"></i></button>
                                 <form method="POST" action="{% url 'gestion:aceptar_traslado' t.pk %}">
                                     {% csrf_token %}
                                     <button type="submit" class="btn btn-sm btn-success py-0 px-2" style="font-size:0.7rem;">Aceptar</button>
@@ -91,10 +92,13 @@
                             </div>
                             <small class="d-block text-muted" style="font-size:0.7rem;">Para: {{ t.user_destino.get_full_name }}</small>
                             {% if t.motivo %}<small class="d-block text-muted" style="font-size:0.65rem;">{{ t.motivo }}</small>{% endif %}
-                            <form method="POST" action="{% url 'gestion:cancelar_traslado' t.pk %}">
+                            <div class="d-flex gap-1">
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:0.7rem;" title="Ver detalle" onclick="window.location.href='{% url 'gestion:detalle_actividad' t.asignacion_origen.pk %}'"><i class="bi bi-eye"></i></button>
+                                <form method="POST" action="{% url 'gestion:cancelar_traslado' t.pk %}" class="d-inline">
                                 {% csrf_token %}
                                 <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2" style="font-size:0.7rem;">Cancelar</button>
                             </form>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -361,7 +365,7 @@
             </div>
             <div class="mb-3">
                 <label class="form-label small">Nro de Actividad (cantidad realizada)</label>
-                <input type="text" name="nro_actividad" class="form-control" required>
+                <input type="number" name="nro_actividad" class="form-control" min="0" required>
             </div>
             <div class="mb-3" id="entregableSection" style="display:none;">
                 <label class="form-label small fw-semibold">Archivo entregable <span class="text-danger">*</span></label>
@@ -861,5 +865,28 @@ setInterval(function(){
         }
     }).catch(function(){});
 }, 30000);
+
+// Auto-abrir modal desde detalle de actividad
+(function(){
+    var params = new URLSearchParams(window.location.search);
+    var accion = params.get('accion');
+    var pk = params.get('pk');
+    if (accion && pk) {
+        var btn = document.querySelector('[onclick*="' + accion + '(' + pk + '"],[onclick*="' + accion + '(' + pk + ',]');
+        if (!btn) {
+            // Buscar por nombre aproximado en los onclick
+            document.querySelectorAll('button[onclick*="abrir' + accion.charAt(0).toUpperCase() + accion.slice(1) + '"]').forEach(function(b){
+                if (b.getAttribute('onclick').indexOf('(' + pk + ',') > -1 || b.getAttribute('onclick').indexOf('(' + pk + ')') > -1) {
+                    btn = b;
+                }
+            });
+        }
+        if (btn) {
+            // Limpiar params de URL
+            history.replaceState({}, '', window.location.pathname);
+            setTimeout(function(){ btn.click(); }, 500);
+        }
+    }
+})();
 </script>
 {% endblock %}
