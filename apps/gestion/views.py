@@ -12,6 +12,20 @@ from apps.planificacion.models import PlanificacionDetalle
 from apps.accounts.models import User
 from .models import AsignacionActividad, RegistroTiempo, TrasladoActividad, Colaboracion, Comentario, TiempoInactividad, RevisionHistorial
 from .forms import RegistroTiempoForm, ComentarioForm
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+
+
+def _notificar_usuario(user_id, tipo, data):
+    """Envia notificacion WebSocket a un usuario especifico."""
+    try:
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f"user_{user_id}",
+            {"type": tipo, **data}
+        )
+    except Exception:
+        pass  # Si channels no esta disponible, no pasa nada
 
 
 def _gestionar_tiempo_inactividad(user):
@@ -259,6 +273,13 @@ def finalizar_actividad(request, pk):
         else:
             asignacion.estado = "Finalizada"
         asignacion.save()
+        # Cancelar cualquier traslado pendiente de esta actividad
+        traslados_pendientes = TrasladoActividad.objects.filter(
+            asignacion_origen=asignacion, estado="Pendiente", activo=True
+        )
+        for t in traslados_pendientes:
+            t.estado = "Cancelado"
+            t.save()
         registro = form.save(commit=False)
         registro.asignacion = asignacion
         registro.evento = "Finalizacion"
@@ -359,6 +380,8 @@ def crear_no_programada(request):
             comentario=comentario or None,
         )
         messages.success(request, f"Actividad '{actividad.nombre}' iniciada.")
+        request.audit_record_id = asignacion.pk
+        request.audit_modelo = "AsignacionActividad"
         _gestionar_tiempo_inactividad(request.user)
         return redirect("gestion:tablero")
 
@@ -406,7 +429,7 @@ def trasladar_actividad(request, pk):
         messages.error(request, "Ya existe una solicitud de traslado pendiente para esta actividad.")
         return redirect("gestion:tablero")
 
-    TrasladoActividad.objects.create(
+    traslado = TrasladoActividad.objects.create(
         asignacion_origen=asignacion,
         user_origen=request.user,
         user_destino=user_destino,
@@ -415,13 +438,23 @@ def trasladar_actividad(request, pk):
         motivo=motivo,
     )
 
+    request.audit_record_id = traslado.pk
+    request.audit_modelo = "TrasladoActividad"
+    _notificar_usuario(user_destino.pk, "nuevo_traslado", {
+        "origen": request.user.get_full_name(),
+        "actividad": asignacion.actividad.nombre,
+        "traslado_id": traslado.pk,
+    })
     messages.success(request, f"Solicitud de traslado enviada a {user_destino.get_full_name()}. Pendiente de aceptacion.")
     return redirect("gestion:tablero")
 
 
 @login_required
 def aceptar_traslado(request, pk):
-    traslado = get_object_or_404(TrasladoActividad, pk=pk, user_destino=request.user, estado="Pendiente", activo=True)
+    traslado = get_object_or_404(TrasladoActividad, pk=pk, user_destino=request.user, activo=True)
+    if traslado.estado != "Pendiente":
+        messages.warning(request, f"Este traslado ya fue {traslado.get_estado_display().lower()}.")
+        return redirect("gestion:tablero")
 
     # Validar que la asignacion origen aun sea transferible
     asignacion = traslado.asignacion_origen
@@ -510,6 +543,11 @@ def aceptar_traslado(request, pk):
             )
 
     messages.success(request, f"Traslado aceptado. Actividad '{asignacion.actividad.nombre}' agregada a tu tablero.")
+    _notificar_usuario(traslado.user_origen.pk, "traslado_respuesta", {
+        "accion": "aceptado",
+        "actividad": asignacion.actividad.nombre,
+        "destino": request.user.get_full_name(),
+    })
     _gestionar_tiempo_inactividad(traslado.user_origen)
     return redirect("gestion:tablero")
 
@@ -524,6 +562,19 @@ def cancelar_traslado(request, pk):
 
     traslado.estado = "Cancelado" if request.user == traslado.user_origen else "Rechazado"
     traslado.save()
+    # Notificar a la otra parte
+    if request.user == traslado.user_origen:
+        _notificar_usuario(traslado.user_destino.pk, "traslado_respuesta", {
+            "accion": "cancelado",
+            "actividad": traslado.asignacion_origen.actividad.nombre,
+            "origen": request.user.get_full_name(),
+        })
+    else:
+        _notificar_usuario(traslado.user_origen.pk, "traslado_respuesta", {
+            "accion": "rechazado",
+            "actividad": traslado.asignacion_origen.actividad.nombre,
+            "destino": request.user.get_full_name(),
+        })
     messages.success(request, "Solicitud de traslado cancelada.")
     return redirect("gestion:tablero")
 
@@ -539,9 +590,13 @@ def buscar_usuarios_traslado(request):
 
         # Mismo nivel: Usuario solo ve Usuario, Admin ve Usuarios
         if request.user.rol.nombre == "Usuario":
-            usuarios = usuarios.filter(rol__nombre="Usuario")
+            usuarios = usuarios.filter(
+                Q(rol__nombre="Usuario") | Q(roles_adicionales__nombre="Usuario")
+            )
         elif request.user.rol.nombre == "Admin":
-            usuarios = usuarios.filter(rol__nombre__in=["Usuario", "Admin"]).exclude(rol__nombre="Master")
+            usuarios = usuarios.filter(
+                Q(rol__nombre__in=["Usuario", "Admin"]) | Q(roles_adicionales__nombre__in=["Usuario", "Admin"])
+            ).exclude(rol__nombre="Master")
 
         usuarios = usuarios.filter(
             subareas__subarea__in=SubArea.objects.filter(usuarios__user=request.user, activo=True),

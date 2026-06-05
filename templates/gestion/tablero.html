@@ -17,6 +17,8 @@
 
     <div class="tablero-main">
 
+    
+
     <div class="card shadow-sm mb-2">
         <div class="card-header py-1 px-2 d-flex justify-content-between align-items-center">
             <small class="fw-semibold"><i class="bi bi-calendar2-day" style="color:var(--accent);"></i> Mis actividades - Hoy {{ hoy|date:"d/m/Y" }}</small>
@@ -305,24 +307,35 @@
                 <hr>
                 <label class="form-label small fw-semibold">Selecciona la nueva actividad</label>
                 <p class="text-muted small mb-2">Actividad que iniciara al pausar la actual:</p>
-                <div style="max-height:160px;overflow-y:auto;font-size:0.82rem;">
-                    {% for p in planificadas %}
-                    <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;border-bottom:1px solid #f1f5f9;">
-                        <input type="radio" name="actividad_id" value="{{ p.actividad_id }}" class="form-check-input mt-0" onclick="document.getElementById('pausaSubareaId').value='{{ p.actividad.subarea_id }}'">
-                        <span>{{ p.nombre_actividad|default:p.actividad.nombre }} <small class="text-muted">({{ p.nombre_tipo|default:p.actividad.tipo_actividad.nombre }})</small></span>
-                    </label>
-                    {% endfor %}
-                    <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;{% if planificadas %}border-top:1px dashed #d1d5db;{% endif %}">
-                        <input type="radio" name="actividad_id" value="flash" class="form-check-input mt-0" onchange="cargarActividadesPausa('Ov')">
-                        <span><i class="bi bi-lightning-charge text-warning"></i> Actividad no programada (Flash)</span>
-                    </label>
+                <div style="font-size:0.82rem;">
+                    <div class="d-flex flex-column gap-1">
+                        <label class="d-flex align-items-center gap-2 px-2 py-1 text-muted" style="cursor:pointer;font-size:0.8rem;border:1px solid #e2e8f0;border-radius:4px;">
+                            <input type="checkbox" id="pausSinActivar" class="form-check-input mt-0" onchange="pausToggleSeccion(this,'nada')">
+                            <span><i class="bi bi-dash-circle"></i> No iniciar actividad</span>
+                        </label>
+                        <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;font-size:0.8rem;border:1px solid #e2e8f0;border-radius:4px;">
+                            <input type="checkbox" id="pausVerPlanif" class="form-check-input mt-0" onchange="pausToggleSeccion(this,'planif')">
+                            <span><i class="bi bi-list-check"></i> Actividades Planificadas</span>
+                        </label>
+                        <div id="pausPlanifContainer" style="display:none;padding-left:1.5rem;max-height:130px;overflow-y:auto;">
+                            {% for p in planificadas %}
+                            <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:0.78rem;">
+                                <input type="radio" name="actividad_id" value="{{ p.actividad_id }}" class="form-check-input mt-0" onclick="document.getElementById('pausaSubareaId').value='{{ p.actividad.subarea_id }}'">
+                                <span>{{ p.nombre_actividad|default:p.actividad.nombre }} <small class="text-muted">({{ p.nombre_tipo|default:p.actividad.tipo_actividad.nombre }})</small></span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;font-size:0.8rem;border:1px solid #e2e8f0;border-radius:4px;">
+                            <input type="checkbox" id="pausVerFlash" class="form-check-input mt-0" onchange="pausToggleSeccion(this,'flash')">
+                            <span><i class="bi bi-lightning-charge text-warning"></i> Evento Flash</span>
+                        </label>
+                        <div id="pausaFlashContainer" style="display:none;padding-left:1.5rem;max-height:130px;overflow-y:auto;">
+                            <div id="pausaFlashLista"></div>
+                        </div>
+                    </div>
+                    <input type="hidden" name="subarea_id" id="pausaSubareaId">
+                    <small class="text-danger" style="display:none;font-size:0.7rem;" id="pausaError">Selecciona una actividad.</small>
                 </div>
-                <div id="pausaFlashContainer" style="display:none;margin-top:0.5rem;padding:0.5rem;background:#f8fafc;border-radius:0.375rem;font-size:0.78rem;">
-                    <label class="small fw-semibold mb-1">Selecciona la actividad flash:</label>
-                    <div id="pausaFlashLista" style="max-height:120px;overflow-y:auto;"></div>
-                </div>
-                <input type="hidden" name="subarea_id" id="pausaSubareaId">
-                <small class="text-danger" style="display:none;font-size:0.7rem;" id="pausaError">Selecciona una actividad.</small>
             </div>
         <div class="d-flex justify-content-end gap-2 mt-3">
             <button type="button" class="btn btn-sm btn-secondary" onclick="cerrarPausa()">Cancelar</button>
@@ -358,25 +371,36 @@
             <div class="mb-3">
                 <label class="form-label small fw-semibold">Iniciar siguiente actividad</label>
                 <p class="text-muted small mb-2">Selecciona una actividad para iniciar al finalizar esta:</p>
-                <div style="max-height:160px;overflow-y:auto;font-size:0.82rem;">
-                    {% for p in planificadas %}
-                    <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;border-bottom:1px solid #f1f5f9;">
-                        <input type="radio" name="reemplazo_actividad" value="{{ p.pk }}" class="form-check-input mt-0">
-                        <span>{{ p.actividad.nombre }} <small class="text-muted">({{ p.actividad.tipo_actividad.nombre }})</small></span>
-                    </label>
-                    {% endfor %}
-                    <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;{% if planificadas %}border-top:1px dashed #d1d5db;{% endif %}">
-                        <input type="radio" name="reemplazo_actividad" value="flash" class="form-check-input mt-0" onchange="cargarFlashActividades()">
-                        <span><i class="bi bi-lightning-charge text-warning"></i> Actividad no programada (Flash)</span>
-                    </label>
+                <div style="font-size:0.82rem;">
+                    <div class="d-flex flex-column gap-1">
+                        <label class="d-flex align-items-center gap-2 px-2 py-1 text-muted" style="cursor:pointer;font-size:0.8rem;border:1px solid #e2e8f0;border-radius:4px;">
+                            <input type="checkbox" id="finSinActivar" class="form-check-input mt-0" onchange="finToggleSeccion(this,'nada')">
+                            <span><i class="bi bi-dash-circle"></i> No iniciar actividad</span>
+                        </label>
+                        <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;font-size:0.8rem;border:1px solid #e2e8f0;border-radius:4px;">
+                            <input type="checkbox" id="finVerPlanif" class="form-check-input mt-0" onchange="finToggleSeccion(this,'planif')">
+                            <span><i class="bi bi-list-check"></i> Actividades Planificadas</span>
+                        </label>
+                        <div id="finPlanifContainer" style="display:none;padding-left:1.5rem;max-height:130px;overflow-y:auto;">
+                            {% for p in planificadas %}
+                            <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:0.78rem;">
+                                <input type="radio" name="reemplazo_actividad" value="{{ p.pk }}" class="form-check-input mt-0">
+                                <span>{{ p.actividad.nombre }} <small class="text-muted">({{ p.actividad.tipo_actividad.nombre }})</small></span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;font-size:0.8rem;border:1px solid #e2e8f0;border-radius:4px;">
+                            <input type="checkbox" id="finVerFlash" class="form-check-input mt-0" onchange="finToggleSeccion(this,'flash')">
+                            <span><i class="bi bi-lightning-charge text-warning"></i> Evento Flash</span>
+                        </label>
+                        <div id="flashContainer" style="display:none;padding-left:1.5rem;max-height:130px;overflow-y:auto;">
+                            <div id="flashLista"></div>
+                            <small id="flashError" class="text-danger" style="display:none;font-size:0.65rem;">No hay actividades flash disponibles.</small>
+                        </div>
+                    </div>
+                    <input type="hidden" name="flash_subarea" id="finalizarFlashSubarea">
+                    <small id="siguienteError" class="text-danger" style="display:none;font-size:0.7rem;">Selecciona una actividad o deja vacio para solo finalizar.</small>
                 </div>
-                <div id="flashContainer" style="display:none;margin-top:0.5rem;padding:0.5rem;background:#f8fafc;border-radius:0.375rem;font-size:0.78rem;">
-                    <label class="small fw-semibold mb-1">Selecciona la actividad flash:</label>
-                    <div id="flashLista" style="max-height:120px;overflow-y:auto;"></div>
-                    <small id="flashError" class="text-danger" style="display:none;font-size:0.65rem;">No hay actividades no programadas disponibles.</small>
-                </div>
-                <input type="hidden" name="flash_subarea" id="finalizarFlashSubarea">
-                <small id="siguienteError" class="text-danger" style="display:none;font-size:0.7rem;">Selecciona una actividad flash o deja vacio para solo finalizar.</small>
             </div>
             <div class="d-flex justify-content-end gap-2">
                 <button type="button" class="btn btn-sm btn-secondary" onclick="cerrarFinalizar()">Cancelar</button>
@@ -409,23 +433,34 @@
             <div class="mb-3">
                 <label class="form-label small fw-semibold">Iniciar siguiente actividad</label>
                 <p class="text-muted small mb-2">Selecciona una actividad para iniciar al trasladar esta:</p>
-                <div style="max-height:160px;overflow-y:auto;font-size:0.82rem;">
-                    {% for p in planificadas %}
-                    <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;border-bottom:1px solid #f1f5f9;">
-                        <input type="radio" name="traslado_reemplazo" value="{{ p.actividad_id }}" class="form-check-input mt-0" onchange="seleccionarReemplazoTraslado(this)">
-                        <span>{{ p.actividad.nombre }} <small class="text-muted">({{ p.actividad.tipo_actividad.nombre }})</small></span>
-                    </label>
-                    {% endfor %}
-                    <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;{% if planificadas %}border-top:1px dashed #d1d5db;{% endif %}">
-                        <input type="radio" name="traslado_reemplazo" value="flash" class="form-check-input mt-0" onchange="seleccionarReemplazoTraslado(this)">
-                        <span><i class="bi bi-lightning-charge text-warning"></i> Actividad no programada (Flash)</span>
-                    </label>
+                <div style="font-size:0.82rem;">
+                    <div class="d-flex flex-column gap-1">
+                        <label class="d-flex align-items-center gap-2 px-2 py-1 text-muted" style="cursor:pointer;font-size:0.8rem;border:1px solid #e2e8f0;border-radius:4px;">
+                            <input type="checkbox" id="trasSinActivar" class="form-check-input mt-0" onchange="trasToggleSeccion(this,'nada')">
+                            <span><i class="bi bi-dash-circle"></i> No iniciar actividad</span>
+                        </label>
+                        <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;font-size:0.8rem;border:1px solid #e2e8f0;border-radius:4px;">
+                            <input type="checkbox" id="trasVerPlanif" class="form-check-input mt-0" onchange="trasToggleSeccion(this,'planif')">
+                            <span><i class="bi bi-list-check"></i> Actividades Planificadas</span>
+                        </label>
+                        <div id="trasPlanifContainer" style="display:none;padding-left:1.5rem;max-height:130px;overflow-y:auto;">
+                            {% for p in planificadas %}
+                            <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:0.78rem;">
+                                <input type="radio" name="traslado_reemplazo" value="{{ p.actividad_id }}" class="form-check-input mt-0" onchange="seleccionarReemplazoTraslado(this)">
+                                <span>{{ p.actividad.nombre }} <small class="text-muted">({{ p.actividad.tipo_actividad.nombre }})</small></span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;font-size:0.8rem;border:1px solid #e2e8f0;border-radius:4px;">
+                            <input type="checkbox" id="trasVerFlash" class="form-check-input mt-0" onchange="trasToggleSeccion(this,'flash')">
+                            <span><i class="bi bi-lightning-charge text-warning"></i> Evento Flash</span>
+                        </label>
+                        <div id="flashContainerTraslado" style="display:none;padding-left:1.5rem;max-height:130px;overflow-y:auto;">
+                            <div id="flashListaTraslado"></div>
+                        </div>
+                    </div>
+                    <input type="hidden" name="actividad_reemplazo" id="traslado_actividad_reemplazo">
                 </div>
-                <div id="flashContainerTraslado" style="display:none;margin-top:0.5rem;padding:0.5rem;background:#f8fafc;border-radius:0.375rem;font-size:0.78rem;">
-                    <label class="small fw-semibold mb-1">Selecciona la actividad flash:</label>
-                    <div id="flashListaTraslado" style="max-height:120px;overflow-y:auto;"></div>
-                </div>
-                <input type="hidden" name="actividad_reemplazo" id="traslado_actividad_reemplazo">
             </div>
             <div class="mb-3">
                 <label class="form-label small">Motivo (opcional)</label>
@@ -447,32 +482,26 @@ var currentActividadId = null;
 var timeoutBusqueda = null;
 
 function abrirTraslado(asignacionId, nombreActividad, actividadId) {
+    document.getElementById('pausaOverlay').style.display = 'none';
+    document.getElementById('finalizarOverlay').style.display = 'none';
+    var to = document.getElementById('trasladoOverlay');
+    to.style.display = 'flex';
+    to.style.opacity = '1';
+    to.style.visibility = 'visible';
+    to.style.zIndex = '99999';
     currentAsignacionId = asignacionId;
     currentActividadId = actividadId;
     document.getElementById('trasladoNombreActividad').textContent = nombreActividad;
     document.getElementById('trasladoForm').action = '/usuario/actividad/' + asignacionId + '/trasladar/';
     limpiarUsuario();
     document.getElementById('traslado_actividad_reemplazo').value = '';
-    document.getElementById('flashContainerTraslado').style.display = 'none';
-    document.getElementById('flashListaTraslado').innerHTML = '';
-    // Ocultar la(s) opcion(es) de reemplazo con la misma actividad que se traslada
-    document.querySelectorAll('input[name="traslado_reemplazo"]').forEach(function(r) {
-        r.checked = false;
-        if (r.value === String(actividadId)) {
-            r.parentElement.style.setProperty('display', 'none', 'important');
-        } else {
-            r.parentElement.style.removeProperty('display');
-        }
-    });
+    trasResetSecciones();
     document.getElementById('btnTrasladarConfirm').disabled = true;
-    document.getElementById('trasladoOverlay').style.display = 'flex';
 }
 
 function cerrarTraslado() {
     document.getElementById('trasladoOverlay').style.display = 'none';
-    document.querySelectorAll('input[name="traslado_reemplazo"]').forEach(function(r) {
-        r.parentElement.style.removeProperty('display');
-    });
+    trasResetSecciones();
 }
 
 function limpiarUsuario() {
@@ -534,16 +563,37 @@ function seleccionarUsuario(id, nombre, cedula) {
 }
 
 function seleccionarReemplazoTraslado(radio) {
-    document.getElementById('flashContainerTraslado').style.display = 'none';
     if (radio.value === String(currentActividadId)) {
         radio.checked = false;
         return;
     }
-    if (radio.value === 'flash') {
-        cargarFlashTraslado();
-    } else {
-        document.getElementById('traslado_actividad_reemplazo').value = radio.value;
+    document.getElementById('traslado_actividad_reemplazo').value = radio.value;
+}
+
+function trasToggleSeccion(cb, seccion) {
+    if (cb.checked) {
+        ['trasSinActivar','trasVerPlanif','trasVerFlash'].forEach(function(id){ var el=document.getElementById(id); if(el&&el!==cb)el.checked=false; });
+        document.getElementById('trasPlanifContainer').style.display = 'none';
+        document.getElementById('flashContainerTraslado').style.display = 'none';
+        document.getElementById('flashListaTraslado').innerHTML = '';
+        document.getElementById('traslado_actividad_reemplazo').value = '';
+        document.querySelectorAll('input[name="traslado_reemplazo"]').forEach(function(r){r.checked=false});
+        if (seccion === 'planif') {
+            document.getElementById('trasPlanifContainer').style.display = 'block';
+        } else if (seccion === 'flash') {
+            document.getElementById('flashContainerTraslado').style.display = 'block';
+            cargarFlashTraslado();
+        }
     }
+}
+
+function trasResetSecciones() {
+    ['trasSinActivar','trasVerPlanif','trasVerFlash'].forEach(function(id){ var el=document.getElementById(id); if(el)el.checked=false; });
+    var pc = document.getElementById('trasPlanifContainer'); if(pc)pc.style.display='none';
+    var fc = document.getElementById('flashContainerTraslado'); if(fc)fc.style.display='none';
+    var fl = document.getElementById('flashListaTraslado'); if(fl)fl.innerHTML='';
+    document.getElementById('traslado_actividad_reemplazo').value = '';
+    document.querySelectorAll('input[name="traslado_reemplazo"]').forEach(function(r){r.checked=false});
 }
 
 function cargarFlashTraslado() {
@@ -573,23 +623,49 @@ function verificarTraslado() {
 }
 
 function abrirPausa(actividadId, nombre) {
+    document.getElementById('finalizarOverlay').style.display = 'none';
+    document.getElementById('trasladoOverlay').style.display = 'none';
     document.getElementById('pausaForm').action = '/usuario/actividad/' + actividadId + '/pausar/';
     document.getElementById('pausaNombre').textContent = 'Actividad actual: ' + nombre;
     document.getElementById('reemplazoSection').style.display = 'none';
-    document.getElementById('pausaFlashContainer').style.display = 'none';
-    document.getElementById('pausaSubareaId').value = '';
+    pausResetSecciones();
     document.getElementById('pausaOverlay').style.display = 'flex';
 }
 
 function toggleReemplazo(motivo) {
     document.getElementById('reemplazoSection').style.display = motivo === 'Cambio de prioridad' ? 'block' : 'none';
-    document.getElementById('pausaFlashContainer').style.display = 'none';
+    pausResetSecciones();
+}
+
+function pausToggleSeccion(cb, seccion) {
+    if (cb.checked) {
+        ['pausSinActivar','pausVerPlanif','pausVerFlash'].forEach(function(id){ var el=document.getElementById(id); if(el&&el!==cb)el.checked=false; });
+        document.getElementById('pausPlanifContainer').style.display = 'none';
+        document.getElementById('pausaFlashContainer').style.display = 'none';
+        document.getElementById('pausaFlashLista').innerHTML = '';
+        document.getElementById('pausaSubareaId').value = '';
+        document.querySelectorAll('#pausaForm input[name="actividad_id"]').forEach(function(r){r.checked=false});
+        if (seccion === 'planif') {
+            document.getElementById('pausPlanifContainer').style.display = 'block';
+        } else if (seccion === 'flash') {
+            document.getElementById('pausaFlashContainer').style.display = 'block';
+            cargarActividadesPausa();
+        }
+    }
+}
+
+function pausResetSecciones() {
+    ['pausSinActivar','pausVerPlanif','pausVerFlash'].forEach(function(id){ var el=document.getElementById(id); if(el)el.checked=false; });
+    var pc = document.getElementById('pausPlanifContainer'); if(pc)pc.style.display='none';
+    var fc = document.getElementById('pausaFlashContainer'); if(fc)fc.style.display='none';
+    var fl = document.getElementById('pausaFlashLista'); if(fl)fl.innerHTML='';
+    document.getElementById('pausaSubareaId').value = '';
+    document.querySelectorAll('#pausaForm input[name="actividad_id"]').forEach(function(r){r.checked=false});
 }
 
 function cargarActividadesPausa() {
     var container = document.getElementById('pausaFlashLista');
-    var flashDiv = document.getElementById('pausaFlashContainer');
-    flashDiv.style.display = 'block';
+    document.getElementById('pausaFlashContainer').style.display = 'block';
     container.innerHTML = '<p class="text-muted small py-1 mb-0">Cargando...</p>';
     fetch('/master/api/buscar/actividad/?es_flash=1&_=' + Date.now(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
         .then(function(r){ return r.json(); })
@@ -615,13 +691,14 @@ function cerrarPausa() {
 var finalizarSubareaId = null;
 
 function abrirFinalizar(actividadId, nombre, subareaId, requiereEntregable) {
+    document.getElementById('pausaOverlay').style.display = 'none';
+    document.getElementById('trasladoOverlay').style.display = 'none';
     finalizarSubareaId = subareaId;
     document.getElementById('finalizarNombre').textContent = nombre;
     document.getElementById('finalizarForm').action = '/usuario/actividad/' + actividadId + '/finalizar/';
     document.getElementById('finalizarFlashSubarea').value = subareaId;
     document.getElementById('siguienteError').style.display = 'none';
-    document.getElementById('flashContainer').style.display = 'none';
-    document.getElementById('flashLista').innerHTML = '';
+    finResetSecciones();
     var entSection = document.getElementById('entregableSection');
     if (requiereEntregable) {
         entSection.style.display = 'block';
@@ -659,11 +736,12 @@ function cerrarFinalizar() {
     document.getElementById('finalizarOverlay').style.display = 'none';
     document.getElementById('entregableSection').style.display = 'none';
     document.getElementById('entregableSection').querySelector('input[type="file"]').value = '';
+    finResetSecciones();
 }
 
 document.getElementById('finalizarForm').addEventListener('submit', function(e) {
-    var reemp = document.querySelector('#finalizarForm input[name="reemplazo_actividad"]:checked');
-    if (reemp && reemp.value === 'flash') {
+    var fc = document.getElementById('finVerFlash');
+    if (fc && fc.checked) {
         var flashPicked = document.querySelector('#finalizarForm input[name="flash_actividad_id"]:checked');
         if (!flashPicked) {
             e.preventDefault();
@@ -672,6 +750,30 @@ document.getElementById('finalizarForm').addEventListener('submit', function(e) 
         }
     }
 });
+
+function finToggleSeccion(cb, seccion) {
+    if (cb.checked) {
+        ['finSinActivar','finVerPlanif','finVerFlash'].forEach(function(id){ var el=document.getElementById(id); if(el&&el!==cb)el.checked=false; });
+        document.getElementById('finPlanifContainer').style.display = 'none';
+        document.getElementById('flashContainer').style.display = 'none';
+        document.getElementById('flashLista').innerHTML = '';
+        document.querySelectorAll('#finalizarForm input[name="reemplazo_actividad"]').forEach(function(r){r.checked=false});
+        if (seccion === 'planif') {
+            document.getElementById('finPlanifContainer').style.display = 'block';
+        } else if (seccion === 'flash') {
+            document.getElementById('flashContainer').style.display = 'block';
+            cargarFlashActividades();
+        }
+    }
+}
+
+function finResetSecciones() {
+    ['finSinActivar','finVerPlanif','finVerFlash'].forEach(function(id){ var el=document.getElementById(id); if(el)el.checked=false; });
+    var pc = document.getElementById('finPlanifContainer'); if(pc)pc.style.display='none';
+    var fc = document.getElementById('flashContainer'); if(fc)fc.style.display='none';
+    var fl = document.getElementById('flashLista'); if(fl)fl.innerHTML='';
+    document.querySelectorAll('#finalizarForm input[name="reemplazo_actividad"]').forEach(function(r){r.checked=false});
+}
 
 function filtrarTablero() {
     const subareaId = document.getElementById('filtroSubarea').value;
@@ -687,19 +789,77 @@ function filtrarLista(containerId, value) {
     });
 }
 
-// Polling traslados pendientes
+// WebSocket para notificaciones en tiempo real
+var wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+var ws = new WebSocket(wsProto + '//' + window.location.host + '/ws/tablero/');
+
+ws.onopen = function() { console.log('[WS] Conectado'); };
+ws.onclose = function() { console.log('[WS] Desconectado'); };
+
+ws.onmessage = function(e) {
+    var data = JSON.parse(e.data);
+    if (data.tipo === 'traslado') {
+        mostrarToast('Nuevo traslado de ' + data.origen + ': ' + data.actividad, 'info');
+    } else if (data.tipo === 'traslado_respuesta') {
+        var msg = 'Traslado de "' + data.actividad + '" ' + data.accion;
+        if (data.detalle) msg += ' por ' + data.detalle;
+        mostrarToast(msg, data.accion === 'aceptado' ? 'success' : 'warning');
+        setTimeout(function(){ window.location.reload(); }, 4000);
+    } else if (data.tipo === 'asignacion') {
+        mostrarToast('Nueva actividad asignada: ' + data.actividad, 'info');
+    } else if (data.tipo === 'revision') {
+        mostrarToast('Revision ' + data.accion + ': ' + data.actividad, data.accion === 'aprobado' ? 'success' : 'danger');
+        setTimeout(function(){ window.location.reload(); }, 4000);
+    }
+};
+
+function mostrarToast(mensaje, tipo) {
+    var cont = document.querySelector('.toast-container');
+    if (!cont) {
+        cont = document.createElement('div');
+        cont.className = 'toast-container position-fixed top-0 end-0 p-3';
+        cont.style.zIndex = '9999';
+        document.body.appendChild(cont);
+    }
+    var icon = tipo === 'success' ? 'bi-check-circle-fill' : tipo === 'danger' ? 'bi-exclamation-circle-fill' : tipo === 'warning' ? 'bi-exclamation-triangle-fill' : 'bi-info-circle-fill';
+    var html = '<div class="toast" role="alert" style="min-width:280px;max-width:380px;">';
+    html += '<div class="d-flex"><div class="toast-body small py-2 px-3"><i class="bi ' + icon + ' me-1 opacity-75"></i>' + mensaje + '</div>';
+    html += '<button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div></div>';
+    cont.insertAdjacentHTML('beforeend', html);
+    var toastEl = cont.lastElementChild;
+    var toast = new bootstrap.Toast(toastEl, { delay: 20000, autohide: true });
+    toast.show();
+    toastEl.addEventListener('hidden.bs.toast', function() { toastEl.remove(); });
+}
+
+function actualizarSeccionTraslados() {
+    setTimeout(function(){
+        var url = window.location.href.split('?')[0] + '?_=' + Date.now();
+        fetch(url, { headers: {'X-Requested-With': 'XMLHttpRequest'} })
+        .then(function(r){return r.text()})
+        .then(function(html){
+            var d = document.createElement('div');
+            d.innerHTML = html;
+            var nuevo = d.querySelector('.tablero-main');
+            if (nuevo) document.querySelector('.tablero-main').innerHTML = nuevo.innerHTML;
+        });
+    }, 500);
+}
+
+// Fallback polling si WebSocket no esta disponible
+var lastTrasladosCount = 0;
 setInterval(function(){
     fetch('/usuario/api/traslados/pendientes/')
     .then(function(r){return r.json()})
     .then(function(d){
-        var badge = document.getElementById('trasladosBadge');
-        if (!badge && d.count > 0) {
-            var h = document.querySelector('h6:contains(\"Traslados pendientes\")');
+        if (d.count > lastTrasladosCount) {
+            lastTrasladosCount = d.count;
+            mostrarToast('Tienes un nuevo traslado pendiente', 'info');
+            setTimeout(function(){ window.location.reload(); }, 4000);
+        } else {
+            lastTrasladosCount = d.count;
         }
-        if (d.count > 0 && document.querySelector('.traslados-section.d-none')) {
-            location.reload();
-        }
-    });
+    }).catch(function(){});
 }, 30000);
 </script>
 {% endblock %}

@@ -5,7 +5,7 @@ PASSWORDS_FILTER = ["password", "csrfmiddlewaretoken", "csrf_token", "_token"]
 SKIP_PATHS = [
     "/login/", "/logout/",
     "/static/", "/media/",
-    "/admin/", "/accounts/login/",
+    "/switch-role/",
 ]
 
 MODEL_MAP = {
@@ -22,13 +22,32 @@ MODEL_MAP = {
     "progreso": "Progreso",
     "reportes": "Reporte",
     "linea-tiempo": "LineaTiempo",
-    "calendar": "Calendario",
     "tablero": "Tablero",
     "perfil": "Perfil",
     "calendario": "Calendario",
     "traslado": "Traslado",
     "importaciones": "Importacion",
     "no-programada": "EventoFlash",
+    "revisiones": "Revision",
+    "revision": "Revision",
+    "crear": None,         # CREATE path sin modelo propio
+    "master": "Master",
+    "empresa": "Empresa",
+    "area": "Area",
+    "subarea": "SubArea",
+    "usuario": "User",
+    "integracion": "Integracion",
+    "importar": "Importacion",
+    "subir-foto": "Perfil",
+    "sync": "Sync",
+    "inactivar": None,
+    "remover": None,
+    "aceptar": "Traslado",
+    "cancelar": "Traslado",
+    "rechazar": "Revision",
+    "aprobar": "Revision",
+    "reprogramar": "PlanificacionDetalle",
+    "reasignar": "PlanificacionDetalle",
 }
 
 
@@ -49,7 +68,7 @@ class AuditLogMiddleware:
                 return response
 
             try:
-                modelo, id_registro = self._extract_model_and_id(path)
+                modelo, id_registro = self._extract_model_and_id(path, request, response)
                 data = self._get_clean_post(request)
                 extra = {}
                 ua = request.META.get("HTTP_USER_AGENT", "")
@@ -84,23 +103,42 @@ class AuditLogMiddleware:
                 return True
         return False
 
-    def _extract_model_and_id(self, path):
+    def _extract_model_and_id(self, path, request=None, response=None):
         parts = [p for p in path.strip("/").split("/") if p]
         modelo = ""
         id_registro = None
 
-        # Buscar un ID numerico en la ruta y el modelo antes de el
+        # 1. Buscar ID que la vista haya seteado explicitamente (para CREATE)
+        if request and hasattr(request, "audit_record_id") and request.audit_record_id:
+            id_registro = request.audit_record_id
+        if request and hasattr(request, "audit_modelo") and request.audit_modelo:
+            modelo = request.audit_modelo
+
+        # 2. Buscar ID en redirect URL/header (para CREATE que redirige a detail)
+        if not id_registro and response:
+            import re
+            redirect_url = None
+            if hasattr(response, "url"):
+                redirect_url = str(response.url)
+            elif hasattr(response, "get") and response.get("Location"):
+                redirect_url = str(response.get("Location"))
+            if redirect_url:
+                match = re.search(r"/(\d+)/?$", redirect_url)
+                if match:
+                    id_registro = int(match.group(1))
+
+        # 3. Buscar un ID numerico en la ruta y el modelo antes de el
         for i, part in enumerate(parts):
             if part.isdigit() and i > 0:
-                id_registro = int(part)
+                if not id_registro:
+                    id_registro = int(part)
                 # El modelo es la palabra antes del ID
                 anterior = parts[i - 1]
-                # Pero puede venir despues de verbos como "editar", "eliminar", "crear"
                 verbos = {"editar", "eliminar", "crear", "ver", "iniciar", "finalizar", "pausar", "reanudar", "trasladar", "cancelar", "aceptar", "rechazar", "remover"}
                 if anterior in verbos and i > 1:
                     anterior = parts[i - 2]
                 if anterior in MODEL_MAP:
-                    modelo = MODEL_MAP[anterior]
+                    modelo = MODEL_MAP[anterior] or ""
                 else:
                     modelo = anterior.capitalize()
                 break
@@ -118,10 +156,16 @@ class AuditLogMiddleware:
         parts = [p for p in path.strip("/").split("/") if p]
         for part in parts:
             if part in MODEL_MAP:
-                return MODEL_MAP[part]
+                mapped = MODEL_MAP[part]
+                if mapped:
+                    return mapped
             if part.isdigit() and parts.index(part) > 0:
-                return parts[parts.index(part) - 1].capitalize()
-        return path.strip("/").split("/")[0].capitalize() if parts else "Unknown"
+                prev = parts[parts.index(part) - 1]
+                return prev.capitalize()
+        for part in parts:
+            if not part.isdigit():
+                return part.capitalize()
+        return "Unknown"
 
     def _get_clean_post(self, request):
         if request.method != "POST":

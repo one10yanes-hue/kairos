@@ -249,5 +249,12 @@ function actualizarVolumen() {
     var u = document.querySelectorAll('#usuariosContainer input[name="users"]:checked').length;
     document.getElementById('volumenInfo').textContent = (a>0&&u>0) ? (a*u)+' asignacion(es) ('+a+' act. x '+u+' usu.)' : '';
 }
+
+// Si el usuario vuelve "Atras" al formulario tras crear, redirect a lista
+window.addEventListener('pageshow', function(e) {
+    if (e.persisted) {
+        window.location.href = '{% url "planificacion:planificacion_list" %}';
+    }
+});
 </script>
 {% endblock %}

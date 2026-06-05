@@ -178,6 +178,8 @@ def planificacion_create(request):
                         nombre_tipo=actividad.tipo_actividad.nombre,
                     )
                 messages.success(request, f"Planificacion creada con {count} asignacion(es).")
+                request.audit_record_id = planificacion.pk
+                request.audit_modelo = "Planificacion"
                 return redirect("planificacion:planificacion_detail", pk=planificacion.pk)
         elif not form.is_valid():
             messages.error(request, f"Revisa los campos del formulario: {', '.join(f'{k}: {v[0]}' for k, v in form.errors.items())}")

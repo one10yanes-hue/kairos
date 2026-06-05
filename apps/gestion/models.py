@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import F, Q
 from django.utils import timezone
 from apps.accounts.models import User
 from apps.actividades.models import Actividad
@@ -195,6 +196,13 @@ class TrasladoActividad(models.Model):
     def __str__(self):
         return f"Traslado de {self.user_origen} a {self.user_destino}"
 
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.estado == "Pendiente" and self.asignacion_origen.estado not in ["Pendiente", "EnCurso", "Pausada"]:
+            raise ValidationError(
+                f"No se puede crear un traslado pendiente: la actividad origen esta '{self.asignacion_origen.get_estado_display()}'."
+            )
+
 
 class Colaboracion(models.Model):
     asignacion = models.ForeignKey(AsignacionActividad, on_delete=models.PROTECT, related_name="colaboraciones")
@@ -246,6 +254,12 @@ class TiempoInactividad(models.Model):
         verbose_name = "Tiempo de Inactividad"
         verbose_name_plural = "Tiempos de Inactividad"
         ordering = ["-fecha", "-inicio"]
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(fin__isnull=True) | models.Q(fin__gt=models.F("inicio")),
+                name="fin_posterior_a_inicio"
+            ),
+        ]
 
     def __str__(self):
         from django.utils import timezone

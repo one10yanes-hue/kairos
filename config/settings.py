@@ -17,11 +17,6 @@ DEBUG = env.bool("DEBUG", default=False)
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default="localhost,127.0.0.1,testserver")
 
 INSTALLED_APPS = [
-    "django.contrib.auth",
-    "django.contrib.contenttypes",
-    "django.contrib.sessions",
-    "django.contrib.messages",
-    "django.contrib.staticfiles",
     "apps.accounts",
     "apps.estructura",
     "apps.actividades",
@@ -31,6 +26,11 @@ INSTALLED_APPS = [
     "apps.reportes",
     "apps.auditoria",
     "apps.core",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
 ]
 
 MIDDLEWARE = [
@@ -65,6 +65,13 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "config.wsgi.application"
+ASGI_APPLICATION = "config.asgi.application"
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
+    },
+}
 
 db_engine = env("DB_ENGINE", default="django.db.backends.sqlite3")
 db_name = env("DB_NAME", default="db.sqlite3")
