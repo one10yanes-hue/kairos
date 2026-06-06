@@ -1,3 +1,31 @@
-{% extends 'base.html' %}{% block content %}
-<div class='container-fluid mt-3'><h5>Detalle Tarea</h5></div>
+{% extends "base.html" %}{% block content %}
+<div class="container-fluid mt-3">
+    <h5 class="fw-bold mb-2">{{ tarea.codigo }} · {{ tarea.titulo }}</h5>
+    <div class="row g-3">
+        <div class="col-lg-8">
+            <div class="card shadow-sm mb-3"><div class="card-body p-3">
+                <div class="row g-2" style="font-size:0.8rem;">
+                    <div class="col-6"><small class="text-muted">Tipo</small><br>{{ tarea.get_tipo_display }}</div>
+                    <div class="col-6"><small class="text-muted">Estado</small><br><span class="badge {% if tarea.estado == 'finalizada' %}bg-success{% elif tarea.estado == 'en_curso' %}bg-warning text-dark{% else %}bg-light text-muted{% endif %}">{{ tarea.get_estado_display }}</span></div>
+                    <div class="col-6"><small class="text-muted">Asignado a</small><br>{{ tarea.asignado_a.get_full_name|default:"Sin asignar" }}</div>
+                    <div class="col-6"><small class="text-muted">Creado por</small><br>{{ tarea.creador.get_full_name }}</div>
+                    <div class="col-6"><small class="text-muted">Sprint</small><br>{{ tarea.sprint.nombre|default:"-" }}</div>
+                    <div class="col-6"><small class="text-muted">Historia</small><br>{{ tarea.historia.codigo|default:"-" }}</div>
+                    <div class="col-6"><small class="text-muted">Creado</small><br>{{ tarea.fecha_creacion|date:"d/m/Y H:i" }}</div>
+                    <div class="col-6"><small class="text-muted">Asignacion</small><br>{% if tarea.asignacion %}<a href="{% url 'gestion:detalle_actividad' tarea.asignacion.pk %}">Ver en Tablero #{{ tarea.asignacion.pk }}</a>{% else %}-{% endif %}</div>
+                </div>
+                {% if tarea.descripcion %}<hr><p class="mb-0 small">{{ tarea.descripcion }}</p>{% endif %}
+            </div></div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card shadow-sm"><div class="card-body p-3" style="font-size:0.75rem;">
+                <h6 class="fw-semibold small">Proyecto</h6>
+                <p><a href="{% url 'proyectos:proyecto_detail' tarea.proyecto.pk %}">{{ tarea.proyecto.codigo }}</a></p>
+                {% if tarea.asignacion %}
+                <a href="{% url 'gestion:detalle_actividad' tarea.asignacion.pk %}" class="btn btn-sm btn-primary w-100 mt-2">Ver en Tablero</a>
+                {% endif %}
+            </div></div>
+        </div>
+    </div>
+</div>
 {% endblock %}

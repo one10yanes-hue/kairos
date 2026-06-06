@@ -60,15 +60,28 @@ def sprint_burndown(request, pk, spk):
     hoy = timezone.now().date()
     dias_labels = []
     ideal = []
+    real = []
     pts = sprint.puntos_comprometidos
     if sprint.fecha_inicio and sprint.fecha_fin:
         total_dias = max((sprint.fecha_fin - sprint.fecha_inicio).days + 1, 1)
         dias_labels = [(sprint.fecha_inicio + timedelta(days=i)).strftime("%d/%m") for i in range(total_dias)]
         paso = pts / max(total_dias - 1, 1) if total_dias > 1 else 0
         ideal = [max(0, round(pts - paso * i, 1)) for i in range(total_dias)]
+        # Datos reales: puntos quemados por dia segun tareas finalizadas
+        tareas_fin = sprint.tareas.filter(activo=True, estado="finalizada").select_related("historia")
+        pts_por_dia = {}
+        for t in tareas_fin:
+            dia = t.fecha_update.date()
+            pts_t = t.historia.puntos_historia if t.historia else 1
+            pts_por_dia[dia] = pts_por_dia.get(dia, 0) + pts_t
+        acum = pts
+        for d in [sprint.fecha_inicio + timedelta(days=i) for i in range(total_dias)]:
+            if d in pts_por_dia:
+                acum -= pts_por_dia[d]
+            real.append(max(0, acum))
     return render(request, "proyectos/sprint_burndown.html", {
         "proyecto": proyecto, "sprint": sprint,
-        "dias": dias_labels, "ideal": ideal, "pts_inicio": pts,
+        "dias": dias_labels, "ideal": ideal, "real": real, "pts_inicio": pts,
     })
 
 

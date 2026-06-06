@@ -14,7 +14,7 @@ new Chart(ctx, {
         labels: {{ dias|safe }},
         datasets: [
             { label: 'Ideal', data: {{ ideal|safe }}, borderColor: '#94a3b8', borderDash: [5,5], fill: false, tension: 0.1 },
-            { label: 'Real', data: [], borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', fill: true, tension: 0.1 }
+            { label: 'Real', data: {{ real|safe }}, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', fill: true, tension: 0.1 }
         ]
     },
     options: {
