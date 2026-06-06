@@ -110,9 +110,11 @@ def sprint_iniciar(request, pk, spk):
         # Activar todas las tareas del sprint: crear AsignacionActividad
         activadas = 0
         from ..signals import crear_asignacion_desde_tarea
+        from apps.gestion.views import _notificar_usuario
         for t in sprint.tareas.filter(activo=True, asignacion__isnull=True, asignado_a__isnull=False):
             asig = crear_asignacion_desde_tarea(t)
             if asig:
+                _notificar_usuario(t.asignado_a.pk, "nueva_asignacion", {"actividad": t.titulo, "fecha_programada": ""})
                 activadas += 1
         messages.success(request, f"Sprint {sprint.numero} iniciado. {activadas} tareas activadas en tableros.")
         return redirect("proyectos:sprint_board", pk=proyecto.pk, spk=sprint.pk)

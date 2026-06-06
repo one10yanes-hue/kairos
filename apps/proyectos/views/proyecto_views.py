@@ -16,7 +16,14 @@ def _get_subareas(user):
 @login_required
 def proyecto_list(request):
     subareas = _get_subareas(request.user)
-    proyectos = Proyecto.objects.filter(subareas__in=subareas, activo=True).distinct().prefetch_related("subareas__area", "subareas")
+    # Mostrar proyectos donde el usuario es miembro o es Admin/Master
+    if request.user.rol.nombre in ["Master", "Admin"]:
+        proyectos = Proyecto.objects.filter(subareas__in=subareas, activo=True).distinct()
+    else:
+        proyectos = Proyecto.objects.filter(
+            membresias__user=request.user, membresias__activo=True, activo=True
+        ).distinct()
+    proyectos = proyectos.prefetch_related("subareas__area", "subareas")
     return render(request, "proyectos/proyecto_list.html", {"proyectos": proyectos})
 
 
@@ -65,6 +72,17 @@ def proyecto_detail(request, pk):
     proyecto = request.proyecto
     tareas = proyecto.tareas.filter(activo=True)
     incidencias = proyecto.incidencias.filter(activo=True)
+    from ..models import Tarea
+    from django.utils import timezone
+    ahora = timezone.now()
+
+    # Métricas avanzadas
+    sprints_hist = proyecto.sprints.filter(activo=True, estado="finalizado").order_by("numero")
+    velocidades = [s.velocidad for s in sprints_hist]
+    # Aging: tareas pendientes sin movimiento en 3+ días
+    limite_aging = ahora - timezone.timedelta(days=3)
+    tareas_aging = tareas.filter(estado__in=["pendiente","en_curso","pausada"], fecha_creacion__lt=limite_aging).count()
+
     context = {
         "proyecto": proyecto,
         "tareas_pend": tareas.filter(estado="pendiente").count(),
@@ -72,6 +90,10 @@ def proyecto_detail(request, pk):
         "tareas_fin": tareas.filter(estado="finalizada").count(),
         "inc_abiertas": incidencias.filter(estado__in=["abierta", "triaged", "en_progreso"]).count(),
         "sprints_activos": proyecto.sprints.filter(activo=True, estado="activo").count(),
+        "sprints_finalizados": sprints_hist.count(),
+        "velocidad_prom": round(sum(velocidades) / len(velocidades), 1) if velocidades else 0,
+        "tareas_aging": tareas_aging,
+        "avances": proyecto.avances.order_by("-fecha")[:5],
     }
     return render(request, "proyectos/proyecto_detail.html", context)
 

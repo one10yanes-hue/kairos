@@ -24,7 +24,14 @@
         <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#0ea5e9;">{{ tareas_curso }}</div><small class="text-muted" style="font-size:0.6rem;">En Curso</small></div></div></div>
         <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#16a34a;">{{ tareas_fin }}</div><small class="text-muted" style="font-size:0.6rem;">Finalizadas</small></div></div></div>
         <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#dc2626;">{{ inc_abiertas }}</div><small class="text-muted" style="font-size:0.6rem;">Inc. Abiertas</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#8b5cf6;">{{ velocidad_prom }}</div><small class="text-muted" style="font-size:0.6rem;">Velocidad Prom</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#ef4444;">{{ tareas_aging }}</div><small class="text-muted" style="font-size:0.6rem;">Aging (+3d)</small></div></div></div>
     </div>
+
+    {% if avances %}
+    <div class="card shadow-sm mb-3"><div class="card-header py-1 px-2"><small class="fw-semibold">Bitacora</small></div>
+    <div class="card-body p-2" style="font-size:0.72rem;">{% for a in avances %}<div class="border-bottom py-1"><small class="text-muted">{{ a.fecha|date:"d/m H:i" }}</small> <strong>{{ a.user.get_full_name|truncatechars:15 }}</strong>: {{ a.descripcion|truncatechars:80 }}</div>{% endfor %}</div></div>
+    {% endif %}
 
     <div class="d-flex gap-2 mb-3 flex-wrap">
         <a href="{% url 'proyectos:backlog' proyecto.pk %}" class="btn btn-sm btn-outline-primary" style="font-size:0.75rem;">Backlog</a>
