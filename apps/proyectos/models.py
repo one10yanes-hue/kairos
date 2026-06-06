@@ -45,12 +45,12 @@ class Proyecto(models.Model):
 
 class MiembroProyecto(models.Model):
     ROLES = [
-        ("manager", "Project Manager"),
-        ("product_owner", "Product Owner"),
-        ("scrum_master", "Scrum Master"),
-        ("developer", "Developer"),
-        ("tester", "QA / Tester"),
-        ("viewer", "Observador"),
+        ("lider", "Lider de Proyecto"),
+        ("responsable", "Responsable"),
+        ("revisor", "Revisor / QA"),
+        ("aprobador", "Aprobador"),
+        ("ejecutor", "Ejecutor"),
+        ("observador", "Observador"),
     ]
     proyecto = models.ForeignKey(Proyecto, on_delete=models.CASCADE, related_name="membresias")
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="proyectos_miembro")
@@ -107,6 +107,12 @@ class Sprint(models.Model):
     @property
     def velocidad(self):
         return self.historias.filter(estado="done").aggregate(
+            total=Sum("puntos_historia")
+        )["total"] or 0
+
+    @property
+    def puntos_comprometidos(self):
+        return self.historias.filter(activo=True).aggregate(
             total=Sum("puntos_historia")
         )["total"] or 0
 
@@ -263,3 +269,25 @@ class ComentarioIncidencia(models.Model):
     class Meta:
         db_table = "comentario_incidencia"
         ordering = ["fecha"]
+
+
+class RegistroAvance(models.Model):
+    TIPOS = [
+        ("historia_completada", "Historia completada"),
+        ("sprint_iniciado", "Sprint iniciado"),
+        ("sprint_finalizado", "Sprint finalizado"),
+        ("incidencia_resuelta", "Incidencia resuelta"),
+        ("tarea_finalizada", "Tarea finalizada"),
+        ("comentario", "Comentario"),
+        ("bloqueo", "Bloqueo reportado"),
+    ]
+    proyecto = models.ForeignKey(Proyecto, on_delete=models.CASCADE, related_name="avances")
+    tipo = models.CharField(max_length=30, choices=TIPOS)
+    descripcion = models.TextField()
+    user = models.ForeignKey(User, on_delete=models.PROTECT)
+    referencia_id = models.IntegerField(null=True, blank=True)
+    fecha = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "registro_avance"
+        ordering = ["-fecha"]

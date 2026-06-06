@@ -51,7 +51,7 @@ def proyecto_create(request):
         proyecto.codigo = f"PRJ-{proyecto.pk:04d}"
         proyecto.save()
 
-        MiembroProyecto.objects.get_or_create(proyecto=proyecto, user=manager, defaults={"rol": "manager"})
+        MiembroProyecto.objects.get_or_create(proyecto=proyecto, user=manager, defaults={"rol": "lider"})
         messages.success(request, f"Proyecto '{proyecto.codigo}' creado.")
         return redirect("proyectos:proyecto_detail", pk=proyecto.pk)
 
@@ -94,7 +94,7 @@ def proyecto_equipo(request, pk):
     miembros = MiembroProyecto.objects.filter(proyecto=proyecto, activo=True).select_related("user")
     if request.method == "POST":
         user_id = request.POST.get("user_id")
-        rol = request.POST.get("rol", "developer")
+        rol = request.POST.get("rol", "ejecutor")
         accion = request.POST.get("accion")
         if accion == "agregar" and user_id:
             MiembroProyecto.objects.get_or_create(

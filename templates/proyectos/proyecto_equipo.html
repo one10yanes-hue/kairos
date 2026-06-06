@@ -30,7 +30,7 @@
                         {% for u in usuarios %}<option value="{{ u.pk }}">{{ u.get_full_name }}</option>{% endfor %}
                     </select>
                     <select name="rol" class="form-select form-select-sm mb-2">
-                        <option value="developer">Developer</option><option value="product_owner">Product Owner</option><option value="scrum_master">Scrum Master</option><option value="tester">QA / Tester</option><option value="viewer">Observador</option>
+                        <option value="ejecutor">Ejecutor</option><option value="lider">Lider</option><option value="responsable">Responsable</option><option value="revisor">Revisor / QA</option><option value="aprobador">Aprobador</option><option value="observador">Observador</option>
                     </select>
                     <button type="submit" class="btn btn-primary btn-sm w-100">Agregar</button>
                 </form>
