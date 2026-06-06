@@ -168,6 +168,24 @@ class HistoriaUsuario(models.Model):
             self.estado = "sprint_backlog" if self.sprint else "backlog"
         self.save(update_fields=["estado"])
 
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        # Validar transiciones de estado
+        transiciones = {
+            "backlog": ["sprint_backlog"],
+            "sprint_backlog": ["en_progreso", "backlog"],
+            "en_progreso": ["revision", "backlog", "sprint_backlog"],
+            "revision": ["done", "en_progreso"],
+            "done": ["backlog"],
+        }
+        if self.pk:
+            try:
+                old = HistoriaUsuario.objects.get(pk=self.pk)
+                if old.estado != self.estado and self.estado not in transiciones.get(old.estado, []):
+                    raise ValidationError(f"No se puede pasar de '{old.get_estado_display()}' a '{self.get_estado_display()}'.")
+            except HistoriaUsuario.DoesNotExist:
+                pass
+
 
 class Tarea(models.Model):
     TIPOS = [
@@ -211,6 +229,26 @@ class Tarea(models.Model):
 
     def __str__(self):
         return f"{self.codigo}: {self.titulo}"
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        transiciones = {
+            "pendiente": ["en_curso", "cancelada"],
+            "en_curso": ["pausada", "finalizada", "cancelada"],
+            "pausada": ["en_curso", "finalizada", "cancelada"],
+            "finalizada": [],  # estado terminal
+            "revision": ["finalizada", "pendiente"],
+            "cancelada": [],
+        }
+        if self.pk:
+            try:
+                old = Tarea.objects.get(pk=self.pk)
+                if old.estado != self.estado and self.estado not in transiciones.get(old.estado, []):
+                    raise ValidationError(
+                        f"Transicion invalida: '{old.get_estado_display()}' -> '{self.get_estado_display()}'"
+                    )
+            except Tarea.DoesNotExist:
+                pass
 
 
 class Incidencia(models.Model):
@@ -258,6 +296,24 @@ class Incidencia(models.Model):
 
     def __str__(self):
         return f"{self.codigo}: {self.titulo}"
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        transiciones = {
+            "abierta": ["triaged", "en_progreso", "cerrada", "duplicada"],
+            "triaged": ["en_progreso", "cerrada"],
+            "en_progreso": ["resuelta", "cerrada"],
+            "resuelta": ["cerrada", "en_progreso"],
+            "cerrada": ["abierta"],
+            "duplicada": ["abierta"],
+        }
+        if self.pk:
+            try:
+                old = Incidencia.objects.get(pk=self.pk)
+                if old.estado != self.estado and self.estado not in transiciones.get(old.estado, []):
+                    raise ValidationError(f"No se puede pasar de '{old.get_estado_display()}' a '{self.get_estado_display()}'.")
+            except Incidencia.DoesNotExist:
+                pass
 
 
 class ComentarioIncidencia(models.Model):
