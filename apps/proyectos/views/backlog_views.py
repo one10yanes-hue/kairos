@@ -19,6 +19,22 @@ def historia_aprobar(request, pk, hid):
     return redirect("proyectos:backlog", pk=proyecto.pk)
 
 
+@miembro_requerido(ROLES_ADMIN)
+def historia_rechazar(request, pk, hid):
+    proyecto = request.proyecto
+    historia = get_object_or_404(HistoriaUsuario, pk=hid, proyecto=proyecto, activo=True)
+    if request.method == "POST":
+        motivo = request.POST.get("motivo", "").strip()
+        if not motivo:
+            messages.error(request, "Debes indicar el motivo del rechazo.")
+            return redirect("proyectos:backlog", pk=proyecto.pk)
+        if historia.estado == "revision":
+            historia.estado = "en_progreso"
+            historia.save()
+            messages.warning(request, f"Historia {historia.codigo} rechazada: {motivo}")
+        return redirect("proyectos:backlog", pk=proyecto.pk)
+
+
 @miembro_requerido()
 def backlog_view(request, pk):
     proyecto = get_object_or_404(Proyecto, pk=pk, activo=True)

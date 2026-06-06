@@ -15,12 +15,14 @@ urlpatterns = [
     path("<int:pk>/historias/crear/", backlog_views.historia_create, name="historia_create"),
     path("<int:pk>/historias/<int:hid>/editar/", backlog_views.historia_edit, name="historia_edit"),
     path("<int:pk>/historias/<int:hid>/aprobar/", backlog_views.historia_aprobar, name="historia_aprobar"),
+    path("<int:pk>/historias/<int:hid>/rechazar/", backlog_views.historia_rechazar, name="historia_rechazar"),
     # Sprints
     path("<int:pk>/sprints/", sprint_views.sprint_list, name="sprint_list"),
     path("<int:pk>/sprints/crear/", sprint_views.sprint_create, name="sprint_create"),
     path("<int:pk>/sprints/<int:spk>/", sprint_views.sprint_board, name="sprint_board"),
     path("<int:pk>/sprints/<int:spk>/burndown/", sprint_views.sprint_burndown, name="sprint_burndown"),
     path("<int:pk>/sprints/<int:spk>/finalizar/", sprint_views.sprint_finalizar, name="sprint_finalizar"),
+    path("<int:pk>/sprints/<int:spk>/iniciar/", sprint_views.sprint_iniciar, name="sprint_iniciar"),
     # Tareas
     path("<int:pk>/tareas/", tarea_views.tarea_list, name="tarea_list"),
     path("<int:pk>/tareas/crear/", tarea_views.tarea_create, name="tarea_create"),

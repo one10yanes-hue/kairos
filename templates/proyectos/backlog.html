@@ -1,12 +1,12 @@
-{% extends "base.html" %}{% block content %}
+{% extends "base.html" %}{% load proyecto_permisos %}{% block content %}
 <div class="container-fluid mt-3">
     <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
         <h5 class="fw-bold mb-0" style="font-size:0.95rem;">
             <a href="{% url 'proyectos:proyecto_detail' proyecto.pk %}" class="text-decoration-none">{{ proyecto.codigo }}</a> · Backlog
         </h5>
-        <button type="button" class="btn btn-primary btn-sm" style="font-size:0.75rem;" onclick="document.getElementById('historiaModal').style.display='flex'">
+        {% if request.membresia|puede_editar %}<button type="button" class="btn btn-primary btn-sm" style="font-size:0.75rem;" onclick="document.getElementById('historiaModal').style.display='flex'">
             <i class="bi bi-plus-lg"></i> Nueva Historia
-        </button>
+        </button>{% endif %}
     </div>
 
     <div class="row g-2 mb-2">
@@ -31,8 +31,11 @@
                         <td><span class="badge {% if h.estado == 'done' %}bg-success{% elif h.estado == 'backlog' %}bg-light text-muted{% else %}bg-warning text-dark{% endif %}" style="font-size:0.55rem;">{{ h.get_estado_display }}</span></td>
                         <td style="font-size:0.65rem;">{% if h.sprint %}{{ h.sprint.nombre }}{% else %}-{% endif %}</td>
                         <td>
-                            {% if h.estado == 'revision' %}
+                            {% if h.estado == 'revision' and request.membresia|es_aprobador %}
+                            <div class="d-flex gap-1">
                             <form method="POST" action="{% url 'proyectos:historia_aprobar' proyecto.pk h.pk %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-success py-0 px-1" style="font-size:0.55rem;" title="Aprobar como Done">✓</button></form>
+                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-1" style="font-size:0.55rem;" title="Rechazar" onclick="rechazarHistoria({{ h.pk }})">✗</button>
+                            </div>
                             {% endif %}
                         </td>
                     </tr>
@@ -140,5 +143,16 @@ document.addEventListener('DOMContentLoaded', function(){
         });
     }
 });
+
+function rechazarHistoria(hid) {
+    var motivo = prompt('Motivo del rechazo (obligatorio):');
+    if (!motivo || !motivo.trim()) return;
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/proyectos/{{ proyecto.pk }}/historias/' + hid + '/rechazar/';
+    form.innerHTML = '{% csrf_token %}<input type="hidden" name="motivo" value="' + motivo.replace(/"/g,'&quot;') + '">';
+    document.body.appendChild(form);
+    form.submit();
+}
 </script>
 {% endblock %}

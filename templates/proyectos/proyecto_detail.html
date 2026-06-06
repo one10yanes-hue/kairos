@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% block content %}
+{% extends "base.html" %}{% load proyecto_permisos %}{% block content %}
 <div class="container-fluid mt-3">
     <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
         <div>
@@ -7,7 +7,7 @@
         </div>
         <div class="d-flex gap-2">
             <span class="badge {% if proyecto.estado == 'activo' %}bg-success{% elif proyecto.estado == 'pausado' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ proyecto.get_estado_display }}</span>
-            <a href="{% url 'proyectos:proyecto_edit' proyecto.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem;">Editar</a>
+            {% if request.membresia|puede_administrar %}<a href="{% url 'proyectos:proyecto_edit' proyecto.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem;">Editar</a>{% endif %}
         </div>
     </div>
 
@@ -27,12 +27,12 @@
     </div>
 
     <div class="d-flex gap-2 mb-3 flex-wrap">
-        <a href="{% url 'proyectos:backlog' proyecto.pk %}" class="btn btn-sm btn-outline-primary" style="font-size:0.75rem;">📋 Backlog</a>
-        <a href="{% url 'proyectos:sprint_list' proyecto.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem;">🔄 Sprints</a>
-        <a href="{% url 'proyectos:tarea_list' proyecto.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem;">📝 Tareas</a>
-        <a href="{% url 'proyectos:incidencia_list' proyecto.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem;">⚠️ Incidencias</a>
-        <a href="{% url 'proyectos:proyecto_equipo' proyecto.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem;">👥 Equipo</a>
-        <a href="{% url 'proyectos:proyecto_gantt' proyecto.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem;">📊 Gantt</a>
+        <a href="{% url 'proyectos:backlog' proyecto.pk %}" class="btn btn-sm btn-outline-primary" style="font-size:0.75rem;">Backlog</a>
+        <a href="{% url 'proyectos:sprint_list' proyecto.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem;">Sprints</a>
+        <a href="{% url 'proyectos:tarea_list' proyecto.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem;">Tareas</a>
+        <a href="{% url 'proyectos:incidencia_list' proyecto.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem;">Incidencias</a>
+        {% if request.membresia|puede_administrar %}<a href="{% url 'proyectos:proyecto_equipo' proyecto.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem;">Equipo</a>{% endif %}
+        <a href="{% url 'proyectos:proyecto_gantt' proyecto.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem;">Gantt</a>
     </div>
 
     {% if proyecto.descripcion %}

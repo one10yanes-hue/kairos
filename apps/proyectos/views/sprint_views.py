@@ -95,3 +95,46 @@ def sprint_finalizar(request, pk, spk):
         messages.success(request, f"Sprint {sprint.numero} finalizado. Velocidad: {sprint.velocidad} pts.")
         return redirect("proyectos:sprint_list", pk=proyecto.pk)
     return redirect("proyectos:sprint_board", pk=proyecto.pk, spk=sprint.pk)
+
+
+@miembro_requerido(ROLES_EDICION)
+def sprint_iniciar(request, pk, spk):
+    proyecto = get_object_or_404(Proyecto, pk=pk, activo=True)
+    sprint = get_object_or_404(Sprint, pk=spk, proyecto=proyecto)
+    if sprint.estado != "planificado":
+        messages.error(request, "Solo se pueden iniciar sprints planificados.")
+        return redirect("proyectos:sprint_board", pk=proyecto.pk, spk=sprint.pk)
+    if request.method == "POST":
+        sprint.estado = "activo"
+        sprint.save()
+        # Activar todas las tareas del sprint: crear AsignacionActividad
+        activadas = 0
+        from ..signals import crear_asignacion_desde_tarea
+        for t in sprint.tareas.filter(activo=True, asignacion__isnull=True, asignado_a__isnull=False):
+            asig = crear_asignacion_desde_tarea(t)
+            if asig:
+                activadas += 1
+        messages.success(request, f"Sprint {sprint.numero} iniciado. {activadas} tareas activadas en tableros.")
+        return redirect("proyectos:sprint_board", pk=proyecto.pk, spk=sprint.pk)
+    return redirect("proyectos:sprint_board", pk=proyecto.pk, spk=sprint.pk)
+    proyecto = get_object_or_404(Proyecto, pk=pk, activo=True)
+    sprint = get_object_or_404(Sprint, pk=spk, proyecto=proyecto)
+    if request.method == "POST":
+        from ..models import RegistroAvance
+        sprint.estado = "finalizado"
+        sprint.save()
+        for h in sprint.historias.filter(activo=True):
+            if h.estado in ["revision", "done"]:
+                h.estado = "done"
+                h.save()
+                RegistroAvance.objects.create(proyecto=proyecto, tipo="historia_completada",
+                    descripcion=f"Historia {h.codigo} completada en Sprint {sprint.numero}", user=request.user, referencia_id=h.pk)
+            else:
+                h.estado = "backlog"
+                h.sprint = None
+                h.save()
+        RegistroAvance.objects.create(proyecto=proyecto, tipo="sprint_finalizado",
+            descripcion=f"Sprint {sprint.numero} finalizado. Velocidad: {sprint.velocidad} pts.", user=request.user, referencia_id=sprint.pk)
+        messages.success(request, f"Sprint {sprint.numero} finalizado. Velocidad: {sprint.velocidad} pts.")
+        return redirect("proyectos:sprint_list", pk=proyecto.pk)
+    return redirect("proyectos:sprint_board", pk=proyecto.pk, spk=sprint.pk)

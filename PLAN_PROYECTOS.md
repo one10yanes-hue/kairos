@@ -1053,3 +1053,34 @@ apps/planificacion/migrations/XXXX_add_proyecto_fk.py
 | 10 | Gantt | `vis-timeline` (ya en `linea_tiempo.html`) | Biblioteca JS incluida en `base.html` |
 | 11 | Drag & drop | SortableJS (CDN) para backlog | No existía, es nuevo |
 | 12 | Gráficos | Chart.js (ya en dashboard) | `Chart.js` cargado en `base.html` |
+
+---
+
+## 14. PROGRESO REAL (v4.8.1) · Junio 2026
+
+| Área | % | Implementado | Pendiente |
+|------|---|-------------|-----------|
+| **Modelos** | ✅ 100% | 9 modelos (Proyecto, Miembro, Etiqueta, Sprint, Historia, Tarea, Incidencia, Comentario, RegistroAvance). M2M subareas. Migraciones. | - |
+| **Señales/Acople** | ✅ 100% | sync bidireccional (Asignacion↔Tarea). Planificacion→proyecto crea Tareas. Badge proyecto en tablero. | - |
+| **Permisos** | ✅ 95% | Decorador `@miembro_requerido()` en todas las vistas. Helpers `proyecto_es_miembro()`. ROLES_ADMIN/EDICION. | Validar lista proyectos solo muestra los del usuario |
+| **Backlog** | ✅ 85% | Drag-drop (SortableJS). Modal crear/editar. Reorder API. Aprobar historia. | ❌ Rechazar historia con motivo |
+| **Sprints** | ✅ 80% | Crear con historias. Board Kanban 3 columnas. Finalizar (mover incompletas, velocidad). Burndown Chart.js. | ❌ Sprint iniciar (activar todas las tareas) |
+| **Tareas** | ✅ 85% | CRUD completo. `tarea_activar`→crea AsignacionActividad. Catálogo de actividades. Filtro por subareas del proyecto. | - |
+| **Incidencias** | ✅ 70% | CRUD. Máquina de estados con validación. Comentarios. Vista detalle con transiciones. | ❌ Convertir incidencia a Tarea |
+| **Reportes** | ✅ 60% | Dashboard KPIs (pendientes, curso, fin, incidencias). Burndown Chart.js. Gantt vis-timeline. | ❌ CFD, velocidad histórica, Excel |
+| **UX por rol** | 🔴 10% | Decoradores restringen acciones. Botón Aprobar visible para Líder/Responsable. | ❌ **Todos ven lo mismo.** Templates sin adaptar por rol. |
+| **Notificaciones** | 🔴 10% | WebSocket infra listo. Notificaciones de traslado. | ❌ Asignación tarea, sprint iniciado, revisión |
+| **Workflow config** | 🔴 0% | Transiciones hardcodeadas con validación clean(). | ❌ Flujos configurables por proyecto |
+
+### Prioridad de pendientes
+
+| # | Pendiente | Prioridad |
+|---|-----------|-----------|
+| 1 | **UX diferenciada por rol** (templates adaptados) | 🔴 Crítico |
+| 2 | Rechazar historia con motivo | 🟠 Alto |
+| 3 | Sprint iniciar (activar tareas masivamente) | 🟠 Alto |
+| 4 | Convertir incidencia a Tarea | 🟡 Medio |
+| 5 | Notificaciones proyecto (WebSocket) | 🟡 Medio |
+| 6 | Sidebar contextual (sub-navegación proyecto) | 🟡 Medio |
+| 7 | Métricas avanzadas (lead time, aging, CFD) | 🟢 Bajo |
+| 12 | Gráficos | Chart.js (ya en dashboard) | `Chart.js` cargado en `base.html` |
