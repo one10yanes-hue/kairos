@@ -15,7 +15,7 @@
                         <span class="badge {% if p.estado == 'activo' %}bg-success{% elif p.estado == 'pausado' %}bg-warning text-dark{% else %}bg-secondary{% endif %}" style="font-size:0.6rem;">{{ p.get_estado_display }}</span>
                     </div>
                     <h6 class="fw-bold mb-1" style="font-size:0.85rem;"><a href="{% url 'proyectos:proyecto_detail' p.pk %}" class="text-decoration-none">{{ p.nombre }}</a></h6>
-                    <small class="text-muted d-block" style="font-size:0.7rem;">{{ p.subarea.area.nombre }} &gt; {{ p.subarea.nombre }}</small>
+                    <small class="text-muted d-block" style="font-size:0.7rem;">{% for s in p.subareas.all %}{{ s.area.nombre }} > {{ s.nombre }}{% if not forloop.last %}, {% endif %}{% empty %}Global{% endfor %}</small>
                     <small class="text-muted d-block" style="font-size:0.7rem;">Manager: {{ p.manager.get_full_name }}</small>
                     <div class="mt-2">
                         <div class="progress" style="height:6px;">

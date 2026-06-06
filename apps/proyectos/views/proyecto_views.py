@@ -16,7 +16,7 @@ def _get_subareas(user):
 @login_required
 def proyecto_list(request):
     subareas = _get_subareas(request.user)
-    proyectos = Proyecto.objects.filter(subarea__in=subareas, activo=True).select_related("area", "subarea", "manager")
+    proyectos = Proyecto.objects.filter(subareas__in=subareas, activo=True).distinct().prefetch_related("subareas__area", "subareas")
     return render(request, "proyectos/proyecto_list.html", {"proyectos": proyectos})
 
 
@@ -27,30 +27,29 @@ def proyecto_create(request):
         nombre = request.POST.get("nombre", "").strip()
         descripcion = request.POST.get("descripcion", "").strip()
         objetivo = request.POST.get("objetivo", "").strip()
-        subarea_id = request.POST.get("subarea")
+        subarea_ids = request.POST.getlist("subareas")
         manager_id = request.POST.get("manager")
         fecha_inicio = request.POST.get("fecha_inicio") or None
         fecha_fin = request.POST.get("fecha_fin_estimada") or None
 
-        if not nombre or not subarea_id or not manager_id:
-            messages.error(request, "Nombre, subarea y manager son obligatorios.")
+        if not nombre or not manager_id:
+            messages.error(request, "Nombre y manager son obligatorios.")
             return redirect("proyectos:proyecto_create")
 
-        subarea = get_object_or_404(Proyecto._meta.get_field("subarea").remote_field.model, pk=subarea_id, activo=True)
         manager = get_object_or_404(User, pk=manager_id, activo=True)
 
         proyecto = Proyecto.objects.create(
             nombre=nombre,
             descripcion=descripcion,
             objetivo=objetivo,
-            area=subarea.area,
-            subarea=subarea,
             manager=manager,
             fecha_inicio=fecha_inicio,
             fecha_fin_estimada=fecha_fin,
         )
         proyecto.codigo = f"PRJ-{proyecto.pk:04d}"
         proyecto.save()
+        if subarea_ids:
+            proyecto.subareas.set(subarea_ids)
 
         MiembroProyecto.objects.get_or_create(proyecto=proyecto, user=manager, defaults={"rol": "lider"})
         messages.success(request, f"Proyecto '{proyecto.codigo}' creado.")

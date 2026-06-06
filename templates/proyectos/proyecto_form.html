@@ -11,13 +11,13 @@
                         <input type="text" name="nombre" class="form-control" value="{{ proyecto.nombre|default:'' }}" required>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label small fw-semibold">SubArea <span class="text-danger">*</span></label>
-                        <select name="subarea" class="form-select">
-                            <option value="">Seleccione...</option>
+                        <label class="form-label small fw-semibold">SubAreas</label>
+                        <select name="subareas" class="form-select" multiple style="height:100px;">
                             {% for s in subareas %}
-                            <option value="{{ s.pk }}" {% if proyecto and proyecto.subarea_id == s.pk %}selected{% endif %}>{{ s.nombre }} ({{ s.area.nombre }})</option>
+                            <option value="{{ s.pk }}" {% if proyecto and s in proyecto.subareas.all %}selected{% endif %}>{{ s.nombre }} ({{ s.area.nombre }})</option>
                             {% endfor %}
                         </select>
+                        <small class="text-muted" style="font-size:0.6rem;">Ctrl+clic para seleccionar varias</small>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label small fw-semibold">Manager <span class="text-danger">*</span></label>

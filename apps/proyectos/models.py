@@ -15,8 +15,7 @@ class Proyecto(models.Model):
     descripcion = models.TextField(blank=True)
     objetivo = models.TextField(blank=True)
 
-    area = models.ForeignKey("estructura.Area", on_delete=models.PROTECT, related_name="proyectos")
-    subarea = models.ForeignKey("estructura.SubArea", on_delete=models.PROTECT, related_name="proyectos")
+    subareas = models.ManyToManyField("estructura.SubArea", blank=True, related_name="proyectos")
     manager = models.ForeignKey(User, on_delete=models.PROTECT, related_name="proyectos_gestionados")
 
     estado = models.CharField(max_length=20, choices=ESTADOS, default="activo")

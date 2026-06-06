@@ -37,13 +37,16 @@ def crear_asignacion_desde_tarea(tarea):
 
     actividad = tarea.actividad_catalogo
     if not actividad:
+        subarea = tarea.proyecto.subareas.first()
+        if not subarea:
+            return None
         tipo, _ = TipoActividad.objects.get_or_create(
-            subarea=tarea.proyecto.subarea,
+            subarea=subarea,
             nombre="Tarea de Proyecto",
             defaults={"requiere_fecha_limite": False, "requiere_entregable": False, "es_flash": False}
         )
         actividad, _ = Actividad.objects.get_or_create(
-            subarea=tarea.proyecto.subarea, tipo_actividad=tipo,
+            subarea=subarea, tipo_actividad=tipo,
             defaults={"nombre": f"Tarea de Proyecto - {tarea.proyecto.codigo}"}
         )
 

@@ -48,7 +48,7 @@ def tarea_create(request, pk):
     historias = proyecto.historias.filter(activo=True)
     sprints = proyecto.sprints.filter(activo=True)
     miembros = proyecto.membresias.filter(activo=True).select_related("user")
-    actividades = Actividad.objects.filter(subarea=proyecto.subarea, activo=True).select_related("tipo_actividad")
+    actividades = Actividad.objects.filter(subarea__in=proyecto.subareas.all(), activo=True).select_related("tipo_actividad")
     return render(request, "proyectos/tarea_form.html", {
         "proyecto": proyecto, "historias": historias, "sprints": sprints,
         "miembros": miembros, "actividades": actividades
