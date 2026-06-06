@@ -32,6 +32,7 @@ urlpatterns = [
     path("<int:pk>/incidencias/", incidencia_views.incidencia_list, name="incidencia_list"),
     path("<int:pk>/incidencias/crear/", incidencia_views.incidencia_create, name="incidencia_create"),
     path("<int:pk>/incidencias/<int:iid>/", incidencia_views.incidencia_detail, name="incidencia_detail"),
+    path("<int:pk>/incidencias/<int:iid>/convertir/", incidencia_views.incidencia_convertir, name="incidencia_convertir"),
     # Reportes
     path("<int:pk>/gantt/", proyecto_views.proyecto_gantt, name="proyecto_gantt"),
 ]

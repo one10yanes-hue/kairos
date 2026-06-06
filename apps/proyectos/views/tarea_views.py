@@ -39,6 +39,11 @@ def tarea_create(request, pk):
         if tarea.asignado_a:
             asignacion = crear_asignacion_desde_tarea(tarea)
             if asignacion:
+                from apps.gestion.views import _notificar_usuario
+                _notificar_usuario(tarea.asignado_a.pk, "nueva_asignacion", {
+                    "actividad": tarea.titulo,
+                    "fecha_programada": "",
+                })
                 messages.success(request, f"Tarea {tarea.codigo} creada y asignada a {tarea.asignado_a.get_full_name()}.")
             else:
                 messages.success(request, f"Tarea {tarea.codigo} creada.")

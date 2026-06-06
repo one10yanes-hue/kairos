@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% block content %}
+{% extends "base.html" %}{% load proyecto_permisos %}{% block content %}
 <div class="container-fluid mt-3">
     <div class="d-flex justify-content-between align-items-start mb-3">
         <div>
@@ -6,6 +6,9 @@
             <small class="text-muted">{{ incidencia.get_tipo_display }} · {{ incidencia.get_severidad_display }} · {{ incidencia.get_estado_display }}</small>
         </div>
         <div class="d-flex gap-1">
+            {% if not incidencia.tarea and request.membresia|puede_editar %}
+            <form method="POST" action="{% url 'proyectos:incidencia_convertir' proyecto.pk incidencia.pk %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-warning" style="font-size:0.7rem;">Convertir a Tarea</button></form>
+            {% endif %}
             {% if incidencia.estado == 'abierta' or incidencia.estado == 'triaged' %}
             <form method="POST" class="d-inline">{% csrf_token %}<input type="hidden" name="estado" value="en_progreso"><button class="btn btn-sm btn-warning" style="font-size:0.7rem;">Iniciar</button></form>
             {% endif %}

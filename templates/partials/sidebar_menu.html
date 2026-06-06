@@ -1,3 +1,24 @@
+{% if proyecto_ctx %}
+<div class="nav-section">
+    <span class="nav-section-title"><a href="{% url 'proyectos:proyecto_list' %}" style="color:inherit;text-decoration:none;">← Proyectos</a></span>
+    <span class="nav-section-title" style="font-size:0.65rem;color:var(--accent);">{{ proyecto_ctx.codigo }}</span>
+    <a href="{% url 'proyectos:proyecto_detail' proyecto_ctx.pk %}" class="nav-item {% if '/proyectos/'|add:proyecto_ctx.pk|stringformat:'s' in request.path and '/backlog' not in request.path and '/sprints' not in request.path and '/tareas' not in request.path and '/incidencias' not in request.path %}active{% endif %}">
+        <i class="bi bi-speedometer2"></i><span>Dashboard</span>
+    </a>
+    <a href="{% url 'proyectos:backlog' proyecto_ctx.pk %}" class="nav-item {% if '/backlog' in request.path %}active{% endif %}">
+        <i class="bi bi-list-ul"></i><span>Backlog</span>
+    </a>
+    <a href="{% url 'proyectos:sprint_list' proyecto_ctx.pk %}" class="nav-item {% if '/sprints' in request.path %}active{% endif %}">
+        <i class="bi bi-calendar-week"></i><span>Sprints</span>
+    </a>
+    <a href="{% url 'proyectos:tarea_list' proyecto_ctx.pk %}" class="nav-item {% if '/tareas' in request.path %}active{% endif %}">
+        <i class="bi bi-check2-square"></i><span>Tareas</span>
+    </a>
+    <a href="{% url 'proyectos:incidencia_list' proyecto_ctx.pk %}" class="nav-item {% if '/incidencias' in request.path %}active{% endif %}">
+        <i class="bi bi-bug"></i><span>Incidencias</span>
+    </a>
+</div>
+{% endif %}
 {% if user.rol.nombre == 'Master' %}
 <div class="nav-section">
     <span class="nav-section-title">Integracion</span>

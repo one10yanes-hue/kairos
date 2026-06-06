@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from ..models import Proyecto, Incidencia, Tarea
-from ..decorators import miembro_requerido
+from ..decorators import miembro_requerido, ROLES_EDICION
 
 
 @miembro_requerido()
@@ -37,9 +37,35 @@ def incidencia_create(request, pk):
     return render(request, "proyectos/incidencia_form.html", {"proyecto": proyecto, "miembros": miembros})
 
 
-@login_required
+@miembro_requerido(ROLES_EDICION)
+def incidencia_convertir(request, pk, iid):
+    proyecto = request.proyecto
+    incidencia = get_object_or_404(Incidencia, pk=iid, proyecto=proyecto)
+    if request.method == "POST":
+        from ..models import Tarea
+        from ..signals import crear_asignacion_desde_tarea
+        tarea = Tarea.objects.create(
+            proyecto=proyecto,
+            titulo=incidencia.titulo,
+            descripcion=incidencia.descripcion,
+            tipo="bug",
+            asignado_a=incidencia.asignado_a,
+            creador=request.user,
+        )
+        tarea.codigo = f"{proyecto.codigo}-T-{tarea.pk:03d}"
+        tarea.save()
+        incidencia.tarea = tarea
+        incidencia.estado = "en_progreso"
+        incidencia.save()
+        if tarea.asignado_a:
+            crear_asignacion_desde_tarea(tarea)
+        messages.success(request, f"Incidencia {incidencia.codigo} convertida a Tarea {tarea.codigo}.")
+        return redirect("proyectos:incidencia_detail", pk=proyecto.pk, iid=incidencia.pk)
+
+
+@miembro_requerido()
 def incidencia_detail(request, pk, iid):
-    proyecto = get_object_or_404(Proyecto, pk=pk, activo=True)
+    proyecto = request.proyecto
     incidencia = get_object_or_404(Incidencia, pk=iid, proyecto=proyecto)
     if request.method == "POST":
         nuevo_estado = request.POST.get("estado")
