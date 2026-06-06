@@ -94,6 +94,11 @@ def proyecto_detail(request, pk):
         "velocidad_prom": round(sum(velocidades) / len(velocidades), 1) if velocidades else 0,
         "tareas_aging": tareas_aging,
         "avances": proyecto.avances.order_by("-fecha")[:5],
+        # CFD: contar tareas por estado para el grafico
+        "cfd_backlog": tareas.filter(estado="pendiente").count(),
+        "cfd_progreso": tareas.filter(estado__in=["en_curso","pausada"]).count(),
+        "cfd_revision": tareas.filter(estado="revision").count(),
+        "cfd_done": tareas.filter(estado="finalizada").count(),
     }
     return render(request, "proyectos/proyecto_detail.html", context)
 

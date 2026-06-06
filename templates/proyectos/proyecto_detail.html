@@ -33,6 +33,26 @@
     <div class="card-body p-2" style="font-size:0.72rem;">{% for a in avances %}<div class="border-bottom py-1"><small class="text-muted">{{ a.fecha|date:"d/m H:i" }}</small> <strong>{{ a.user.get_full_name|truncatechars:15 }}</strong>: {{ a.descripcion|truncatechars:80 }}</div>{% endfor %}</div></div>
     {% endif %}
 
+    <div class="card shadow-sm mb-3"><div class="card-header py-1 px-2"><small class="fw-semibold">CFD · Cumulative Flow</small></div>
+    <div class="card-body p-3"><canvas id="cfdChart" style="max-height:200px;"></canvas></div></div>
+
+<script>
+var ctx = document.getElementById('cfdChart');
+if (ctx) {
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Backlog', 'En Progreso', 'Revision', 'Done'],
+            datasets: [{
+                label: 'Tareas', data: [{{ cfd_backlog }}, {{ cfd_progreso }}, {{ cfd_revision }}, {{ cfd_done }}],
+                backgroundColor: ['#94a3b8','#f59e0b','#8b5cf6','#16a34a']
+            }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+    });
+}
+</script>
+
     <div class="d-flex gap-2 mb-3 flex-wrap">
         <a href="{% url 'proyectos:backlog' proyecto.pk %}" class="btn btn-sm btn-outline-primary" style="font-size:0.75rem;">Backlog</a>
         <a href="{% url 'proyectos:sprint_list' proyecto.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem;">Sprints</a>

@@ -346,3 +346,22 @@ class RegistroAvance(models.Model):
     class Meta:
         db_table = "registro_avance"
         ordering = ["-fecha"]
+
+
+class WorkflowConfig(models.Model):
+    """Configuracion de estados y transiciones por proyecto y tipo de entidad."""
+    ENTIDADES = [
+        ("historia", "Historia de Usuario"),
+        ("tarea", "Tarea"),
+        ("incidencia", "Incidencia"),
+    ]
+    proyecto = models.ForeignKey(Proyecto, on_delete=models.CASCADE, related_name="workflows")
+    entidad = models.CharField(max_length=20, choices=ENTIDADES)
+    estado_origen = models.CharField(max_length=30)
+    estado_destino = models.CharField(max_length=30)
+    requiere_rol = models.CharField(max_length=20, blank=True)
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = "workflow_config"
+        unique_together = ["proyecto", "entidad", "estado_origen", "estado_destino"]

@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% block content %}
+{% extends "base.html" %}{% load proyecto_permisos %}{% block content %}
 <div class="container-fluid mt-3">
     <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
         <h5 class="fw-bold mb-0" style="font-size:0.95rem;"><a href="{% url 'proyectos:proyecto_detail' proyecto.pk %}" class="text-decoration-none">{{ proyecto.codigo }}</a> · Incidencias</h5>
