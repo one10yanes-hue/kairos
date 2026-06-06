@@ -30,7 +30,11 @@
                         <td><span class="badge bg-primary" style="font-size:0.55rem;">{{ h.puntos_historia }} pts</span></td>
                         <td><span class="badge {% if h.estado == 'done' %}bg-success{% elif h.estado == 'backlog' %}bg-light text-muted{% else %}bg-warning text-dark{% endif %}" style="font-size:0.55rem;">{{ h.get_estado_display }}</span></td>
                         <td style="font-size:0.65rem;">{% if h.sprint %}{{ h.sprint.nombre }}{% else %}-{% endif %}</td>
-                        <td></td>
+                        <td>
+                            {% if h.estado == 'revision' %}
+                            <form method="POST" action="{% url 'proyectos:historia_aprobar' proyecto.pk h.pk %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-success py-0 px-1" style="font-size:0.55rem;" title="Aprobar como Done">✓</button></form>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% empty %}
                     <tr><td colspan="8" class="text-center text-muted py-4">Backlog vacío. Crea tu primera historia de usuario.</td></tr>

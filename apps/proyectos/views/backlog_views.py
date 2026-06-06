@@ -4,8 +4,19 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from ..models import Proyecto, HistoriaUsuario
-from ..decorators import miembro_requerido, ROLES_EDICION
+from ..decorators import miembro_requerido, ROLES_EDICION, ROLES_ADMIN
 import json
+
+
+@miembro_requerido(ROLES_ADMIN)
+def historia_aprobar(request, pk, hid):
+    proyecto = request.proyecto
+    historia = get_object_or_404(HistoriaUsuario, pk=hid, proyecto=proyecto, activo=True)
+    if historia.estado == "revision":
+        historia.estado = "done"
+        historia.save()
+        messages.success(request, f"Historia {historia.codigo} aprobada como Done.")
+    return redirect("proyectos:backlog", pk=proyecto.pk)
 
 
 @miembro_requerido()
