@@ -17,6 +17,7 @@
                         <td><span class="badge {% if t.estado == 'finalizada' %}bg-success{% elif t.estado == 'en_curso' %}bg-warning text-dark{% elif t.estado == 'pausada' %}bg-secondary{% else %}bg-light text-muted{% endif %}" style="font-size:0.55rem;">{{ t.get_estado_display }}</span></td>
                         <td style="font-size:0.7rem;">{{ t.asignado_a.get_full_name|default:"-" }}</td>
                         <td style="font-size:0.7rem;">{{ t.sprint.nombre|default:"-" }}</td>
+                        <td>{% if request.membresia|puede_editar %}<a href="{% url 'proyectos:tarea_edit' proyecto.pk t.pk %}" class="btn btn-sm btn-outline-secondary py-0 px-1" style="font-size:0.55rem;">✎</a>{% endif %}</td>
                     </tr>
                     {% empty %}<tr><td colspan="6" class="text-center text-muted py-4">Sin tareas.</td></tr>
                     {% endfor %}

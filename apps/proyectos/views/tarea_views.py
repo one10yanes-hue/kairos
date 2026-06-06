@@ -74,6 +74,30 @@ def tarea_mover(request, pk, tid):
     return JsonResponse({"ok": False}, status=400)
 
 
+@miembro_requerido(ROLES_EDICION)
+def tarea_edit(request, pk, tid):
+    proyecto = request.proyecto
+    tarea = get_object_or_404(Tarea, pk=tid, proyecto=proyecto, activo=True)
+    if request.method == "POST":
+        tarea.titulo = request.POST.get("titulo", tarea.titulo)
+        tarea.descripcion = request.POST.get("descripcion", tarea.descripcion)
+        tarea.tipo = request.POST.get("tipo", tarea.tipo)
+        tarea.estado = request.POST.get("estado", tarea.estado)
+        tarea.asignado_a_id = request.POST.get("user_id") or None
+        tarea.historia_id = request.POST.get("historia_id") or None
+        tarea.sprint_id = request.POST.get("sprint_id") or None
+        tarea.save()
+        messages.success(request, "Tarea actualizada.")
+        return redirect("proyectos:tarea_list", pk=proyecto.pk)
+    historias = proyecto.historias.filter(activo=True)
+    sprints = proyecto.sprints.filter(activo=True)
+    miembros = proyecto.membresias.filter(activo=True).select_related("user")
+    return render(request, "proyectos/tarea_form.html", {
+        "proyecto": proyecto, "tarea": tarea, "editando": True,
+        "historias": historias, "sprints": sprints, "miembros": miembros
+    })
+
+
 @login_required
 def tarea_detail(request, pk, tid):
     proyecto = get_object_or_404(Proyecto, pk=pk, activo=True)

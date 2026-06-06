@@ -27,6 +27,7 @@ urlpatterns = [
     path("<int:pk>/tareas/", tarea_views.tarea_list, name="tarea_list"),
     path("<int:pk>/tareas/crear/", tarea_views.tarea_create, name="tarea_create"),
     path("<int:pk>/tareas/<int:tid>/", tarea_views.tarea_detail, name="tarea_detail"),
+    path("<int:pk>/tareas/<int:tid>/editar/", tarea_views.tarea_edit, name="tarea_edit"),
     path("<int:pk>/tareas/<int:tid>/activar/", tarea_views.tarea_activar, name="tarea_activar"),
     path("<int:pk>/tareas/<int:tid>/mover/", tarea_views.tarea_mover, name="tarea_mover"),
     # Incidencias
