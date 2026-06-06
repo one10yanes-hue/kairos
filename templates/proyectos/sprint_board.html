@@ -3,27 +3,64 @@
     <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
         <h5 class="fw-bold mb-0" style="font-size:0.95rem;">Sprint {{ sprint.numero }}: {{ sprint.nombre }}</h5>
         <div class="d-flex gap-1">
-            <a href="{% url 'proyectos:sprint_burndown' proyecto.pk sprint.pk %}" class="btn btn-sm btn-outline-primary" style="font-size:0.7rem;">Burndown</a>
+        <a href="{% url 'proyectos:sprint_burndown' proyecto.pk sprint.pk %}" class="btn btn-sm btn-outline-primary" style="font-size:0.7rem;">Burndown</a>
             {% if sprint.estado == 'planificado' and request.membresia|puede_editar %}
             <form method="POST" action="{% url 'proyectos:sprint_iniciar' proyecto.pk sprint.pk %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-success" style="font-size:0.7rem;">Iniciar Sprint</button></form>
             {% endif %}
             {% if sprint.estado != 'finalizado' and request.membresia|puede_editar %}
-            <form method="POST" action="{% url 'proyectos:sprint_finalizar' proyecto.pk sprint.pk %}" class="d-inline" onsubmit="return confirm('Finalizar sprint? Las historias no completadas volveran al backlog.')">{% csrf_token %}<button class="btn btn-sm btn-warning" style="font-size:0.7rem;">Finalizar Sprint</button></form>
+            <form method="POST" action="{% url 'proyectos:sprint_finalizar' proyecto.pk sprint.pk %}" class="d-inline" onsubmit="return confirm('Finalizar sprint?')">{% csrf_token %}<button class="btn btn-sm btn-warning" style="font-size:0.7rem;">Finalizar Sprint</button></form>
             {% endif %}
             <span class="badge {% if sprint.estado == 'activo' %}bg-success{% elif sprint.estado == 'finalizado' %}bg-secondary{% else %}bg-light text-muted{% endif %}">{{ sprint.get_estado_display }}</span>
         </div>
     </div>
 
-    <div class="row g-2 mb-3">
+    <div class="row g-2 mb-2">
         <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;">{{ sprint.puntos_comprometidos }}</div><small class="text-muted" style="font-size:0.6rem;">Pts comprometidos</small></div></div></div>
         <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;">{{ sprint.velocidad }}</div><small class="text-muted" style="font-size:0.6rem;">Pts completados</small></div></div></div>
         <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;">{{ tareas.count }}</div><small class="text-muted" style="font-size:0.6rem;">Tareas</small></div></div></div>
     </div>
 
     <div class="row g-2">
-        <div class="col-md-4"><div class="card shadow-sm"><div class="card-header py-1 px-2"><small class="fw-semibold">Pendientes ({{ pendientes.count }})</small></div><div class="card-body p-2" style="min-height:150px;">{% for t in pendientes %}<div class="card mb-2 shadow-sm" style="border-left:3px solid var(--accent);"><div class="card-body py-1 px-2"><span class="fw-semibold small">{{ t.titulo }}</span><small class="d-block text-muted" style="font-size:0.6rem;">{% if t.asignado_a %}{{ t.asignado_a.get_full_name }}{% else %}Sin asignar{% endif %}</small></div></div>{% empty %}<p class="text-muted small text-center py-3">-</p>{% endfor %}</div></div></div>
-        <div class="col-md-4"><div class="card shadow-sm"><div class="card-header py-1 px-2"><small class="fw-semibold">En Curso ({{ en_curso.count }})</small></div><div class="card-body p-2" style="min-height:150px;">{% for t in en_curso %}<div class="card mb-2 shadow-sm" style="border-left:3px solid var(--warning);"><div class="card-body py-1 px-2"><span class="fw-semibold small">{{ t.titulo }}</span><small class="d-block text-muted" style="font-size:0.6rem;">{% if t.asignado_a %}{{ t.asignado_a.get_full_name }}{% else %}Sin asignar{% endif %}</small></div></div>{% empty %}<p class="text-muted small text-center py-3">-</p>{% endfor %}</div></div></div>
-        <div class="col-md-4"><div class="card shadow-sm"><div class="card-header py-1 px-2"><small class="fw-semibold">Finalizadas ({{ finalizadas.count }})</small></div><div class="card-body p-2" style="min-height:150px;">{% for t in finalizadas %}<div class="card mb-2 shadow-sm" style="border-left:3px solid var(--success);"><div class="card-body py-1 px-2"><span class="fw-semibold small">{{ t.titulo }}</span><small class="d-block text-muted" style="font-size:0.6rem;">{% if t.asignado_a %}{{ t.asignado_a.get_full_name }}{% else %}Sin asignar{% endif %}</small></div></div>{% empty %}<p class="text-muted small text-center py-3">-</p>{% endfor %}</div></div></div>
+        <div class="col-md-4">
+            <div class="card shadow-sm"><div class="card-header py-1 px-2"><small class="fw-semibold">Pendientes ({{ pendientes.count }})</small></div>
+            <div class="card-body p-2 sortable-column" id="col-pendientes" data-estado="pendiente" style="min-height:150px;">
+                {% for t in pendientes %}<div class="card mb-2 shadow-sm sortable-card" style="border-left:3px solid var(--accent);cursor:grab;" data-id="{{ t.pk }}"><div class="card-body py-1 px-2"><span class="fw-semibold small">{{ t.titulo }}</span><small class="d-block text-muted" style="font-size:0.6rem;">{% if t.asignado_a %}{{ t.asignado_a.get_full_name }}{% else %}Sin asignar{% endif %}</small></div></div>{% empty %}<p class="text-muted small text-center py-3">-</p>{% endfor %}
+            </div></div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm"><div class="card-header py-1 px-2"><small class="fw-semibold">En Curso ({{ en_curso.count }})</small></div>
+            <div class="card-body p-2 sortable-column" id="col-en-curso" data-estado="en_curso" style="min-height:150px;">
+                {% for t in en_curso %}<div class="card mb-2 shadow-sm sortable-card" style="border-left:3px solid var(--warning);cursor:grab;" data-id="{{ t.pk }}"><div class="card-body py-1 px-2"><span class="fw-semibold small">{{ t.titulo }}</span><small class="d-block text-muted" style="font-size:0.6rem;">{% if t.asignado_a %}{{ t.asignado_a.get_full_name }}{% else %}Sin asignar{% endif %}</small></div></div>{% empty %}<p class="text-muted small text-center py-3">-</p>{% endfor %}
+            </div></div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm"><div class="card-header py-1 px-2"><small class="fw-semibold">Finalizadas ({{ finalizadas.count }})</small></div>
+            <div class="card-body p-2 sortable-column" id="col-finalizadas" data-estado="finalizada" style="min-height:150px;">
+                {% for t in finalizadas %}<div class="card mb-2 shadow-sm sortable-card" style="border-left:3px solid var(--success);cursor:grab;" data-id="{{ t.pk }}"><div class="card-body py-1 px-2"><span class="fw-semibold small">{{ t.titulo }}</span><small class="d-block text-muted" style="font-size:0.6rem;">{% if t.asignado_a %}{{ t.asignado_a.get_full_name }}{% else %}Sin asignar{% endif %}</small></div></div>{% empty %}<p class="text-muted small text-center py-3">-</p>{% endfor %}
+            </div></div>
+        </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    if (typeof Sortable !== 'undefined') {
+        document.querySelectorAll('.sortable-column').forEach(function(col){
+            new Sortable(col, {
+                group: 'sprint-board',
+                animation: 150,
+                onEnd: function(evt) {
+                    var estado = evt.to.dataset.estado;
+                    var tareaId = evt.item.dataset.id;
+                    fetch('/proyectos/{{ proyecto.pk }}/tareas/' + tareaId + '/mover/', {
+                        method: 'POST',
+                        headers: {'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value},
+                        body: JSON.stringify({estado: estado})
+                    });
+                }
+            });
+        });
+    }
+});
+</script>
 {% endblock %}

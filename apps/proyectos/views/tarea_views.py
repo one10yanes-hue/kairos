@@ -35,15 +35,11 @@ def tarea_create(request, pk):
         )
         tarea.codigo = f"{proyecto.codigo}-T-{tarea.pk:03d}"
         tarea.save()
-        # Si se asigna a un usuario, crear AsignacionActividad automaticamente
         if tarea.asignado_a:
             asignacion = crear_asignacion_desde_tarea(tarea)
             if asignacion:
                 from apps.gestion.views import _notificar_usuario
-                _notificar_usuario(tarea.asignado_a.pk, "nueva_asignacion", {
-                    "actividad": tarea.titulo,
-                    "fecha_programada": "",
-                })
+                _notificar_usuario(tarea.asignado_a.pk, "nueva_asignacion", {"actividad": tarea.titulo})
                 messages.success(request, f"Tarea {tarea.codigo} creada y asignada a {tarea.asignado_a.get_full_name()}.")
             else:
                 messages.success(request, f"Tarea {tarea.codigo} creada.")
@@ -55,9 +51,27 @@ def tarea_create(request, pk):
     miembros = proyecto.membresias.filter(activo=True).select_related("user")
     actividades = Actividad.objects.filter(subarea__in=proyecto.subareas.all(), activo=True).select_related("tipo_actividad")
     return render(request, "proyectos/tarea_form.html", {
-        "proyecto": proyecto, "historias": historias, "sprints": sprints,
-        "miembros": miembros, "actividades": actividades
+        "proyecto": proyecto, "historias": historias, "sprints": sprints, "miembros": miembros, "actividades": actividades
     })
+
+
+@miembro_requerido(ROLES_EDICION)
+def tarea_mover(request, pk, tid):
+    from django.http import JsonResponse
+    import json
+    proyecto = request.proyecto
+    tarea = get_object_or_404(Tarea, pk=tid, proyecto=proyecto)
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            nuevo = data.get("estado")
+            if nuevo in dict(Tarea.ESTADOS):
+                tarea.estado = nuevo
+                tarea.save()
+                return JsonResponse({"ok": True})
+        except Exception:
+            pass
+    return JsonResponse({"ok": False}, status=400)
 
 
 @login_required
