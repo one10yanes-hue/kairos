@@ -137,16 +137,19 @@ def proyecto_equipo(request, pk):
         rol = request.POST.get("rol", "ejecutor")
         accion = request.POST.get("accion")
         if accion == "agregar" and user_id:
-            MiembroProyecto.objects.get_or_create(
+            MiembroProyecto.objects.update_or_create(
                 proyecto=proyecto, user_id=user_id,
-                defaults={"rol": rol}
+                defaults={"rol": rol, "activo": True}
             )
             messages.success(request, "Miembro agregado.")
         elif accion == "remover" and user_id:
             MiembroProyecto.objects.filter(proyecto=proyecto, user_id=user_id).update(activo=False)
             messages.success(request, "Miembro removido.")
         return redirect("proyectos:proyecto_equipo", pk=proyecto.pk)
-    usuarios = User.objects.filter(activo=True, is_active=True).exclude(rol__nombre="Master")
+    from django.db.models import Q
+    usuarios = User.objects.filter(activo=True, is_active=True).filter(
+        Q(rol__nombre__in=["Usuario", "Admin"]) | Q(roles_adicionales__nombre="Usuario")
+    ).distinct()
     return render(request, "proyectos/proyecto_equipo.html", {
         "proyecto": proyecto, "miembros": miembros, "usuarios": usuarios
     })

@@ -25,10 +25,10 @@
             <div class="card shadow-sm"><div class="card-body p-3">
                 <h6 class="fw-semibold small">Agregar miembro</h6>
                 <form method="POST">{% csrf_token %}<input type="hidden" name="accion" value="agregar">
-                    <select name="user_id" class="form-select form-select-sm mb-2">
+                    <input type="text" class="form-control form-control-sm mb-2" id="filtroUsuarios" placeholder="Buscar usuarios..." onkeyup="filtrarUsuarios()" style="font-size:0.8rem;">
+                    <select name="user_id" id="userSelect" class="form-select form-select-sm mb-2">
                         <option value="">Seleccionar usuario...</option>
-                        {% for u in usuarios %}<option value="{{ u.pk }}">{{ u.get_full_name }}</option>{% endfor %}
-                    </select>
+                        {% for u in usuarios %}<option value="{{ u.pk }}" data-busqueda="{{ u.get_full_name }} {{ u.cedula }}">{{ u.get_full_name }}</option>{% endfor %}
                     <select name="rol" class="form-select form-select-sm mb-2">
                         <option value="ejecutor">Ejecutor</option><option value="lider">Lider</option><option value="responsable">Responsable</option><option value="revisor">Revisor / QA</option><option value="aprobador">Aprobador</option><option value="observador">Observador</option>
                     </select>
@@ -38,4 +38,18 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function filtrarUsuarios() {
+    var f = document.getElementById('filtroUsuarios').value.toLowerCase();
+    var sel = document.getElementById('userSelect');
+    Array.from(sel.options).forEach(function(o) {
+        if (!o.value) return;
+        var txt = (o.getAttribute('data-busqueda') || o.text).toLowerCase();
+        o.style.display = txt.includes(f) ? '' : 'none';
+    });
+}
+</script>
 {% endblock %}

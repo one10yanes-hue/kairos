@@ -4,9 +4,7 @@
         <h5 class="fw-bold mb-0" style="font-size:0.95rem;">
             <a href="{% url 'proyectos:proyecto_detail' proyecto.pk %}" class="text-decoration-none">{{ proyecto.codigo }}</a> · Sprints
         </h5>
-        {% if request.membresia|puede_editar %}<button type="button" class="btn btn-primary btn-sm" style="font-size:0.75rem;" onclick="document.getElementById('sprintModal').style.display='flex'">
-            <i class="bi bi-plus-lg"></i> Nuevo Sprint
-        </button>{% endif %}
+        {% if request.membresia|puede_editar %}<a href="{% url 'proyectos:sprint_create' proyecto.pk %}" class="btn btn-primary btn-sm" style="font-size:0.75rem;"><i class="bi bi-plus-lg"></i> Nuevo Sprint</a>{% endif %}
     </div>
 
     <div class="row g-3">

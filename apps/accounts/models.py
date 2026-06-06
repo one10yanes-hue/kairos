@@ -85,11 +85,16 @@ class User(AbstractBaseUser, PermissionsMixin):
         return self.nombre
 
     def tiene_rol(self, rol_id):
-        return self.rol_id == rol_id or self.roles_adicionales.filter(pk=rol_id).exists()
+        if self.rol_id == rol_id or self.roles_adicionales.filter(pk=rol_id).exists():
+            return True
+        # Revisar rol primario original en BD (el middleware cambia self.rol_id)
+        return type(self).objects.filter(pk=self.pk, rol_id=rol_id).exists()
 
     def roles_disponibles(self):
+        # Obtener rol original desde BD (el middleware cambia self.rol en memoria)
+        db = User.objects.values_list("rol_id", flat=True).get(pk=self.pk)
         return Rol.objects.filter(
-            models.Q(pk=self.rol_id) | models.Q(usuarios_extra=self)
+            models.Q(pk=db) | models.Q(usuarios_extra=self)
         ).distinct()
 
     def save(self, *args, **kwargs):
