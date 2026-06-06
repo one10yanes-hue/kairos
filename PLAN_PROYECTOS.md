@@ -1056,6 +1056,26 @@ apps/planificacion/migrations/XXXX_add_proyecto_fk.py
 
 ---
 
+## 14. PROGRESO REAL (v4.9.0) · Junio 2026
+
+| Area | % | Implementado | Pendiente |
+|------|---|-------------|-----------|
+| **Modelos** | ✅ 100% | 9 modelos + RegistroAvance. M2M subareas. Migraciones. | - |
+| **Senales/Acople** | ✅ 100% | sync Asignacion<->Tarea. Planif->proyecto crea Tareas. Badge [PRJ] en tablero. | - |
+| **Permisos** | ✅ 95% | Decorador @miembro_requerido() en todas las vistas. Helpers. | Solo proyectos del usuario en lista |
+| **Backlog** | ✅ 90% | Drag-drop, crear/editar, reorder API. **Aprobar ✓ y Rechazar ✗ con motivo.** | - |
+| **Sprints** | ✅ 90% | Crear, board Kanban, **iniciar (activa tareas)**, finalizar, burndown. | - |
+| **Tareas** | ✅ 85% | CRUD, activar->AsignacionActividad, catalogo actividades. | - |
+| **Incidencias** | ✅ 70% | CRUD, maquina estados validada, comentarios, transiciones. | **Convertir a Tarea** |
+| **Reportes** | ✅ 60% | Dashboard KPIs, burndown Chart.js, Gantt vis-timeline. | CFD, velocidad, Excel |
+| **UX por rol** | ✅ 60% | **Template tag `proyecto_permisos`**, templates adaptados (proyecto, backlog, sprints). | Incidencias, tareas, equipo |
+| **Notificaciones** | ✅ 10% | Infra WebSocket lista. Notif de traslado. | Asignacion tarea, sprint, revision |
+| **Workflow config** | 🔴 0% | Transiciones hardcodeadas con clean(). | Flujos configurables por proyecto |
+
+**Pendientes prioritarios:** 🔴 Incidencia->Tarea, 🔴 Sidebar contextual, 🟡 Notif proyecto, 🟡 CFD/metricas
+
+---
+
 ## 14. PROGRESO REAL (v4.8.1) · Junio 2026
 
 | Área | % | Implementado | Pendiente |
