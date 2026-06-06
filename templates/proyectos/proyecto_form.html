@@ -1,0 +1,67 @@
+{% extends "base.html" %}{% block content %}
+<div class="container-fluid mt-3">
+    <h5 class="fw-bold mb-3"><i class="bi {% if editando %}bi-pencil{% else %}bi-plus-circle{% endif %}" style="color:var(--accent);"></i> {% if editando %}Editar{% else %}Nuevo{% endif %} Proyecto</h5>
+    <div class="card shadow-sm">
+        <div class="card-body p-4">
+            <form method="POST">
+                {% csrf_token %}
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Nombre <span class="text-danger">*</span></label>
+                        <input type="text" name="nombre" class="form-control" value="{{ proyecto.nombre|default:'' }}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">SubArea <span class="text-danger">*</span></label>
+                        <select name="subarea" class="form-select">
+                            <option value="">Seleccione...</option>
+                            {% for s in subareas %}
+                            <option value="{{ s.pk }}" {% if proyecto and proyecto.subarea_id == s.pk %}selected{% endif %}>{{ s.nombre }} ({{ s.area.nombre }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Manager <span class="text-danger">*</span></label>
+                        <select name="manager" class="form-select" required>
+                            <option value="">Seleccione...</option>
+                            {% for u in usuarios %}
+                            <option value="{{ u.pk }}" {% if proyecto and proyecto.manager_id == u.pk %}selected{% endif %}>{{ u.get_full_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% if editando %}
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Estado</label>
+                        <select name="estado" class="form-select">
+                            <option value="activo" {% if proyecto.estado == 'activo' %}selected{% endif %}>Activo</option>
+                            <option value="pausado" {% if proyecto.estado == 'pausado' %}selected{% endif %}>Pausado</option>
+                            <option value="finalizado" {% if proyecto.estado == 'finalizado' %}selected{% endif %}>Finalizado</option>
+                            <option value="cancelado" {% if proyecto.estado == 'cancelado' %}selected{% endif %}>Cancelado</option>
+                        </select>
+                    </div>
+                    {% endif %}
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Fecha Inicio</label>
+                        <input type="date" name="fecha_inicio" class="form-control" value="{{ proyecto.fecha_inicio|date:'Y-m-d'|default:'' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Fecha Fin Estimada</label>
+                        <input type="date" name="fecha_fin_estimada" class="form-control" value="{{ proyecto.fecha_fin_estimada|date:'Y-m-d'|default:'' }}">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold">Descripción</label>
+                        <textarea name="descripcion" class="form-control" rows="2">{{ proyecto.descripcion|default:'' }}</textarea>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold">Objetivo</label>
+                        <textarea name="objetivo" class="form-control" rows="2">{{ proyecto.objetivo|default:'' }}</textarea>
+                    </div>
+                </div>
+                <div class="d-flex gap-2 mt-3">
+                    <button type="submit" class="btn btn-primary btn-sm">Guardar</button>
+                    <a href="{% if editando %}{% url 'proyectos:proyecto_detail' proyecto.pk %}{% else %}{% url 'proyectos:proyecto_list' %}{% endif %}" class="btn btn-outline-secondary btn-sm">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

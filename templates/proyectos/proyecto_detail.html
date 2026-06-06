@@ -1,0 +1,36 @@
+{% extends "base.html" %}{% block content %}
+<div class="container-fluid mt-3">
+    <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+        <div>
+            <h5 class="fw-bold mb-0">{{ proyecto.codigo }} · {{ proyecto.nombre }}</h5>
+            <small class="text-muted">{{ proyecto.subarea.area.nombre }} &gt; {{ proyecto.subarea.nombre }} | Manager: {{ proyecto.manager.get_full_name }}</small>
+        </div>
+        <div class="d-flex gap-2">
+            <span class="badge {% if proyecto.estado == 'activo' %}bg-success{% elif proyecto.estado == 'pausado' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ proyecto.get_estado_display }}</span>
+            <a href="{% url 'proyectos:proyecto_edit' proyecto.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem;">Editar</a>
+        </div>
+    </div>
+
+    <div class="row g-2 mb-3">
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.1rem;">{{ proyecto.avance }}%</div><small class="text-muted" style="font-size:0.6rem;">Avance</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.1rem;">{{ proyecto.tareas.count }}</div><small class="text-muted" style="font-size:0.6rem;">Tareas</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.1rem;">{{ proyecto.incidencias.count }}</div><small class="text-muted" style="font-size:0.6rem;">Incidencias</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.1rem;">{{ proyecto.membresias.count }}</div><small class="text-muted" style="font-size:0.6rem;">Miembros</small></div></div></div>
+    </div>
+
+    <div class="d-flex gap-2 mb-3 flex-wrap">
+        <a href="{% url 'proyectos:backlog' proyecto.pk %}" class="btn btn-sm btn-outline-primary" style="font-size:0.75rem;">📋 Backlog</a>
+        <a href="{% url 'proyectos:sprint_list' proyecto.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem;">🔄 Sprints</a>
+        <a href="{% url 'proyectos:tarea_list' proyecto.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem;">📝 Tareas</a>
+        <a href="{% url 'proyectos:incidencia_list' proyecto.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem;">⚠️ Incidencias</a>
+        <a href="{% url 'proyectos:proyecto_equipo' proyecto.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem;">👥 Equipo</a>
+    </div>
+
+    {% if proyecto.descripcion %}
+    <div class="card shadow-sm mb-3"><div class="card-body p-3"><small class="fw-semibold">Descripción</small><p class="mb-0 small">{{ proyecto.descripcion }}</p></div></div>
+    {% endif %}
+    {% if proyecto.objetivo %}
+    <div class="card shadow-sm"><div class="card-body p-3"><small class="fw-semibold">Objetivo</small><p class="mb-0 small">{{ proyecto.objetivo }}</p></div></div>
+    {% endif %}
+</div>
+{% endblock %}

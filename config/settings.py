@@ -21,6 +21,7 @@ INSTALLED_APPS = [
     "apps.estructura",
     "apps.actividades",
     "apps.planificacion",
+    "apps.proyectos",
     "apps.gestion",
     "apps.dashboard",
     "apps.reportes",

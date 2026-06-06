@@ -30,6 +30,8 @@ urlpatterns = [
     path("admin/", include("apps.planificacion.urls")),
     path("admin/", include("apps.reportes.urls")),
 
+    path("proyectos/", include("apps.proyectos.urls")),
+
     path("usuario/", include("apps.gestion.urls")),
 ]
 

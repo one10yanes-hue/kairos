@@ -68,6 +68,12 @@
         <i class="bi bi-people"></i><span>Usuarios</span>
     </a>
 </div>
+<div class="nav-section">
+    <span class="nav-section-title">Proyectos</span>
+    <a href="{% url 'proyectos:proyecto_list' %}" class="nav-item {% if '/proyectos' in request.path %}active{% endif %}">
+        <i class="bi bi-kanban"></i><span>Gestion de Proyectos</span>
+    </a>
+</div>
 {% elif user.rol.nombre == 'Admin' %}
 <div class="nav-section">
     <span class="nav-section-title">Dashboard</span>
@@ -103,6 +109,12 @@
     </a>
     <a href="{% url 'reportes:reporte_list' %}" class="nav-item {% if '/reportes' in request.path %}active{% endif %}">
         <i class="bi bi-file-earmark-spreadsheet"></i><span>Reportes</span>
+    </a>
+</div>
+<div class="nav-section">
+    <span class="nav-section-title">Proyectos</span>
+    <a href="{% url 'proyectos:proyecto_list' %}" class="nav-item {% if '/proyectos' in request.path %}active{% endif %}">
+        <i class="bi bi-kanban"></i><span>Gestion de Proyectos</span>
     </a>
 </div>
 {% elif user.rol.nombre == 'Usuario' %}

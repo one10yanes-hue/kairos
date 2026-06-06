@@ -1,0 +1,34 @@
+{% extends "base.html" %}{% block content %}
+<div class="container-fluid mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h5 class="fw-bold mb-0"><i class="bi bi-kanban" style="color:var(--accent);font-size:1.2rem;"></i> Proyectos</h5>
+        <a href="{% url 'proyectos:proyecto_create' %}" class="btn btn-primary btn-sm" style="font-size:0.78rem;"><i class="bi bi-plus-lg"></i> Nuevo Proyecto</a>
+    </div>
+
+    <div class="row g-3">
+        {% for p in proyectos %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <span class="badge bg-light text-muted" style="font-size:0.6rem;">{{ p.codigo }}</span>
+                        <span class="badge {% if p.estado == 'activo' %}bg-success{% elif p.estado == 'pausado' %}bg-warning text-dark{% else %}bg-secondary{% endif %}" style="font-size:0.6rem;">{{ p.get_estado_display }}</span>
+                    </div>
+                    <h6 class="fw-bold mb-1" style="font-size:0.85rem;"><a href="{% url 'proyectos:proyecto_detail' p.pk %}" class="text-decoration-none">{{ p.nombre }}</a></h6>
+                    <small class="text-muted d-block" style="font-size:0.7rem;">{{ p.subarea.area.nombre }} &gt; {{ p.subarea.nombre }}</small>
+                    <small class="text-muted d-block" style="font-size:0.7rem;">Manager: {{ p.manager.get_full_name }}</small>
+                    <div class="mt-2">
+                        <div class="progress" style="height:6px;">
+                            <div class="progress-bar" style="width:{{ p.avance }}%;"></div>
+                        </div>
+                        <small class="text-muted" style="font-size:0.6rem;">{{ p.avance }}% completado</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12"><p class="text-muted text-center py-4">No hay proyectos. <a href="{% url 'proyectos:proyecto_create' %}">Crear uno</a></p></div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
