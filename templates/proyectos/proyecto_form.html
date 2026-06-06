@@ -12,19 +12,23 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label small fw-semibold">SubAreas</label>
-                        <select name="subareas" class="form-select" multiple style="height:100px;">
+                        <input type="text" class="form-control form-control-sm mb-2" id="filtroSubareas" placeholder="Filtrar subareas..." onkeyup="filtrarSubareas()" style="font-size:0.8rem;">
+                        <div class="border rounded p-2" id="subareasContainer" style="max-height:130px;overflow-y:auto;">
                             {% for s in subareas %}
-                            <option value="{{ s.pk }}" {% if proyecto and s in proyecto.subareas.all %}selected{% endif %}>{{ s.nombre }} ({{ s.area.nombre }})</option>
+                            <label class="d-flex align-items-center gap-2 px-1" style="cursor:pointer;font-size:0.75rem;border-bottom:1px solid #f1f5f9;" data-nombre="{{ s.nombre }} {{ s.area.nombre }}">
+                                <input type="checkbox" name="subareas" value="{{ s.pk }}" class="form-check-input mt-0" onchange="filtrarUsuariosSubareas()">
+                                <span>{{ s.nombre }} <small class="text-muted">({{ s.area.nombre }})</small></span>
+                            </label>
                             {% endfor %}
-                        </select>
-                        <small class="text-muted" style="font-size:0.6rem;">Ctrl+clic para seleccionar varias</small>
+                        </div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label small fw-semibold">Manager <span class="text-danger">*</span></label>
-                        <select name="manager" class="form-select" required>
+                        <input type="text" class="form-control form-control-sm mb-2" id="filtroManager" placeholder="Filtrar usuarios..." onkeyup="filtrarManagers()" style="font-size:0.8rem;">
+                        <select name="manager" id="managerSelect" class="form-select" required style="font-size:0.8rem;">
                             <option value="">Seleccione...</option>
                             {% for u in usuarios %}
-                            <option value="{{ u.pk }}" {% if proyecto and proyecto.manager_id == u.pk %}selected{% endif %}>{{ u.get_full_name }}</option>
+                            <option value="{{ u.pk }}" data-subareas="{{ u.subareas.all|join:',' }}">{{ u.get_full_name }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -64,4 +68,24 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function filtrarSubareas() {
+    var f = document.getElementById('filtroSubareas').value.toLowerCase();
+    document.querySelectorAll('#subareasContainer label').forEach(function(l) {
+        l.style.display = l.textContent.toLowerCase().includes(f) ? '' : 'none';
+    });
+}
+
+function filtrarManagers() {
+    var f = document.getElementById('filtroManager').value.toLowerCase();
+    var sel = document.getElementById('managerSelect');
+    Array.from(sel.options).forEach(function(o) {
+        if (o.value === '') return;
+        o.style.display = o.text.toLowerCase().includes(f) ? '' : 'none';
+    });
+}
+</script>
 {% endblock %}

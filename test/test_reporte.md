@@ -1,7 +1,7 @@
 # VIVA1A - Test de Flujo Completo
 
 **Fecha:** 28/05/2026
-**Errores:** 9
+**Errores:** 7
 
 ## Resultados por seccion
 
@@ -27,7 +27,7 @@
 - ✅ Progreso → 200 (expected 200)
 - ✅ Linea de Tiempo → 200 (expected 200)
 - ✅ Planificaciones → 200 (expected 200)
-- 💥 Crear Planificacion → EXCEPTION: Cannot resolve keyword 'subarea' into field. Choices are: activo, avances, codigo, descripcion, estado, etiquetas, fecha_creacion, fecha_fin_estimada,
+- ✅ Crear Planificacion → 200 (expected 200)
 - ✅ Reportes → 200 (expected 200)
 - ✅ Importaciones / Areas → 200 (expected 200)
 - ✅ Importaciones / Usuarios → 200 (expected 200)
@@ -65,7 +65,7 @@
 - [SKIP] KACTUS API calls (SQL Server not available)
 - 
 === 6. PLANIFICACION FLOW ===
-- 💥 POST Crear Planif → EXCEPTION: Cannot resolve keyword 'subarea' into field. Choices are: activo, avances, codigo, descripcion, estado, etiquetas, fecha_creacion, fecha_fin_estimada,
+- ✅ POST Crear Planif → 200
 - 
 === 7. DB INTEGRITY ===
 - ✅ FK violations: 0
@@ -74,6 +74,6 @@
 ## Resumen
 
 - Total pruebas: 58
-- Errores: 9
-- Exitos: 49
+- Errores: 7
+- Exitos: 51
 - FK violations: 0
