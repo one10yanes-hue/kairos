@@ -63,8 +63,18 @@ def proyecto_create(request):
 @login_required
 @miembro_requerido()
 def proyecto_detail(request, pk):
-    proyecto = get_object_or_404(Proyecto, pk=pk, activo=True)
-    return render(request, "proyectos/proyecto_detail.html", {"proyecto": proyecto})
+    proyecto = request.proyecto
+    tareas = proyecto.tareas.filter(activo=True)
+    incidencias = proyecto.incidencias.filter(activo=True)
+    context = {
+        "proyecto": proyecto,
+        "tareas_pend": tareas.filter(estado="pendiente").count(),
+        "tareas_curso": tareas.filter(estado__in=["en_curso", "pausada"]).count(),
+        "tareas_fin": tareas.filter(estado="finalizada").count(),
+        "inc_abiertas": incidencias.filter(estado__in=["abierta", "triaged", "en_progreso"]).count(),
+        "sprints_activos": proyecto.sprints.filter(activo=True, estado="activo").count(),
+    }
+    return render(request, "proyectos/proyecto_detail.html", context)
 
 
 @login_required

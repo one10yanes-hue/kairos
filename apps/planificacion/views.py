@@ -136,6 +136,9 @@ def planificacion_create(request):
                 planificacion = form.save(commit=False)
                 planificacion.admin = request.user
                 planificacion.cerrada = True
+                proyecto_id = request.POST.get("proyecto")
+                if proyecto_id:
+                    planificacion.proyecto_id = int(proyecto_id)
                 planificacion.save()
 
                 count = 0
@@ -206,6 +209,7 @@ def planificacion_create(request):
         "descripcion_value": descripcion_value,
         "subarea_value": subarea_value,
         "preserve_selection": preserve_selection,
+        "proyectos": __import__("apps.proyectos.models", fromlist=["Proyecto"]).Proyecto.objects.filter(subarea__in=subareas, activo=True),
     })
 
 

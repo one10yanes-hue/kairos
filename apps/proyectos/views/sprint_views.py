@@ -12,7 +12,7 @@ def sprint_list(request, pk):
     return render(request, "proyectos/sprint_list.html", {"proyecto": proyecto, "sprints": sprints})
 
 
-@login_required
+@miembro_requerido(ROLES_EDICION)
 def sprint_create(request, pk):
     proyecto = get_object_or_404(Proyecto, pk=pk, activo=True)
     if request.method == "POST":
@@ -38,7 +38,7 @@ def sprint_create(request, pk):
     return render(request, "proyectos/sprint_form.html", {"proyecto": proyecto, "historias": historias})
 
 
-@login_required
+@miembro_requerido()
 def sprint_board(request, pk, spk):
     proyecto = get_object_or_404(Proyecto, pk=pk, activo=True)
     sprint = get_object_or_404(Sprint, pk=spk, proyecto=proyecto)
@@ -70,3 +70,28 @@ def sprint_burndown(request, pk, spk):
         "proyecto": proyecto, "sprint": sprint,
         "dias": dias_labels, "ideal": ideal, "pts_inicio": pts,
     })
+
+
+@miembro_requerido(ROLES_EDICION)
+def sprint_finalizar(request, pk, spk):
+    proyecto = get_object_or_404(Proyecto, pk=pk, activo=True)
+    sprint = get_object_or_404(Sprint, pk=spk, proyecto=proyecto)
+    if request.method == "POST":
+        from ..models import RegistroAvance
+        sprint.estado = "finalizado"
+        sprint.save()
+        for h in sprint.historias.filter(activo=True):
+            if h.estado in ["revision", "done"]:
+                h.estado = "done"
+                h.save()
+                RegistroAvance.objects.create(proyecto=proyecto, tipo="historia_completada",
+                    descripcion=f"Historia {h.codigo} completada en Sprint {sprint.numero}", user=request.user, referencia_id=h.pk)
+            else:
+                h.estado = "backlog"
+                h.sprint = None
+                h.save()
+        RegistroAvance.objects.create(proyecto=proyecto, tipo="sprint_finalizado",
+            descripcion=f"Sprint {sprint.numero} finalizado. Velocidad: {sprint.velocidad} pts.", user=request.user, referencia_id=sprint.pk)
+        messages.success(request, f"Sprint {sprint.numero} finalizado. Velocidad: {sprint.velocidad} pts.")
+        return redirect("proyectos:sprint_list", pk=proyecto.pk)
+    return redirect("proyectos:sprint_board", pk=proyecto.pk, spk=sprint.pk)

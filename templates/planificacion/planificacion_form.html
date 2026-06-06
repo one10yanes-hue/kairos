@@ -31,6 +31,15 @@
                         <input type="text" name="nombre" class="form-control" placeholder="Ej: Sprint 1, Planificacion semanal..." required style="font-size:0.85rem;" value="{{ nombre_value|escape }}">
                     </div>
                     <div class="col-md-5">
+                        <label class="form-label fw-semibold" style="font-size:0.85rem;">Proyecto (opcional)</label>
+                        <select name="proyecto" class="form-select" style="font-size:0.85rem;">
+                            <option value="">Sin proyecto</option>
+                            {% for p in proyectos %}<option value="{{ p.pk }}">{{ p.codigo }} - {{ p.nombre }}</option>{% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="row g-3 mb-4">
+                    <div class="col-md-12">
                         <label class="form-label fw-semibold" style="font-size:0.85rem;">Descripcion</label>
                         <input type="text" name="descripcion" class="form-control" placeholder="Opcional" style="font-size:0.85rem;" value="{{ descripcion_value|escape }}">
                     </div>

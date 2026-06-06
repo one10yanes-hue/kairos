@@ -16,6 +16,14 @@
         <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.1rem;">{{ proyecto.tareas.count }}</div><small class="text-muted" style="font-size:0.6rem;">Tareas</small></div></div></div>
         <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.1rem;">{{ proyecto.incidencias.count }}</div><small class="text-muted" style="font-size:0.6rem;">Incidencias</small></div></div></div>
         <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.1rem;">{{ proyecto.membresias.count }}</div><small class="text-muted" style="font-size:0.6rem;">Miembros</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.1rem;">{{ sprints_activos }}</div><small class="text-muted" style="font-size:0.6rem;">Sprints</small></div></div></div>
+    </div>
+
+    <div class="row g-2 mb-3">
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#f59e0b;">{{ tareas_pend }}</div><small class="text-muted" style="font-size:0.6rem;">Pendientes</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#0ea5e9;">{{ tareas_curso }}</div><small class="text-muted" style="font-size:0.6rem;">En Curso</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#16a34a;">{{ tareas_fin }}</div><small class="text-muted" style="font-size:0.6rem;">Finalizadas</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#dc2626;">{{ inc_abiertas }}</div><small class="text-muted" style="font-size:0.6rem;">Inc. Abiertas</small></div></div></div>
     </div>
 
     <div class="d-flex gap-2 mb-3 flex-wrap">
