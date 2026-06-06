@@ -1,6 +1,9 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import json
 from ..models import Proyecto, HistoriaUsuario
 
 
@@ -9,6 +12,19 @@ def backlog_view(request, pk):
     proyecto = get_object_or_404(Proyecto, pk=pk, activo=True)
     historias = proyecto.historias.filter(activo=True)
     return render(request, "proyectos/backlog.html", {"proyecto": proyecto, "historias": historias})
+
+
+@csrf_exempt
+@login_required
+def backlog_reordenar(request, pk):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            for item in data.get("ordenes", []):
+                HistoriaUsuario.objects.filter(pk=item["id"], proyecto_id=pk).update(orden=item["orden"])
+        except Exception:
+            pass
+    return JsonResponse({"ok": True})
 
 
 @login_required

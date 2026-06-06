@@ -1,3 +1,18 @@
-{% extends 'base.html' %}{% block content %}
-<div class='container-fluid mt-3'><h5>Crear Tarea - {{ proyecto.nombre }}</h5></div>
+{% extends "base.html" %}{% block content %}
+<div class="container-fluid mt-3">
+    <h5 class="fw-bold mb-3">Nueva Tarea · {{ proyecto.codigo }}</h5>
+    <div class="card shadow-sm"><div class="card-body p-4">
+        <form method="POST">{% csrf_token %}
+            <div class="row g-3">
+                <div class="col-12"><label class="form-label small fw-semibold">Título <span class="text-danger">*</span></label><input type="text" name="titulo" class="form-control" required></div>
+                <div class="col-12"><label class="form-label small fw-semibold">Descripción</label><textarea name="descripcion" class="form-control" rows="2"></textarea></div>
+                <div class="col-md-4"><label class="form-label small fw-semibold">Tipo</label><select name="tipo" class="form-select"><option value="tarea">Tarea</option><option value="mejora">Mejora</option><option value="bug">Bug</option><option value="documentacion">Documentación</option><option value="prueba">Prueba</option><option value="diseno">Diseño</option></select></div>
+                <div class="col-md-4"><label class="form-label small fw-semibold">Asignado a</label><select name="user_id" class="form-select"><option value="">Sin asignar</option>{% for m in miembros %}<option value="{{ m.user.pk }}">{{ m.user.get_full_name }}</option>{% endfor %}</select></div>
+                <div class="col-md-4"><label class="form-label small fw-semibold">Historia</label><select name="historia_id" class="form-select"><option value="">Ninguna</option>{% for h in historias %}<option value="{{ h.pk }}">{{ h.codigo }}: {{ h.titulo|truncatechars:40 }}</option>{% endfor %}</select></div>
+                <div class="col-md-4"><label class="form-label small fw-semibold">Sprint</label><select name="sprint_id" class="form-select"><option value="">Ninguno</option>{% for s in sprints %}<option value="{{ s.pk }}">Sprint {{ s.numero }}: {{ s.nombre }}</option>{% endfor %}</select></div>
+            </div>
+            <div class="d-flex gap-2 mt-3"><button type="submit" class="btn btn-primary btn-sm">Crear Tarea</button><a href="{% url 'proyectos:tarea_list' proyecto.pk %}" class="btn btn-outline-secondary btn-sm">Cancelar</a></div>
+        </form>
+    </div></div>
+</div>
 {% endblock %}

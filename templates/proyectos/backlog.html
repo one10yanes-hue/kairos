@@ -1,3 +1,140 @@
-{% extends 'base.html' %}{% block content %}
-<div class='container-fluid mt-3'><h5>Backlog - {{ proyecto.nombre }}</h5></div>
+{% extends "base.html" %}{% block content %}
+<div class="container-fluid mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+        <h5 class="fw-bold mb-0" style="font-size:0.95rem;">
+            <a href="{% url 'proyectos:proyecto_detail' proyecto.pk %}" class="text-decoration-none">{{ proyecto.codigo }}</a> · Backlog
+        </h5>
+        <button type="button" class="btn btn-primary btn-sm" style="font-size:0.75rem;" onclick="document.getElementById('historiaModal').style.display='flex'">
+            <i class="bi bi-plus-lg"></i> Nueva Historia
+        </button>
+    </div>
+
+    <div class="row g-2 mb-2">
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#0ea5e9;">{{ historias.count }}</div><small class="text-muted" style="font-size:0.6rem;">Total</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#ca8a04;">{{ proyecto.sprints.filter.activo.count }}</div><small class="text-muted" style="font-size:0.6rem;">Sprints</small></div></div></div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0" style="font-size:0.78rem;">
+                <thead class="table-light">
+                    <tr><th style="width:30px;"></th><th>Código</th><th>Título</th><th>Prioridad</th><th>Puntos</th><th>Estado</th><th>Sprint</th><th style="width:60px;"></th></tr>
+                </thead>
+                <tbody id="backlogTable">
+                    {% for h in historias %}
+                    <tr data-id="{{ h.pk }}" data-orden="{{ h.orden }}" style="cursor:grab;">
+                        <td class="text-muted" style="font-size:0.6rem;"><i class="bi bi-grip-vertical"></i></td>
+                        <td><span class="badge bg-light text-muted" style="font-size:0.6rem;">{{ h.codigo }}</span></td>
+                        <td><a href="#" onclick="editarHistoria({{ h.pk }},'{{ h.titulo|escapejs }}','{{ h.descripcion|escapejs }}','{{ h.criterios_aceptacion|escapejs }}','{{ h.prioridad }}',{{ h.puntos_historia }},'{{ h.estado }}')" class="text-decoration-none fw-semibold">{{ h.titulo }}</a></td>
+                        <td><span class="badge {% if h.prioridad == 'must' %}bg-danger{% elif h.prioridad == 'should' %}bg-warning text-dark{% elif h.prioridad == 'could' %}bg-info text-dark{% else %}bg-light text-muted{% endif %}" style="font-size:0.55rem;">{{ h.get_prioridad_display }}</span></td>
+                        <td><span class="badge bg-primary" style="font-size:0.55rem;">{{ h.puntos_historia }} pts</span></td>
+                        <td><span class="badge {% if h.estado == 'done' %}bg-success{% elif h.estado == 'backlog' %}bg-light text-muted{% else %}bg-warning text-dark{% endif %}" style="font-size:0.55rem;">{{ h.get_estado_display }}</span></td>
+                        <td style="font-size:0.65rem;">{% if h.sprint %}{{ h.sprint.nombre }}{% else %}-{% endif %}</td>
+                        <td><button type="button" class="btn btn-sm btn-outline-danger py-0 px-1" style="font-size:0.55rem;" onclick="if(confirm('Eliminar historia?')){location.href='{% url %}?'}"><i class="bi bi-trash"></i></button></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="8" class="text-center text-muted py-4">Backlog vacío. Crea tu primera historia de usuario.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Historia Modal -->
+<div id="historiaModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:0.75rem;max-width:500px;width:90%;padding:1.5rem;box-shadow:0 8px 32px rgba(0,0,0,0.12);">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold mb-0" id="historiaModalTitle">Nueva Historia</h6>
+            <button type="button" class="btn-close" onclick="document.getElementById('historiaModal').style.display='none'"></button>
+        </div>
+        <form method="POST" id="historiaForm" action="{% url 'proyectos:historia_create' proyecto.pk %}">
+            {% csrf_token %}
+            <input type="hidden" name="historia_id" id="historiaId">
+            <div class="mb-2">
+                <label class="form-label small fw-semibold">Título <span class="text-danger">*</span></label>
+                <input type="text" name="titulo" id="historiaTitulo" class="form-control form-control-sm" required>
+            </div>
+            <div class="mb-2">
+                <label class="form-label small fw-semibold">Descripción</label>
+                <textarea name="descripcion" id="historiaDesc" class="form-control form-control-sm" rows="2" placeholder="Como [rol], quiero [funcionalidad] para [beneficio]"></textarea>
+            </div>
+            <div class="mb-2">
+                <label class="form-label small fw-semibold">Criterios de aceptación</label>
+                <textarea name="criterios" id="historiaCrit" class="form-control form-control-sm" rows="2"></textarea>
+            </div>
+            <div class="row g-2 mb-2">
+                <div class="col-6">
+                    <label class="form-label small fw-semibold">Prioridad</label>
+                    <select name="prioridad" id="historiaPrioridad" class="form-select form-select-sm">
+                        <option value="must">Must Have</option>
+                        <option value="should">Should Have</option>
+                        <option value="could">Could Have</option>
+                        <option value="wont">Won't Have</option>
+                    </select>
+                </div>
+                <div class="col-6">
+                    <label class="form-label small fw-semibold">Story Points</label>
+                    <select name="puntos" id="historiaPuntos" class="form-select form-select-sm">
+                        <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                        <option value="5">5</option><option value="8">8</option><option value="13">13</option>
+                        <option value="21">21</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mb-2" id="estadoField" style="display:none;">
+                <label class="form-label small fw-semibold">Estado</label>
+                <select name="estado" id="historiaEstado" class="form-select form-select-sm">
+                    <option value="backlog">Backlog</option>
+                    <option value="sprint_backlog">Sprint Backlog</option>
+                    <option value="en_progreso">En Progreso</option>
+                    <option value="revision">En Revisión</option>
+                    <option value="done">Done</option>
+                </select>
+            </div>
+            <div class="d-flex justify-content-end gap-2">
+                <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('historiaModal').style.display='none'">Cancelar</button>
+                <button type="submit" class="btn btn-sm btn-primary">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function editarHistoria(id, titulo, desc, crit, prioridad, puntos, estado) {
+    document.getElementById('historiaModalTitle').textContent = 'Editar Historia';
+    document.getElementById('historiaForm').action = '/proyectos/{{ proyecto.pk }}/historias/' + id + '/editar/';
+    document.getElementById('historiaId').value = id;
+    document.getElementById('historiaTitulo').value = titulo;
+    document.getElementById('historiaDesc').value = desc;
+    document.getElementById('historiaCrit').value = crit;
+    document.getElementById('historiaPrioridad').value = prioridad;
+    document.getElementById('historiaPuntos').value = puntos;
+    document.getElementById('historiaEstado').value = estado;
+    document.getElementById('estadoField').style.display = '';
+    document.getElementById('historiaModal').style.display = 'flex';
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+    // SortableJS para drag & drop
+    var tbody = document.getElementById('backlogTable');
+    if (tbody && typeof Sortable !== 'undefined') {
+        new Sortable(tbody, {
+            handle: 'td:first-child',
+            animation: 150,
+            onEnd: function() {
+                var ordenes = [];
+                tbody.querySelectorAll('tr[data-id]').forEach(function(tr, i){
+                    ordenes.push({id: tr.dataset.id, orden: i});
+                });
+                fetch('/proyectos/{{ proyecto.pk }}/backlog/reordenar/', {
+                    method: 'POST',
+                    headers: {'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value},
+                    body: JSON.stringify({ordenes: ordenes})
+                });
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

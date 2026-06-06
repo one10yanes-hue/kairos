@@ -1,3 +1,34 @@
-{% extends 'base.html' %}{% block content %}
-<div class='container-fluid mt-3'><h5>Sprints - {{ proyecto.nombre }}</h5></div>
+{% extends "base.html" %}{% block content %}
+<div class="container-fluid mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+        <h5 class="fw-bold mb-0" style="font-size:0.95rem;">
+            <a href="{% url 'proyectos:proyecto_detail' proyecto.pk %}" class="text-decoration-none">{{ proyecto.codigo }}</a> · Sprints
+        </h5>
+        <button type="button" class="btn btn-primary btn-sm" style="font-size:0.75rem;" onclick="document.getElementById('sprintModal').style.display='flex'">
+            <i class="bi bi-plus-lg"></i> Nuevo Sprint
+        </button>
+    </div>
+
+    <div class="row g-3">
+        {% for s in sprints %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-header py-1 px-2 d-flex justify-content-between align-items-center">
+                    <small class="fw-semibold">Sprint {{ s.numero }}: {{ s.nombre }}</small>
+                    <span class="badge {% if s.estado == 'activo' %}bg-success{% elif s.estado == 'finalizado' %}bg-secondary{% else %}bg-light text-muted{% endif %}" style="font-size:0.55rem;">{{ s.get_estado_display }}</span>
+                </div>
+                <div class="card-body p-2">
+                    <p class="small mb-1">{{ s.objetivo|default:"Sin objetivo definido"|truncatechars:80 }}</p>
+                    <small class="text-muted d-block" style="font-size:0.65rem;">{{ s.fecha_inicio|date:"d/m/Y"|default:"?" }} → {{ s.fecha_fin|date:"d/m/Y"|default:"?" }}</small>
+                    <div class="d-flex gap-1 mt-2">
+                        <a href="{% url 'proyectos:sprint_board' proyecto.pk s.pk %}" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size:0.65rem;">Board</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12"><p class="text-muted text-center py-4">No hay sprints. Crea el primero.</p></div>
+        {% endfor %}
+    </div>
+</div>
 {% endblock %}

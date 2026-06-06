@@ -11,6 +11,7 @@ urlpatterns = [
     path("<int:pk>/equipo/", proyecto_views.proyecto_equipo, name="proyecto_equipo"),
     # Backlog
     path("<int:pk>/backlog/", backlog_views.backlog_view, name="backlog"),
+    path("<int:pk>/backlog/reordenar/", backlog_views.backlog_reordenar, name="backlog_reordenar"),
     path("<int:pk>/historias/crear/", backlog_views.historia_create, name="historia_create"),
     path("<int:pk>/historias/<int:hid>/editar/", backlog_views.historia_edit, name="historia_edit"),
     # Sprints

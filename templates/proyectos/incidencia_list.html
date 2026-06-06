@@ -1,3 +1,28 @@
-{% extends 'base.html' %}{% block content %}
-<div class='container-fluid mt-3'><h5>Incidencias - {{ proyecto.nombre }}</h5></div>
+{% extends "base.html" %}{% block content %}
+<div class="container-fluid mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+        <h5 class="fw-bold mb-0" style="font-size:0.95rem;"><a href="{% url 'proyectos:proyecto_detail' proyecto.pk %}" class="text-decoration-none">{{ proyecto.codigo }}</a> · Incidencias</h5>
+        <a href="{% url 'proyectos:incidencia_create' proyecto.pk %}" class="btn btn-primary btn-sm" style="font-size:0.75rem;"><i class="bi bi-bug"></i> Reportar</a>
+    </div>
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0" style="font-size:0.78rem;">
+                <thead class="table-light"><tr><th>Código</th><th>Título</th><th>Tipo</th><th>Severidad</th><th>Estado</th><th>Asignado</th></tr></thead>
+                <tbody>
+                    {% for inc in incidencias %}
+                    <tr>
+                        <td><span class="badge bg-light text-muted" style="font-size:0.6rem;">{{ inc.codigo }}</span></td>
+                        <td><a href="{% url 'proyectos:incidencia_detail' proyecto.pk inc.pk %}" class="text-decoration-none fw-semibold">{{ inc.titulo }}</a></td>
+                        <td><span class="badge bg-light text-muted" style="font-size:0.55rem;">{{ inc.get_tipo_display }}</span></td>
+                        <td><span class="badge {% if inc.severidad == 'critica' %}bg-danger{% elif inc.severidad == 'alta' %}bg-warning text-dark{% else %}bg-light text-muted{% endif %}" style="font-size:0.55rem;">{{ inc.get_severidad_display }}</span></td>
+                        <td><span class="badge {% if inc.estado == 'abierta' %}bg-danger{% elif inc.estado == 'cerrada' %}bg-success{% elif inc.estado == 'resuelta' %}bg-info text-dark{% else %}bg-warning text-dark{% endif %}" style="font-size:0.55rem;">{{ inc.get_estado_display }}</span></td>
+                        <td style="font-size:0.65rem;">{{ inc.asignado_a.get_full_name|default:"-" }}</td>
+                    </tr>
+                    {% empty %}<tr><td colspan="6" class="text-center text-muted py-4">Sin incidencias.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 {% endblock %}
