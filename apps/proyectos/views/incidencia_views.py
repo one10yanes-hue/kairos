@@ -2,9 +2,10 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from ..models import Proyecto, Incidencia, Tarea
+from ..decorators import miembro_requerido
 
 
-@login_required
+@miembro_requerido()
 def incidencia_list(request, pk):
     proyecto = get_object_or_404(Proyecto, pk=pk, activo=True)
     incidencias = proyecto.incidencias.filter(activo=True).select_related("reportado_por", "asignado_a")

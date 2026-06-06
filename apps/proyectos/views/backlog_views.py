@@ -3,19 +3,19 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-import json
 from ..models import Proyecto, HistoriaUsuario
+from ..decorators import miembro_requerido, ROLES_EDICION
+import json
 
 
-@login_required
+@miembro_requerido()
 def backlog_view(request, pk):
     proyecto = get_object_or_404(Proyecto, pk=pk, activo=True)
     historias = proyecto.historias.filter(activo=True)
     return render(request, "proyectos/backlog.html", {"proyecto": proyecto, "historias": historias})
 
 
-@csrf_exempt
-@login_required
+@miembro_requerido(ROLES_EDICION)
 def backlog_reordenar(request, pk):
     if request.method == "POST":
         try:

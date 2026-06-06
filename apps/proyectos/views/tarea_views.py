@@ -3,10 +3,11 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from ..models import Proyecto, Sprint, HistoriaUsuario, Tarea
 from ..signals import crear_asignacion_desde_tarea
+from ..decorators import miembro_requerido, ROLES_EDICION
 from apps.actividades.models import Actividad, TipoActividad
 
 
-@login_required
+@miembro_requerido()
 def tarea_list(request, pk):
     proyecto = get_object_or_404(Proyecto, pk=pk, activo=True)
     tareas = proyecto.tareas.filter(activo=True).select_related("asignado_a", "historia", "sprint")

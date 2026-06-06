@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from ..models import Proyecto, MiembroProyecto
+from ..decorators import miembro_requerido, ROLES_ADMIN, ROLES_EDICION
 from apps.accounts.models import User
 from apps.estructura.models import SubArea
 
@@ -60,12 +61,14 @@ def proyecto_create(request):
 
 
 @login_required
+@miembro_requerido()
 def proyecto_detail(request, pk):
     proyecto = get_object_or_404(Proyecto, pk=pk, activo=True)
     return render(request, "proyectos/proyecto_detail.html", {"proyecto": proyecto})
 
 
 @login_required
+@miembro_requerido(ROLES_ADMIN)
 def proyecto_edit(request, pk):
     proyecto = get_object_or_404(Proyecto, pk=pk, activo=True)
     subareas = _get_subareas(request.user)
@@ -89,6 +92,7 @@ def proyecto_edit(request, pk):
 
 
 @login_required
+@miembro_requerido(ROLES_ADMIN)
 def proyecto_equipo(request, pk):
     proyecto = get_object_or_404(Proyecto, pk=pk, activo=True)
     miembros = MiembroProyecto.objects.filter(proyecto=proyecto, activo=True).select_related("user")
