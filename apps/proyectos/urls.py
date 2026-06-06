@@ -23,6 +23,7 @@ urlpatterns = [
     path("<int:pk>/tareas/", tarea_views.tarea_list, name="tarea_list"),
     path("<int:pk>/tareas/crear/", tarea_views.tarea_create, name="tarea_create"),
     path("<int:pk>/tareas/<int:tid>/", tarea_views.tarea_detail, name="tarea_detail"),
+    path("<int:pk>/tareas/<int:tid>/activar/", tarea_views.tarea_activar, name="tarea_activar"),
     # Incidencias
     path("<int:pk>/incidencias/", incidencia_views.incidencia_list, name="incidencia_list"),
     path("<int:pk>/incidencias/crear/", incidencia_views.incidencia_create, name="incidencia_create"),

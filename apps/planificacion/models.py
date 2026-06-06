@@ -10,6 +10,7 @@ class Planificacion(models.Model):
     nombre = models.CharField(max_length=300)
     descripcion = models.TextField(blank=True, null=True)
     cerrada = models.BooleanField(default=False, help_text="Al cerrar una planificacion no se pueden agregar mas actividades")
+    proyecto = models.ForeignKey("proyectos.Proyecto", on_delete=models.SET_NULL, null=True, blank=True, related_name="planificaciones", help_text="Vincula esta planificacion a un proyecto")
     activo = models.BooleanField(default=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_update = models.DateTimeField(auto_now=True)

@@ -105,7 +105,7 @@ def tablero(request):
         Q(planificacion_detalle__fecha_programada__isnull=True) |
         Q(planificacion_detalle__fecha_programada__lte=ahora) |
         Q(actividad__tipo_actividad__requiere_entregable=True)
-    ).select_related("actividad__tipo_actividad", "actividad__subarea__area", "planificacion_detalle__planificacion"
+    ).select_related("actividad__tipo_actividad", "actividad__subarea__area", "planificacion_detalle__planificacion", "tarea_proyecto__proyecto"
     ).prefetch_related("comentarios")
 
     if subarea_id:
