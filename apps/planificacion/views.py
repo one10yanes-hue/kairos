@@ -170,7 +170,7 @@ def planificacion_create(request):
                         fecha_programada=fecha_programada or None,
                         fecha_vencimiento=fecha_vencimiento_value or None,
                     )
-                    AsignacionActividad.objects.create(
+                    asignacion = AsignacionActividad.objects.create(
                         planificacion_detalle=detalle,
                         user=usuario,
                         actividad=actividad,
@@ -180,6 +180,20 @@ def planificacion_create(request):
                         nombre_actividad=actividad.nombre,
                         nombre_tipo=actividad.tipo_actividad.nombre,
                     )
+                    # Si la planificacion esta vinculada a un proyecto, crear Tarea automaticamente
+                    if planificacion.proyecto:
+                        from apps.proyectos.models import Tarea
+                        tarea = Tarea.objects.create(
+                            proyecto=planificacion.proyecto,
+                            titulo=actividad.nombre,
+                            tipo="tarea",
+                            asignado_a=usuario,
+                            creador=planificacion.admin,
+                            actividad_catalogo=actividad,
+                            asignacion=asignacion,
+                        )
+                        tarea.codigo = f"{planificacion.proyecto.codigo}-T-{tarea.pk:03d}"
+                        tarea.save()
                 messages.success(request, f"Planificacion creada con {count} asignacion(es).")
                 request.audit_record_id = planificacion.pk
                 request.audit_modelo = "Planificacion"
