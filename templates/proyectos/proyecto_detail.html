@@ -24,6 +24,7 @@
         <a href="{% url 'proyectos:tarea_list' proyecto.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem;">📝 Tareas</a>
         <a href="{% url 'proyectos:incidencia_list' proyecto.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem;">⚠️ Incidencias</a>
         <a href="{% url 'proyectos:proyecto_equipo' proyecto.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem;">👥 Equipo</a>
+        <a href="{% url 'proyectos:proyecto_gantt' proyecto.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem;">📊 Gantt</a>
     </div>
 
     {% if proyecto.descripcion %}

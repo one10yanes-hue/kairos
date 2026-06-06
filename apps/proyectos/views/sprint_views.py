@@ -48,3 +48,24 @@ def sprint_board(request, pk, spk):
         "en_curso": tareas.filter(estado__in=["en_curso", "pausada"]),
         "finalizadas": tareas.filter(estado="finalizada"),
     })
+
+
+@login_required
+def sprint_burndown(request, pk, spk):
+    proyecto = get_object_or_404(Proyecto, pk=pk, activo=True)
+    sprint = get_object_or_404(Sprint, pk=spk, proyecto=proyecto)
+    from django.utils import timezone
+    from datetime import timedelta
+    hoy = timezone.now().date()
+    dias_labels = []
+    ideal = []
+    pts = sprint.puntos_comprometidos
+    if sprint.fecha_inicio and sprint.fecha_fin:
+        total_dias = max((sprint.fecha_fin - sprint.fecha_inicio).days + 1, 1)
+        dias_labels = [(sprint.fecha_inicio + timedelta(days=i)).strftime("%d/%m") for i in range(total_dias)]
+        paso = pts / max(total_dias - 1, 1) if total_dias > 1 else 0
+        ideal = [max(0, round(pts - paso * i, 1)) for i in range(total_dias)]
+    return render(request, "proyectos/sprint_burndown.html", {
+        "proyecto": proyecto, "sprint": sprint,
+        "dias": dias_labels, "ideal": ideal, "pts_inicio": pts,
+    })

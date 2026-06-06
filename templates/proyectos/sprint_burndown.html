@@ -1,0 +1,29 @@
+{% extends "base.html" %}{% block content %}
+<div class="container-fluid mt-3">
+    <h5 class="fw-bold mb-3">📊 Burndown · Sprint {{ sprint.numero }}: {{ sprint.nombre }}</h5>
+    <div class="card shadow-sm"><div class="card-body p-4">
+        <canvas id="burndownChart" style="max-height:400px;"></canvas>
+    </div></div>
+</div>
+
+<script>
+var ctx = document.getElementById('burndownChart').getContext('2d');
+new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: {{ dias|safe }},
+        datasets: [
+            { label: 'Ideal', data: {{ ideal|safe }}, borderColor: '#94a3b8', borderDash: [5,5], fill: false, tension: 0.1 },
+            { label: 'Real', data: [], borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', fill: true, tension: 0.1 }
+        ]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            y: { beginAtZero: true, title: { display: true, text: 'Story Points' }, max: {{ pts_inicio }} + 2 },
+            x: { title: { display: true, text: 'Dias' } }
+        }
+    }
+});
+</script>
+{% endblock %}

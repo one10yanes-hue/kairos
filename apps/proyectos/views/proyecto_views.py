@@ -110,3 +110,31 @@ def proyecto_equipo(request, pk):
     return render(request, "proyectos/proyecto_equipo.html", {
         "proyecto": proyecto, "miembros": miembros, "usuarios": usuarios
     })
+
+
+@login_required
+def proyecto_gantt(request, pk):
+    proyecto = get_object_or_404(Proyecto, pk=pk, activo=True)
+    sprints = proyecto.sprints.filter(activo=True).order_by("numero")
+    items = []
+    for sp in sprints:
+        items.append({
+            "id": f"sprint-{sp.pk}",
+            "content": f"Sprint {sp.numero}: {sp.nombre}",
+            "start": sp.fecha_inicio.isoformat() if sp.fecha_inicio else None,
+            "end": sp.fecha_fin.isoformat() if sp.fecha_fin else None,
+            "group": "sprints",
+            "className": "bg-primary text-white",
+        })
+        for t in sp.tareas.filter(activo=True).select_related("asignado_a"):
+            if t.fecha_creacion:
+                items.append({
+                    "id": f"tarea-{t.pk}",
+                    "content": t.titulo[:40],
+                    "start": t.fecha_creacion.date().isoformat(),
+                    "end": (t.fecha_update.date() if t.estado == "finalizada" else None),
+                    "group": f"sprint-{sp.pk}",
+                })
+    return render(request, "proyectos/proyecto_gantt.html", {
+        "proyecto": proyecto, "items": items
+    })

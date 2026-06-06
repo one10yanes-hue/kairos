@@ -18,6 +18,7 @@ urlpatterns = [
     path("<int:pk>/sprints/", sprint_views.sprint_list, name="sprint_list"),
     path("<int:pk>/sprints/crear/", sprint_views.sprint_create, name="sprint_create"),
     path("<int:pk>/sprints/<int:spk>/", sprint_views.sprint_board, name="sprint_board"),
+    path("<int:pk>/sprints/<int:spk>/burndown/", sprint_views.sprint_burndown, name="sprint_burndown"),
     # Tareas
     path("<int:pk>/tareas/", tarea_views.tarea_list, name="tarea_list"),
     path("<int:pk>/tareas/crear/", tarea_views.tarea_create, name="tarea_create"),
@@ -26,4 +27,6 @@ urlpatterns = [
     path("<int:pk>/incidencias/", incidencia_views.incidencia_list, name="incidencia_list"),
     path("<int:pk>/incidencias/crear/", incidencia_views.incidencia_create, name="incidencia_create"),
     path("<int:pk>/incidencias/<int:iid>/", incidencia_views.incidencia_detail, name="incidencia_detail"),
+    # Reportes
+    path("<int:pk>/gantt/", proyecto_views.proyecto_gantt, name="proyecto_gantt"),
 ]
