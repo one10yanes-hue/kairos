@@ -85,11 +85,15 @@ class User(AbstractBaseUser, PermissionsMixin):
         return self.nombre
 
     def tiene_rol(self, rol_id):
-        return self.rol_id == rol_id or self.roles_adicionales.filter(pk=rol_id).exists()
+        if self.rol_id == rol_id or self.roles_adicionales.filter(pk=rol_id).exists():
+            return True
+        return type(self).objects.filter(pk=self.pk, rol_id=rol_id).exists()
 
     def roles_disponibles(self):
+        from django.db import models as dj_models
+        original_rol_id = User.objects.values_list("rol_id", flat=True).get(pk=self.pk)
         return Rol.objects.filter(
-            models.Q(pk=self.rol_id) | models.Q(usuarios_extra=self)
+            dj_models.Q(pk=original_rol_id) | dj_models.Q(usuarios_extra=self)
         ).distinct()
 
     def save(self, *args, **kwargs):
