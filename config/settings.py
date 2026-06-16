@@ -78,6 +78,8 @@ db_name = env("DB_NAME", default="db.sqlite3")
 
 if db_engine in ["mssql", "sql_server"]:
     db_engine = "mssql"
+elif db_engine in ["mysql", "mariadb"]:
+    db_engine = "django.db.backends.mysql"
 
 DATABASES = {
     "default": {
@@ -99,6 +101,14 @@ if db_engine == "mssql":
             },
         }
     )
+elif db_engine == "django.db.backends.mysql":
+    DATABASES["default"].update({
+        "USER": env("DB_USER", default="root"),
+        "PASSWORD": env("DB_PASSWORD", default=""),
+        "HOST": env("DB_HOST", default="localhost"),
+        "PORT": env("DB_PORT", default="3306"),
+        "OPTIONS": {"charset": "utf8mb4"},
+    })
 
 # Base de datos externa KACTUS para integracion de empleados
 DATABASES["kactus"] = {
