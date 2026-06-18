@@ -224,7 +224,7 @@ def planificacion_create(request):
         "descripcion_value": descripcion_value,
         "subarea_value": subarea_value,
         "preserve_selection": preserve_selection,
-        "proyectos": __import__("apps.proyectos.models", fromlist=["Proyecto"]).Proyecto.objects.filter(subareas__in=subareas, activo=True),
+        "proyectos": [],
     })
 
 
