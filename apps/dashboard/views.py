@@ -392,7 +392,10 @@ def linea_tiempo(request):
         activo=True, is_active=True
     ).filter(
         Q(rol__nombre="Usuario") | Q(roles_adicionales__nombre="Usuario")
-    ).order_by("nombre")
+    )
+    if subarea_filter:
+        usuarios_disponibles = usuarios_disponibles.filter(subareas__subarea_id=subarea_filter, subareas__activo=True)
+    usuarios_disponibles = usuarios_disponibles.order_by("nombre")
 
     subareas_disponibles = subareas.select_related("area")
 
@@ -619,6 +622,92 @@ def linea_tiempo(request):
     ayer = dia - timedelta(days=1)
     maniana = dia + timedelta(days=1)
 
+    # ============= PROYECTOS — GANTT =============
+    from apps.proyectos.models import Proyecto
+
+    proyecto_filter = request.GET.get("proyecto_id")
+    if proyecto_filter:
+        try:
+            proyecto_filter = int(proyecto_filter)
+        except (ValueError, TypeError):
+            proyecto_filter = None
+
+    if request.user.rol.nombre == "Master":
+        proyectos_qs = Proyecto.objects.filter(activo=True)
+        if subarea_filter:
+            proyectos_qs = proyectos_qs.filter(subareas__id=subarea_filter)
+    elif request.user.rol.nombre == "Admin" and request.user.maneja_proyectos:
+        proyectos_qs = Proyecto.objects.filter(activo=True)
+        if subarea_filter:
+            proyectos_qs = proyectos_qs.filter(subareas__id=subarea_filter)
+    elif request.user.maneja_proyectos:
+        proyectos_qs = Proyecto.objects.filter(
+            activo=True,
+            membresias__user=request.user,
+            membresias__activo=True,
+        )
+    else:
+        proyectos_qs = Proyecto.objects.none()
+
+    if proyecto_filter:
+        proyectos_qs = proyectos_qs.filter(pk=proyecto_filter)
+
+    proyectos_disponibles = proyectos_qs.distinct()
+
+    proyecto_groups = []
+    proyecto_items = []
+    gantt_tips = {}
+    gantt_dates = []
+
+    color_class = {
+        "planificado": "gantt-plan",
+        "activo": "gantt-activo",
+        "finalizado": "gantt-fin",
+    }
+
+    for p in proyectos_disponibles:
+        sprints_qs = p.sprints.filter(activo=True).order_by("numero")
+        if not sprints_qs.exists():
+            continue
+        total_tareas = p.tareas.filter(activo=True).count()
+        done_tareas = p.tareas.filter(activo=True, estado="finalizada").count()
+        proyecto_groups.append({
+            "id": f"prj-{p.pk}",
+            "content": f"{p.codigo} {p.nombre[:30]}  ({total_tareas - done_tareas}/{total_tareas} pend)",
+        })
+        for sp in sprints_qs:
+            if not sp.fecha_inicio or not sp.fecha_fin:
+                continue
+            gantt_dates.extend([sp.fecha_inicio, sp.fecha_fin])
+            t_total = sp.tareas.filter(activo=True).count()
+            t_done = sp.tareas.filter(activo=True, estado="finalizada").count()
+            pct = int(t_done / t_total * 100) if t_total else 0
+            cls = color_class.get(sp.estado, "gantt-plan")
+            label = f"S{sp.numero}: {sp.nombre[:25]}{' ✓' if pct == 100 else ''}"
+            item_id = f"sp-{sp.pk}"
+            proyecto_items.append({
+                "id": item_id,
+                "group": f"prj-{p.pk}",
+                "content": label,
+                "start": sp.fecha_inicio.isoformat(),
+                "end": sp.fecha_fin.isoformat(),
+                "className": cls,
+                "title": f"{sp.nombre}|Estado: {sp.get_estado_display()}|Tareas: {t_done}/{t_total} ({pct}%)|{sp.fecha_inicio.strftime('%d/%m/%Y')} → {sp.fecha_fin.strftime('%d/%m/%Y')}",
+            })
+            gantt_tips[item_id] = f"{sp.nombre}|{sp.get_estado_display()}|{t_done}/{t_total} tareas ({pct}%)"
+
+    if gantt_dates:
+        gantt_min = min(gantt_dates) - timedelta(days=3)
+        gantt_max = max(max(gantt_dates), hoy) + timedelta(days=3)
+    else:
+        gantt_min = hoy - timedelta(days=7)
+        gantt_max = hoy + timedelta(days=30)
+
+    gantt_window = {
+        "min": gantt_min.isoformat(),
+        "max": gantt_max.isoformat(),
+    }
+
     return render(request, "dashboard/linea_tiempo.html", {
         "timeline_groups": timeline_groups,
         "timeline_items": timeline_items,
@@ -637,6 +726,14 @@ def linea_tiempo(request):
         "user_filter": user_filter,
         "subareas_disponibles": subareas_disponibles,
         "subarea_filter": subarea_filter,
+        # -- Proyectos Gantt --
+        "proyectos_disponibles": proyectos_disponibles,
+        "proyecto_filter": proyecto_filter,
+        "proyecto_groups": proyecto_groups,
+        "proyecto_items": proyecto_items,
+        "gantt_tips": gantt_tips,
+        "gantt_window": gantt_window,
+        "hay_proyectos": bool(proyecto_items),
     })
 
 

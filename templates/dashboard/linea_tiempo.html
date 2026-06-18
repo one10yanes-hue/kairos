@@ -36,16 +36,17 @@
               {% endfor %}
             </select>
           </div>
-          <div class="btn-group btn-group-sm" role="group" aria-label="Navegacion de fecha">
-            <a href="?fecha={{ ayer.isoformat }}{% if user_filter %}&amp;user_id={{ user_filter }}{% endif %}{% if subarea_filter %}&amp;subarea_id={{ subarea_filter }}{% endif %}" class="btn btn-outline-secondary">&lsaquo; Ayer</a>
-            <a href="?fecha={{ maniana.isoformat }}{% if user_filter %}&amp;user_id={{ user_filter }}{% endif %}{% if subarea_filter %}&amp;subarea_id={{ subarea_filter }}{% endif %}" class="btn btn-outline-secondary">Mañana &rsaquo;</a>
+          <div class="btn-group btn-group-sm" role="group">
+            <a href="?fecha={{ ayer.isoformat }}{% if user_filter %}&amp;user_id={{ user_filter }}{% endif %}{% if subarea_filter %}&amp;subarea_id={{ subarea_filter }}{% endif %}{% if proyecto_filter %}&amp;proyecto_id={{ proyecto_filter }}{% endif %}" class="btn btn-outline-secondary">&lsaquo; Ayer</a>
+             <a href="?fecha={{ maniana.isoformat }}{% if user_filter %}&amp;user_id={{ user_filter }}{% endif %}{% if subarea_filter %}&amp;subarea_id={{ subarea_filter }}{% endif %}{% if proyecto_filter %}&amp;proyecto_id={{ proyecto_filter }}{% endif %}" class="btn btn-outline-secondary">Ma&ntilde;ana &rsaquo;</a>
           </div>
           <form method="GET" class="tl-date-form">
             <input type="date" name="fecha" value="{{ fecha_str }}" class="form-control form-control-sm tl-date-input" onchange="this.form.submit()">
             {% if user_filter %}<input type="hidden" name="user_id" value="{{ user_filter }}">{% endif %}
             {% if subarea_filter %}<input type="hidden" name="subarea_id" value="{{ subarea_filter }}">{% endif %}
+            {% if proyecto_filter %}<input type="hidden" name="proyecto_id" value="{{ proyecto_filter }}">{% endif %}
           </form>
-          <a href="?fecha={% if user_filter %}&amp;user_id={{ user_filter }}{% endif %}{% if subarea_filter %}&amp;subarea_id={{ subarea_filter }}{% endif %}" class="btn btn-sm btn-outline-primary">Hoy</a>
+          <a href="?fecha={% if user_filter %}&amp;user_id={{ user_filter }}{% endif %}{% if subarea_filter %}&amp;subarea_id={{ subarea_filter }}{% endif %}{% if proyecto_filter %}&amp;proyecto_id={{ proyecto_filter }}{% endif %}" class="btn btn-sm btn-outline-primary">Hoy</a>
         </div>
       </div>
       <div class="tl-legend">
@@ -74,6 +75,46 @@
     </div>
     {% endif %}
   </div>
+
+  <div class="tl-separator">
+    <div class="d-flex align-items-center justify-content-between">
+      <div class="d-flex align-items-center gap-2">
+        <div class="tl-sep-icon"><i class="bi bi-kanban"></i></div>
+        <h6 class="fw-bold mb-0">Proyectos &mdash; Planificacion de Sprints</h6>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <input type="text" class="form-control form-control-sm" id="filtroProyectosTL" placeholder="Proyecto..." style="width:120px;font-size:0.78rem;" onkeyup="filtrarSelect('filtroProyectosTL','selProyectosTL')">
+        <select name="proyecto_id" id="selProyectosTL" class="form-select form-select-sm" style="width:auto;font-size:0.78rem;" onchange="tlNavegar()">
+          <option value="">Todos</option>
+          {% for p in proyectos_disponibles %}
+          <option value="{{ p.pk }}" data-search="{{ p.codigo|lower }} {{ p.nombre|lower }}"{% if proyecto_filter == p.pk %} selected{% endif %}>{{ p.codigo }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="tl-legend" style="margin-top:0.4rem;padding-top:0.4rem;">
+      <div class="tl-legend-item"><span class="tl-legend-box gantt-plan"></span>Planificado</div>
+      <div class="tl-legend-item"><span class="tl-legend-box gantt-activo"></span>Activo</div>
+      <div class="tl-legend-item"><span class="tl-legend-box gantt-fin"></span>Finalizado</div>
+    </div>
+  </div>
+
+  <div class="tl-body">
+    {% if hay_proyectos %}
+    <div id="tlProyectosGantt" class="tl-vis"></div>
+    {{ proyecto_groups|json_script:"prj-groups" }}
+    {{ proyecto_items|json_script:"prj-items" }}
+    {{ gantt_window|json_script:"prj-window" }}
+    {{ gantt_tips|json_script:"prj-tips" }}
+    {% else %}
+    <div class="tl-empty">
+      <div class="text-center">
+        <i class="bi bi-folder"></i>
+        <div>No hay proyectos con sprints activos</div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
 </div>
 {% endblock %}
 {% block extra_js %}
@@ -91,9 +132,11 @@ function filtrarSelect(inputId, selectId) {
 function tlNavegar() {
     var qs = ['fecha={{ fecha_str }}'];
     var s = document.getElementById('selSubareasTL');
-    if (s.value) qs.push('subarea_id=' + s.value);
+    if (s && s.value) qs.push('subarea_id=' + s.value);
     var u = document.getElementById('selUsuariosTL');
-    if (u.value) qs.push('user_id=' + u.value);
+    if (u && u.value) qs.push('user_id=' + u.value);
+    var p = document.getElementById('selProyectosTL');
+    if (p && p.value) qs.push('proyecto_id=' + p.value);
     window.location.href = '?' + qs.join('&');
 }
 </script>
