@@ -1,6 +1,6 @@
 {% if user.rol.nombre == 'Master' %}
-<div class="nav-section">
-    <span class="nav-section-title">Integracion</span>
+<div class="nav-section collapsed">
+    <div class="nav-section-title">Integracion <span class="section-arrow">&#9660;</span></div>
     <a href="{% url 'estructura:integracion_cargo' %}" class="nav-item {% if '/habilitaciones' in request.path %}active{% endif %}">
         <i class="bi bi-person-plus"></i><span>Habilitaciones por Cargo</span>
     </a>
@@ -8,8 +8,8 @@
         <i class="bi bi-arrow-repeat"></i><span>Sincronizacion de Usuarios</span>
     </a>
 </div>
-<div class="nav-section">
-    <span class="nav-section-title">Parametros</span>
+<div class="nav-section collapsed">
+    <div class="nav-section-title">Parametros <span class="section-arrow">&#9660;</span></div>
     <a href="{% url 'actividades:tipo_list' %}" class="nav-item {% if '/tipos' in request.path %}active{% endif %}">
         <i class="bi bi-tags"></i><span>Tipos de Actividad</span>
     </a>
@@ -17,8 +17,8 @@
         <i class="bi bi-list-check"></i><span>Actividades</span>
     </a>
 </div>
-<div class="nav-section">
-    <span class="nav-section-title">Organizacion</span>
+<div class="nav-section collapsed">
+    <div class="nav-section-title">Organizacion <span class="section-arrow">&#9660;</span></div>
     <a href="{% url 'estructura:empresa_list' %}" class="nav-item {% if '/empresas' in request.path %}active{% endif %}">
         <i class="bi bi-building"></i><span>Empresas</span>
     </a>
@@ -32,8 +32,8 @@
         <i class="bi bi-people"></i><span>Gestionar Usuarios</span>
     </a>
 </div>
-<div class="nav-section">
-    <span class="nav-section-title">Gestion</span>
+<div class="nav-section collapsed">
+    <div class="nav-section-title">Gestion <span class="section-arrow">&#9660;</span></div>
     <a href="{% url 'dashboard:dashboard_admin' %}" class="nav-item {% if '/dashboard' in request.path %}active{% endif %}">
         <i class="bi bi-speedometer2"></i><span>Dashboard</span>
     </a>
@@ -47,8 +47,8 @@
         <i class="bi bi-hourglass-split"></i><span>Tiempo de Inactividad</span>
     </a>
 </div>
-<div class="nav-section">
-    <span class="nav-section-title">Planificacion</span>
+<div class="nav-section collapsed">
+    <div class="nav-section-title">Planificacion <span class="section-arrow">&#9660;</span></div>
     <a href="{% url 'planificacion:planificacion_list' %}" class="nav-item {% if '/planificaciones' in request.path %}active{% endif %}">
         <i class="bi bi-calendar-check"></i><span>Planificaciones</span>
     </a>
@@ -59,8 +59,8 @@
         <i class="bi bi-file-earmark-spreadsheet"></i><span>Reportes</span>
     </a>
 </div>
-<div class="nav-section">
-    <span class="nav-section-title">Importaciones</span>
+<div class="nav-section collapsed">
+    <div class="nav-section-title">Importaciones <span class="section-arrow">&#9660;</span></div>
     <a href="{% url 'estructura:importar_exportar' %}" class="nav-item {% if '/importaciones' in request.path and '/usuarios' not in request.path %}active{% endif %}">
         <i class="bi bi-diagram-3"></i><span>Areas / SubAreas</span>
     </a>
@@ -69,8 +69,8 @@
     </a>
 </div>
 {% elif user.rol.nombre == 'Admin' %}
-<div class="nav-section">
-    <span class="nav-section-title">Dashboard</span>
+<div class="nav-section collapsed">
+    <div class="nav-section-title">Dashboard <span class="section-arrow">&#9660;</span></div>
     <a href="{% url 'dashboard:dashboard_admin' %}" class="nav-item {% if '/dashboard' in request.path %}active{% endif %}">
         <i class="bi bi-speedometer2"></i><span>Indicadores</span>
     </a>
@@ -84,8 +84,8 @@
         <i class="bi bi-hourglass-split"></i><span>Tiempo de Inactividad</span>
     </a>
 </div>
-<div class="nav-section">
-    <span class="nav-section-title">Parametros</span>
+<div class="nav-section collapsed">
+    <div class="nav-section-title">Parametros <span class="section-arrow">&#9660;</span></div>
     <a href="{% url 'actividades:tipo_list' %}" class="nav-item {% if '/tipos' in request.path %}active{% endif %}">
         <i class="bi bi-tags"></i><span>Tipos de Actividad</span>
     </a>
@@ -93,8 +93,8 @@
         <i class="bi bi-list-check"></i><span>Actividades</span>
     </a>
 </div>
-<div class="nav-section">
-    <span class="nav-section-title">Gestion</span>
+<div class="nav-section collapsed">
+    <div class="nav-section-title">Gestion <span class="section-arrow">&#9660;</span></div>
     <a href="{% url 'planificacion:planificacion_list' %}" class="nav-item {% if '/planificaciones' in request.path %}active{% endif %}">
         <i class="bi bi-calendar-check"></i><span>Planificaciones</span>
     </a>
@@ -106,8 +106,8 @@
     </a>
 </div>
 {% elif user.rol.nombre == 'Usuario' %}
-<div class="nav-section">
-    <span class="nav-section-title">Mi Gestion</span>
+<div class="nav-section collapsed">
+    <div class="nav-section-title">Mi Gestion <span class="section-arrow">&#9660;</span></div>
     <a href="{% url 'gestion:perfil' %}" class="nav-item {% if '/perfil' in request.path %}active{% endif %}">
         <i class="bi bi-person-circle"></i><span>Mi Perfil</span>
     </a>
