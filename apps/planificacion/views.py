@@ -15,6 +15,14 @@ from .forms import PlanificacionForm, PlanificacionDetalleForm
 from datetime import date, timedelta
 
 
+def _get_proyectos_opt(subareas):
+    try:
+        from apps.proyectos.models import Proyecto
+        return Proyecto.objects.filter(subareas__in=subareas, activo=True)
+    except (ImportError, Exception):
+        return []
+
+
 def admin_required(view_func):
     def wrapper(request, *args, **kwargs):
         if request.user.rol.nombre not in ["Admin", "Master"]:
@@ -224,7 +232,7 @@ def planificacion_create(request):
         "descripcion_value": descripcion_value,
         "subarea_value": subarea_value,
         "preserve_selection": preserve_selection,
-        "proyectos": [],
+        "proyectos": _get_proyectos_opt(subareas),
     })
 
 
