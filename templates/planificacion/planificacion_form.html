@@ -156,7 +156,7 @@ function searchItems(tipo, q) {
     if (!currentSubareaId) return;
     var f = document.getElementById('planForm');
     var apiUrl = tipo === 'act' ? f.getAttribute('data-api-act') : f.getAttribute('data-api-user');
-    var url = apiUrl + '?subarea_id=' + currentSubareaId + '&q=' + encodeURIComponent(q || '') + '&_=' + Date.now();
+    var url = apiUrl + '?subarea_id=' + currentSubareaId + '&limite=100&q=' + encodeURIComponent(q || '') + '&_=' + Date.now();
     if (tipo === 'act') {
         var tipoFiltro = document.getElementById('filtroTipo').value;
         if (tipoFiltro) url += '&tipo_nombre=' + encodeURIComponent(tipoFiltro);
