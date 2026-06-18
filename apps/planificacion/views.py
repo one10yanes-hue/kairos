@@ -150,7 +150,8 @@ def planificacion_create(request):
                         ).exists():
                             continue
                         if AsignacionActividad.objects.filter(
-                            user=usuario, actividad=actividad, activo=True
+                            user=usuario, actividad=actividad, activo=True,
+                            planificacion_detalle__fecha_programada=fecha_programada,
                         ).exclude(estado__in=["Finalizada", "Cancelada", "Trasladada"]).exists():
                             continue
                         detalles_creados.append((actividad, usuario))
