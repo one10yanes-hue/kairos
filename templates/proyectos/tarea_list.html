@@ -19,7 +19,7 @@
                         <td style="font-size:0.7rem;">{{ t.asignado_a.get_full_name|default:"-" }}</td>
                         <td style="font-size:0.7rem;">{{ t.sprint.nombre|default:"-" }}</td>
                         <td style="font-size:0.65rem;">{% if t.fecha_limite %}<span class="badge {% if t.fecha_limite < today %}bg-danger{% else %}bg-light text-muted{% endif %}" style="font-size:0.55rem;">{{ t.fecha_limite|date:"d/m/Y" }}</span>{% else %}-{% endif %}</td>
-                        <td>{% if request.membresia|puede_editar %}<a href="{% url 'proyectos:tarea_edit' proyecto.pk t.pk %}" class="btn btn-sm btn-outline-secondary py-0 px-1" style="font-size:0.55rem;">✎</a>{% endif %}</td>
+                        <td>{% if request.membresia|puede_editar and t.estado != 'finalizada' and t.estado != 'cancelada' and t.estado != 'pausada' %}<a href="{% url 'proyectos:tarea_edit' proyecto.pk t.pk %}" class="btn btn-sm btn-outline-secondary py-0 px-1" style="font-size:0.55rem;" title="Editar">✎</a>{% endif %}</td>
                     </tr>
                     {% empty %}<tr><td colspan="9" class="text-center text-muted py-4">Sin tareas.</td></tr>
                     {% endfor %}

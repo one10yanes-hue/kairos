@@ -190,17 +190,30 @@ def sprint_iniciar(request, pk, spk):
         messages.error(request, "Solo se pueden iniciar sprints planificados.")
         return redirect("proyectos:sprint_board", pk=proyecto.pk, spk=sprint.pk)
     if request.method == "POST":
+        from django.utils import timezone
         sprint.estado = "activo"
+        sprint.fecha_inicio = sprint.fecha_inicio or timezone.now().date()
         sprint.save()
-        # Activar todas las tareas del sprint: crear AsignacionActividad
-        activadas = 0
         from ..signals import crear_asignacion_desde_tarea
         from apps.gestion.views import _notificar_usuario
-        for t in sprint.tareas.filter(activo=True, asignacion__isnull=True, asignado_a__isnull=False):
+        activadas = 0
+        sin_asignar = 0
+        ya_activas = 0
+        for t in sprint.tareas.filter(activo=True):
+            if t.asignacion:
+                ya_activas += 1
+                continue
+            if not t.asignado_a:
+                sin_asignar += 1
+                continue
             asig = crear_asignacion_desde_tarea(t)
             if asig:
-                _notificar_usuario(t.asignado_a.pk, "nueva_asignacion", {"actividad": t.titulo, "fecha_programada": ""})
+                _notificar_usuario(t.asignado_a.pk, "nueva_asignacion", {"actividad": t.titulo})
                 activadas += 1
-        messages.success(request, f"Sprint {sprint.numero} iniciado. {activadas} tareas activadas en tableros.")
+        total = sprint.tareas.filter(activo=True).count()
+        msg = f"Sprint {sprint.numero} iniciado. {activadas} tareas activadas"
+        if ya_activas: msg += f", {ya_activas} ya estaban activas"
+        if sin_asignar: msg += f". {sin_asignar} tareas sin asignar no se activaron (asigna un ejecutor)"
+        messages.success(request, msg)
         return redirect("proyectos:sprint_board", pk=proyecto.pk, spk=sprint.pk)
     return redirect("proyectos:sprint_board", pk=proyecto.pk, spk=sprint.pk)

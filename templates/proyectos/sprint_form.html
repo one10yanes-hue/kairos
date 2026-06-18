@@ -45,7 +45,9 @@
                         </label>
                         {% endif %}
                         {% endfor %}
-                        {% if not historias_sprint and not historias %}<p class="text-muted small text-center py-2 mb-0">No hay historias disponibles</p>{% endif %}
+                        {% if not historias_sprint and not historias %}
+                        <p class="text-muted small text-center py-2 mb-0">No hay historias en el backlog. <a href="{% url 'proyectos:backlog' proyecto.pk %}" class="text-primary">Ir al backlog para crear historias</a></p>
+                        {% endif %}
                     </div>
                     <button type="submit" class="btn btn-primary btn-sm mt-3">{% if editando %}Actualizar{% else %}Crear{% endif %} Sprint</button>
                     {% if editando %}

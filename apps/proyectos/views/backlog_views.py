@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q, Count, Sum
-from ..models import Proyecto, HistoriaUsuario, Tarea, Incidencia, Sprint
+from ..models import Proyecto, HistoriaUsuario, Tarea, Incidencia, Sprint, RegistroAvance
 from ..decorators import miembro_requerido, ROLES_EDICION, ROLES_REVISION
 import json
 
@@ -14,7 +14,8 @@ def historia_aprobar(request, pk, hid):
     if historia.estado == "revision":
         historia.estado = "done"
         historia.save()
-        messages.success(request, f"Historia {historia.codigo} aprobada como Done.")
+        RegistroAvance.objects.create(proyecto=proyecto, tipo="historia_completada",
+            descripcion=f"Historia {historia.codigo} aprobada como Done por {request.user.get_full_name()}", user=request.user)
     referer = request.META.get("HTTP_REFERER", "")
     if referer and "/usuario/tablero" in referer:
         return redirect("gestion:tablero")
@@ -33,6 +34,8 @@ def historia_rechazar(request, pk, hid):
         if historia.estado == "revision":
             historia.estado = "en_progreso"
             historia.save()
+            RegistroAvance.objects.create(proyecto=proyecto, tipo="comentario",
+                descripcion=f"Historia {historia.codigo} rechazada por {request.user.get_full_name()}: {motivo}", user=request.user)
             messages.warning(request, f"Historia {historia.codigo} rechazada: {motivo}")
         referer = request.META.get("HTTP_REFERER", "")
         if referer and "/usuario/tablero" in referer:
@@ -126,6 +129,8 @@ def historia_create(request, pk):
         )
         historia.codigo = f"{proyecto.codigo}-US-{historia.pk:03d}"
         historia.save()
+        RegistroAvance.objects.create(proyecto=proyecto, tipo="comentario",
+            descripcion=f"Historia {historia.codigo} creada: {historia.titulo[:60]}", user=request.user)
         messages.success(request, f"Historia {historia.codigo} creada.")
         return redirect("proyectos:backlog", pk=proyecto.pk)
     return render(request, "proyectos/historia_form.html", {"proyecto": proyecto})
@@ -146,6 +151,8 @@ def historia_edit(request, pk, hid):
             from ..models import Sprint
             historia.sprint = get_object_or_404(Sprint, pk=request.POST.get("sprint_id"), proyecto=proyecto)
         historia.save()
+        RegistroAvance.objects.create(proyecto=proyecto, tipo="comentario",
+            descripcion=f"Historia {historia.codigo} editada por {request.user.get_full_name()}", user=request.user)
         messages.success(request, "Historia actualizada.")
         return redirect("proyectos:backlog", pk=proyecto.pk)
     return render(request, "proyectos/historia_form.html", {"proyecto": proyecto, "historia": historia, "editando": True})

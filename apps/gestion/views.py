@@ -269,6 +269,14 @@ def finalizar_actividad(request, pk):
         messages.error(request, f"Solo puedes finalizar actividades En Curso o Pausadas. Estado actual: '{asignacion.get_estado_display()}'.")
         return redirect("gestion:tablero")
 
+    # Validar entregable si el tipo de actividad del proyecto lo requiere
+    if hasattr(asignacion, 'tarea_proyecto') and asignacion.tarea_proyecto:
+        tarea = asignacion.tarea_proyecto
+        if tarea.actividad_catalogo and tarea.actividad_catalogo.tipo_actividad.requiere_entregable:
+            if not asignacion.entregable:
+                messages.error(request, "Este tipo de actividad requiere un archivo entregable. Adjunta el entregable antes de finalizar.")
+                return redirect("gestion:detalle_actividad", pk=asignacion.pk)
+
     # --- Revision de proyecto: aprobar o rechazar via el modal Finalizar ---
     accion_rev = request.POST.get("accion_revision")
     if accion_rev and asignacion.origen == "Revision":
@@ -760,6 +768,31 @@ def detalle_actividad(request, pk):
     traslados = TrasladoActividad.objects.filter(asignacion_origen=asignacion, activo=True)
     colaboraciones = Colaboracion.objects.filter(asignacion=asignacion, activo=True)
     historial = RevisionHistorial.objects.filter(asignacion=asignacion).select_related("user").order_by("-fecha")
+    # Timeline unificado (como tarea_detail)
+    timeline = []
+    timeline.append({
+        "fecha": asignacion.fecha_asignacion, "tipo": "creacion", "icono": "plus-circle",
+        "descripcion": f"Asignacion creada por {asignacion.origen_user.get_full_name() if asignacion.origen_user else 'Sistema'}"
+    })
+    for r in registros:
+        icono = {"Inicio":"play-fill","Pausa":"pause-fill","Reanudacion":"arrow-clockwise","Finalizacion":"check-circle-fill","Traslado":"arrow-right-circle"}.get(r.evento,"circle")
+        timeline.append({"fecha":r.fecha_hora,"tipo":"registro","icono":icono,"descripcion":f"{r.evento} por {asignacion.user.get_full_name()}{' ('+r.motivo_pausa+')' if r.motivo_pausa else ''}"})
+    for c in comentarios:
+        timeline.append({"fecha":c.fecha_creacion,"tipo":"comentario","icono":"chat-text","descripcion":f"Comentario de {c.user.get_full_name()}: {c.texto[:60]}"})
+    for t in traslados:
+        timeline.append({"fecha":t.fecha_creacion,"tipo":"traslado","icono":"arrow-right-circle","descripcion":f"Traslado de {t.user_origen.get_full_name()} a {t.user_destino.get_full_name()} ({t.estado})"})
+    for h in historial:
+        timeline.append({"fecha":h.fecha,"tipo":"revision","icono":"check-circle" if h.accion=="aprobar" else "x-circle","descripcion":f"{'Aprobacion' if h.accion=='aprobar' else 'Rechazo'} por {h.user.get_full_name()}"})
+    if asignacion.estado_revision == "aprobado":
+        timeline.append({"fecha":asignacion.fecha_revision or asignacion.fecha_update,"tipo":"revision","icono":"check-circle","descripcion":"Tarea aprobada"})
+    elif asignacion.estado_revision == "rechazado" and asignacion.revision_comentario:
+        timeline.append({"fecha":asignacion.fecha_revision or asignacion.fecha_update,"tipo":"revision","icono":"x-circle","descripcion":f"Tarea rechazada: {asignacion.revision_comentario[:80]}"})
+    if hasattr(asignacion, 'tarea_proyecto') and asignacion.tarea_proyecto:
+        from apps.proyectos.models import Incidencia
+        for inc in Incidencia.objects.filter(tarea=asignacion.tarea_proyecto, activo=True):
+            timeline.append({"fecha":inc.fecha_creacion,"tipo":"incidencia","icono":"bug","descripcion":f"Bug {inc.codigo}: {inc.titulo[:60]} ({inc.get_estado_display()})"})
+    timeline.sort(key=lambda x: x["fecha"], reverse=True)
+
     context = {
         "asignacion": asignacion,
         "registros": registros,
@@ -768,6 +801,7 @@ def detalle_actividad(request, pk):
         "colaboraciones": colaboraciones,
         "historial": historial,
         "tiempo_efectivo": asignacion.tiempo_formateado(),
+        "timeline": timeline,
     }
     return render(request, "gestion/detalle_actividad.html", context)
 

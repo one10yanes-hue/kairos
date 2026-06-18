@@ -26,7 +26,7 @@
             </form>
             <button class="btn btn-sm btn-outline-danger py-0 px-1" style="font-size:0.65rem;" onclick="document.getElementById('rechazoDetalleModal').style.display='flex'">&#10007; Rechazar</button>
             {% endif %}
-            <a href="{% url 'proyectos:tarea_edit' proyecto.pk tarea.pk %}" class="btn btn-sm btn-outline-secondary py-0 px-1" style="font-size:0.65rem;"><i class="bi bi-pencil"></i></a>
+            {% if tarea.estado != 'finalizada' and tarea.estado != 'cancelada' and tarea.estado != 'pausada' %}<a href="{% url 'proyectos:tarea_edit' proyecto.pk tarea.pk %}" class="btn btn-sm btn-outline-secondary py-0 px-1" style="font-size:0.65rem;"><i class="bi bi-pencil"></i></a>{% endif %}
         </div>
     </div>
 
@@ -74,7 +74,7 @@
                     {% for ev in timeline %}
                     <div class="d-flex gap-2 py-1 border-bottom" style="font-size:0.7rem;">
                         <span class="text-muted" style="min-width:32px;font-size:0.55rem;">{{ ev.fecha|date:"d/m" }}</span>
-                        <span style="color:{% if 'Finalizacion' in ev.descripcion %}var(--success){% elif 'Pausa' in ev.descripcion %}var(--slate-500){% elif ev.tipo == 'comentario' %}var(--accent){% elif 'aprob' in ev.descripcion %}var(--success){% elif 'Rechazo' in ev.descripcion %}var(--danger){% elif 'Traslado' in ev.descripcion %}var(--warning){% else %}var(--slate-700){% endif %}"><i class="bi bi-{{ ev.icono }}"></i></span>
+                        <span style="color:{% if 'Finalizacion' in ev.descripcion %}var(--success){% elif 'Pausa' in ev.descripcion %}var(--slate-500){% elif ev.tipo == 'comentario' %}var(--accent){% elif ev.tipo == 'bitacora' %}var(--warning){% elif 'aprob' in ev.descripcion %}var(--success){% elif 'Rechazo' in ev.descripcion %}var(--danger){% elif 'Traslado' in ev.descripcion %}var(--warning){% elif ev.tipo == 'incidencia' %}var(--danger){% else %}var(--slate-700){% endif %}"><i class="bi bi-{{ ev.icono }}"></i></span>
                         <span>{{ ev.descripcion }}</span>
                         <span class="text-muted" style="font-size:0.55rem;margin-left:auto;">{{ ev.fecha|date:"H:i" }}</span>
                     </div>

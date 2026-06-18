@@ -45,11 +45,25 @@ def tarea_create(request, pk):
             if fl < str(timezone.now().date()):
                 messages.error(request, "La fecha limite no puede ser anterior a hoy.")
                 return redirect("proyectos:tarea_list", pk=proyecto.pk)
+
+        # Validar tipo de actividad desde catalogo
+        tipo_actividad_id = request.POST.get("tipo_actividad_id") or None
+        tipo_nombre = "tarea"
+        if tipo_actividad_id:
+            try:
+                tipo_act = TipoActividad.objects.get(pk=tipo_actividad_id, subarea__in=proyecto.subareas.all(), activo=True)
+                tipo_nombre = tipo_act.nombre.lower().replace(" ", "_")[:20]
+                if tipo_act.requiere_fecha_limite and not fl:
+                    messages.error(request, f"El tipo '{tipo_act.nombre}' requiere fecha limite.")
+                    return redirect("proyectos:tarea_list", pk=proyecto.pk)
+            except TipoActividad.DoesNotExist:
+                pass
+
         tarea = Tarea.objects.create(
             proyecto=proyecto,
             titulo=titulo,
             descripcion=request.POST.get("descripcion", ""),
-            tipo=request.POST.get("tipo", "tarea"),
+            tipo=tipo_nombre,
             prioridad=request.POST.get("prioridad", "should"),
             asignado_a_id=request.POST.get("user_id") or None,
             actividad_catalogo_id=request.POST.get("actividad_id") or None,
@@ -60,25 +74,43 @@ def tarea_create(request, pk):
         )
         tarea.codigo = f"{proyecto.codigo}-T-{tarea.pk:03d}"
         tarea.save()
+        from ..models import RegistroAvance
+        RegistroAvance.objects.create(proyecto=proyecto, tipo="tarea_creada",
+            descripcion=f"Tarea {tarea.codigo} creada: {tarea.titulo[:60]}", user=request.user, referencia_id=tarea.pk)
         if tarea.asignado_a:
             asignacion = crear_asignacion_desde_tarea(tarea)
             if asignacion:
                 from apps.gestion.views import _notificar_usuario
                 _notificar_usuario(tarea.asignado_a.pk, "nueva_asignacion", {"actividad": tarea.titulo})
-                messages.success(request, f"Tarea {tarea.codigo} creada y asignada a {tarea.asignado_a.get_full_name()}.")
+                messages.success(request, f"Tarea {tarea.codigo} creada y asignada a {tarea.asignado_a.get_full_name()}. Aparecera en su tablero Kanban.")
             else:
                 messages.success(request, f"Tarea {tarea.codigo} creada.")
         else:
-            messages.success(request, f"Tarea {tarea.codigo} creada.")
+            messages.success(request, f"Tarea {tarea.codigo} creada (sin asignar). Asignala para que aparezca en el tablero Kanban.")
         return redirect("proyectos:tarea_list", pk=proyecto.pk)
+
     historias = proyecto.historias.filter(activo=True)
     sprints = proyecto.sprints.filter(activo=True)
     miembros = _miembros_asignables(proyecto, request)
+    tipos_actividad = TipoActividad.objects.filter(subarea__in=proyecto.subareas.all(), activo=True, solo_proyecto=True).distinct().order_by("nombre")
     actividades = Actividad.objects.filter(subarea__in=proyecto.subareas.all(), activo=True).select_related("tipo_actividad")
+
+    # Contexto de la historia pre-seleccionada
+    sel_historia_id = request.GET.get("historia", "")
+    sel_historia = None
+    sel_sprint = None
+    if sel_historia_id:
+        sel_historia = get_object_or_404(HistoriaUsuario, pk=sel_historia_id, proyecto=proyecto, activo=True)
+        sel_sprint = sel_historia.sprint
+        tareas_historia = sel_historia.tareas.filter(activo=True)
+
     return render(request, "proyectos/tarea_form.html", {
-        "proyecto": proyecto, "historias": historias, "sprints": sprints, "miembros": miembros, "actividades": actividades,
-        "selected_historia": request.GET.get("historia", ""),
-        "selected_sprint": request.GET.get("sprint", ""),
+        "proyecto": proyecto, "historias": historias, "sprints": sprints, "miembros": miembros,
+        "tipos_actividad": tipos_actividad, "actividades": actividades,
+        "selected_historia_id": sel_historia_id,
+        "sel_historia": sel_historia,
+        "sel_sprint": sel_sprint,
+        "tareas_historia": sel_historia.tareas.filter(activo=True) if sel_historia else None,
     })
 
 
@@ -206,27 +238,63 @@ def tarea_mover(request, pk, tid):
 def tarea_edit(request, pk, tid):
     proyecto = request.proyecto
     tarea = get_object_or_404(Tarea, pk=tid, proyecto=proyecto, activo=True)
+    if tarea.estado in ["finalizada", "cancelada", "pausada"]:
+        messages.error(request, "No se puede editar una tarea finalizada, cancelada o pausada.")
+        return redirect("proyectos:tarea_detail", pk=proyecto.pk, tid=tarea.pk)
     if request.method == "POST":
+        old_asignado = tarea.asignado_a_id
+        old_historia = tarea.historia_id
+        old_sprint = tarea.sprint_id
         tarea.titulo = request.POST.get("titulo", tarea.titulo)
         tarea.descripcion = request.POST.get("descripcion", tarea.descripcion)
-        tarea.tipo = request.POST.get("tipo", tarea.tipo)
         tarea.prioridad = request.POST.get("prioridad", tarea.prioridad)
-        tarea.estado = request.POST.get("estado", tarea.estado)
         tarea.asignado_a_id = request.POST.get("user_id") or None
         tarea.historia_id = request.POST.get("historia_id") or None
         tarea.sprint_id = request.POST.get("sprint_id") or None
         tarea.actividad_catalogo_id = request.POST.get("actividad_id") or None
         tarea.fecha_limite = request.POST.get("fecha_limite") or None
+        tid = request.POST.get("tipo_actividad_id") or None
+        if tid:
+            try:
+                tp = TipoActividad.objects.get(pk=tid)
+                tarea.tipo = tp.nombre.lower().replace(" ", "_")[:20]
+                if tp.requiere_fecha_limite and not tarea.fecha_limite:
+                    messages.error(request, f"El tipo '{tp.nombre}' requiere fecha limite.")
+                    return redirect("proyectos:tarea_edit", pk=proyecto.pk, tid=tarea.pk)
+            except TipoActividad.DoesNotExist:
+                pass
+        nuevo_estado = request.POST.get("estado")
+        if nuevo_estado and nuevo_estado != tarea.estado and tarea.estado not in ["finalizada", "cancelada"]:
+            tarea.estado = nuevo_estado
         tarea.save()
+
+        # Bitacora de cambios
+        cambios = []
+        if old_asignado != tarea.asignado_a_id: cambios.append("asignado")
+        if old_historia != tarea.historia_id: cambios.append("historia")
+        if old_sprint != tarea.sprint_id: cambios.append("sprint")
+        if cambios:
+            from ..models import RegistroAvance
+            RegistroAvance.objects.create(proyecto=proyecto, tipo="comentario",
+                descripcion=f"Tarea {tarea.codigo} editada: {', '.join(cambios)} por {request.user.get_full_name()}",
+                user=request.user, referencia_id=tarea.pk)
+
+        # Si se asigno un nuevo ejecutor, crear/actualizar AsignacionActividad
+        if tarea.asignado_a_id and tarea.asignado_a_id != old_asignado:
+            from ..signals import crear_asignacion_desde_tarea
+            crear_asignacion_desde_tarea(tarea)
+
         messages.success(request, "Tarea actualizada.")
         return redirect("proyectos:tarea_list", pk=proyecto.pk)
     historias = proyecto.historias.filter(activo=True)
     sprints = proyecto.sprints.filter(activo=True)
     miembros = _miembros_asignables(proyecto, request)
+    tipos_actividad = TipoActividad.objects.filter(subarea__in=proyecto.subareas.all(), activo=True, solo_proyecto=True).distinct().order_by("nombre")
     actividades = Actividad.objects.filter(subarea__in=proyecto.subareas.all(), activo=True).select_related("tipo_actividad")
     return render(request, "proyectos/tarea_form.html", {
         "proyecto": proyecto, "tarea": tarea, "editando": True,
-        "historias": historias, "sprints": sprints, "miembros": miembros, "actividades": actividades,
+        "historias": historias, "sprints": sprints, "miembros": miembros,
+        "tipos_actividad": tipos_actividad, "actividades": actividades,
         "selected_historia": str(tarea.historia_id or ""),
         "selected_sprint": str(tarea.sprint_id or ""),
     })
@@ -298,6 +366,13 @@ def tarea_detail(request, pk, tid):
             timeline.append({
                 "fecha": inc.fecha_creacion, "tipo": "incidencia", "icono": "bug",
                 "descripcion": f"Bug {inc.codigo}: {inc.titulo[:60]} ({inc.get_estado_display()})"
+            })
+        # Eventos de bitacora (RegistroAvance) de esta tarea
+        from ..models import RegistroAvance
+        for ra in RegistroAvance.objects.filter(referencia_id=tarea.pk, proyecto=proyecto).order_by("-fecha"):
+            timeline.append({
+                "fecha": ra.fecha, "tipo": "bitacora", "icono": "pencil",
+                "descripcion": ra.descripcion
             })
         timeline.sort(key=lambda x: x["fecha"], reverse=True)
     else:

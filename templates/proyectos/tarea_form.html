@@ -1,79 +1,194 @@
 {% extends "base.html" %}{% block content %}
-<div class="container-fluid mt-3">
-    <h5 class="fw-bold mb-3">{% if editando %}Editar Tarea{% else %}Nueva Tarea{% endif %} · {{ proyecto.codigo }}</h5>
-    <div class="card shadow-sm"><div class="card-body p-4">
-        <form method="POST">{% csrf_token %}
-            <div class="row g-3">
-                <div class="col-12"><label class="form-label small fw-semibold">Título <span class="text-danger">*</span></label><input type="text" name="titulo" class="form-control" value="{{ tarea.titulo|default:'' }}" required></div>
-                <div class="col-12"><label class="form-label small fw-semibold">Descripción</label><textarea name="descripcion" class="form-control" rows="2">{{ tarea.descripcion|default:'' }}</textarea></div>
-                <div class="col-md-4"><label class="form-label small fw-semibold">Tipo</label>
-                    <select name="tipo" class="form-select">
-                        <option value="tarea" {% if tarea.tipo == 'tarea' %}selected{% endif %}>Tarea</option>
-                        <option value="mejora" {% if tarea.tipo == 'mejora' %}selected{% endif %}>Mejora</option>
-                        <option value="bug" {% if tarea.tipo == 'bug' %}selected{% endif %}>Bug</option>
-                        <option value="documentacion" {% if tarea.tipo == 'documentacion' %}selected{% endif %}>Documentación</option>
-                        <option value="prueba" {% if tarea.tipo == 'prueba' %}selected{% endif %}>Prueba</option>
-                        <option value="diseno" {% if tarea.tipo == 'diseno' %}selected{% endif %}>Diseño</option>
+<style>.param-badge { font-size:0.55rem; padding:2px 7px; border-radius:3px; font-weight:500; margin-right:4px; }</style>
+<div class="container-fluid mt-3" style="max-width:700px;">
+    <div class="mb-3">
+        <h5 class="fw-bold mb-1">
+            <a href="{% url 'proyectos:proyecto_detail' proyecto.pk %}" class="text-decoration-none">{{ proyecto.codigo }}</a>
+            <small class="text-muted">| {% if editando %}Editar{% else %}Nueva{% endif %} Tarea</small>
+        </h5>
+        {% if sel_historia %}
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-light text-dark border" style="font-size:0.68rem;">{{ sel_historia.codigo }}</span>
+            <span style="font-size:0.75rem;color:var(--slate-600);">{{ sel_historia.titulo }}</span>
+            {% if sel_sprint %}<span class="badge bg-light text-muted border" style="font-size:0.65rem;">{{ sel_sprint.nombre }}</span>{% endif %}
+            <span class="text-muted" style="font-size:0.65rem;">{{ tareas_historia.count }} tarea(s) existente(s)</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-4">
+            <form method="POST" id="tareaForm">
+                {% csrf_token %}
+                {% if sel_historia %}<input type="hidden" name="historia_id" value="{{ sel_historia.pk }}">{% endif %}
+                {% if sel_sprint %}<input type="hidden" name="sprint_id" value="{{ sel_sprint.pk }}">{% endif %}
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;">Titulo <span class="text-danger">*</span></label>
+                    <input type="text" name="titulo" class="form-control" value="{{ tarea.titulo|default:'' }}" required style="font-size:0.88rem;" placeholder="Ej: Crear endpoint POST /api/login">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;">Descripcion</label>
+                    <textarea name="descripcion" class="form-control" rows="3" style="font-size:0.85rem;" placeholder="Detalles tecnicos, pasos a seguir, consideraciones especiales...">{{ tarea.descripcion|default:'' }}</textarea>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
+                            Fecha Limite <span id="flReq" style="display:none;color:#dc2626;">*</span>
+                        </label>
+                        <input type="date" name="fecha_limite" id="fechaLimite" class="form-control" value="{{ tarea.fecha_limite|date:'Y-m-d'|default:'' }}" style="font-size:0.85rem;" min="{% now 'Y-m-d' %}">
+                        <small id="flHint" style="display:none;font-size:0.6rem;color:var(--slate-400);">Requerido por el tipo seleccionado</small>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;">Tipo de Actividad</label>
+                        <select name="tipo_actividad_id" id="tipoActividad" class="form-select" style="font-size:0.85rem;" onchange="filtrarActividades()">
+                            <option value="">Generica</option>
+                            {% for tp in tipos_actividad %}<option value="{{ tp.pk }}" data-req-fecha="{{ tp.requiere_fecha_limite|yesno:'1,0' }}" data-req-entregable="{{ tp.requiere_entregable|yesno:'1,0' }}">{{ tp.nombre }}</option>{% endfor %}
+                        </select>
+                        <small id="tipoParams" style="font-size:0.6rem;color:var(--slate-400);display:none;"></small>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;">Prioridad</label>
+                        <select name="prioridad" class="form-select" style="font-size:0.85rem;">
+                            <option value="must">Must Have</option>
+                            <option value="should" selected>Should Have</option>
+                            <option value="could">Could Have</option>
+                            <option value="wont">Won't Have</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;">Asignado a</label>
+                        <select name="user_id" class="form-select" style="font-size:0.85rem;">
+                            <option value="">Sin asignar</option>
+                            {% for m in miembros %}<option value="{{ m.user.pk }}" {% if editando and tarea.asignado_a_id == m.user.pk %}selected{% endif %}>{{ m.user.get_full_name }}</option>{% endfor %}
+                        </select>
+                        <small style="font-size:0.6rem;color:var(--slate-400);">Al asignar un ejecutor, la tarea aparece en su tablero Kanban personal</small>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;">Actividad del catalogo</label>
+                    <select name="actividad_id" id="actividadCatalogo" class="form-select" style="font-size:0.85rem;">
+                        <option value="">Generica del proyecto</option>
+                        {% for a in actividades %}<option value="{{ a.pk }}" data-tipo="{{ a.tipo_actividad_id }}">{{ a.tipo_actividad.nombre }} &gt; {{ a.nombre }}</option>{% endfor %}
                     </select>
+                    <small style="font-size:0.6rem;color:var(--slate-400);">Actividad predefinida del catalogo que describe el trabajo a realizar</small>
                 </div>
-                <div class="col-md-4"><label class="form-label small fw-semibold">Prioridad</label>
-                    <select name="prioridad" class="form-select">
-                        <option value="must" {% if tarea.prioridad == 'must' %}selected{% endif %}>Must Have</option>
-                        <option value="should" {% if tarea.prioridad == 'should' %}selected{% endif %}>Should Have</option>
-                        <option value="could" {% if tarea.prioridad == 'could' %}selected{% endif %}>Could Have</option>
-                        <option value="wont" {% if tarea.prioridad == 'wont' %}selected{% endif %}>Won't Have</option>
-                    </select>
+
+                {% if not sel_historia %}
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;">Historia</label>
+                        <select name="historia_id" class="form-select" style="font-size:0.85rem;">
+                            <option value="">Tarea suelta (sin historia)</option>
+                            {% for h in historias %}<option value="{{ h.pk }}" {% if editando and tarea.historia_id == h.pk %}selected{% endif %}>{{ h.codigo }}: {{ h.titulo|truncatechars:50 }}</option>{% endfor %}
+                        </select>
+                        <small style="font-size:0.6rem;color:var(--slate-400);">Opcional. Vincula esta tarea a una historia de usuario</small>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;">Sprint</label>
+                        <select name="sprint_id" class="form-select" style="font-size:0.85rem;">
+                            <option value="">Ninguno</option>
+                            {% for sp in sprints %}<option value="{{ sp.pk }}" {% if editando and tarea.sprint_id == sp.pk %}selected{% endif %}>{{ sp.nombre }} ({{ sp.fecha_inicio|date:"d/m"|default:"?" }} - {{ sp.fecha_fin|date:"d/m"|default:"?" }})</option>{% endfor %}
+                        </select>
+                        <small style="font-size:0.6rem;color:var(--slate-400);">Opcional. Asigna esta tarea a un sprint activo</small>
+                    </div>
                 </div>
-                <div class="col-md-4"><label class="form-label small fw-semibold">Asignado a</label>
-                    <select name="user_id" class="form-select">
-                        <option value="">Sin asignar</option>
-                        {% for m in miembros %}
-                        <option value="{{ m.user.pk }}" {% if tarea.asignado_a_id == m.user.pk %}selected{% endif %}>{{ m.user.get_full_name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-4"><label class="form-label small fw-semibold">Historia</label>
-                    <select name="historia_id" class="form-select">
-                        <option value="">Ninguna</option>
-                        {% for h in historias %}
-                        <option value="{{ h.pk }}" {% if selected_historia == h.pk|stringformat:'s' %}selected{% endif %}>{{ h.codigo }}: {{ h.titulo|truncatechars:40 }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-4"><label class="form-label small fw-semibold">Actividad (catálogo)</label>
-                    <select name="actividad_id" class="form-select">
-                        <option value="">Genérica del proyecto</option>
-                        {% for a in actividades %}
-                        <option value="{{ a.pk }}" {% if tarea.actividad_catalogo_id == a.pk %}selected{% endif %}>{{ a.nombre }} ({{ a.tipo_actividad.nombre }})</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-4"><label class="form-label small fw-semibold">Sprint</label>
-                    <select name="sprint_id" class="form-select">
-                        <option value="">Ninguno</option>
-                        {% for s in sprints %}
-                        <option value="{{ s.pk }}" {% if selected_sprint == s.pk|stringformat:'s' %}selected{% endif %}>{{ s.nombre }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-4"><label class="form-label small fw-semibold">Fecha L&iacute;mite</label>
-                    <input type="date" name="fecha_limite" class="form-control" value="{{ tarea.fecha_limite|date:'Y-m-d'|default:'' }}" min="{% now 'Y-m-d' %}">
-                </div>
+                {% endif %}
+
                 {% if editando %}
-                <div class="col-md-4"><label class="form-label small fw-semibold">Estado</label>
-                    <select name="estado" class="form-select">
-                        {% for val, label in tarea.ESTADOS %}
-                        <option value="{{ val }}" {% if tarea.estado == val %}selected{% endif %}>{{ label }}</option>
-                        {% endfor %}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;">Estado</label>
+                    <select name="estado" class="form-select" style="font-size:0.85rem;max-width:250px;">
+                        <option value="pendiente" {% if tarea.estado == 'pendiente' %}selected{% endif %}>Pendiente</option>
+                        <option value="en_curso" {% if tarea.estado == 'en_curso' %}selected{% endif %}>En Curso</option>
+                        <option value="pausada" {% if tarea.estado == 'pausada' %}selected{% endif %}>Pausada</option>
+                        <option value="bloqueada" {% if tarea.estado == 'bloqueada' %}selected{% endif %}>Bloqueada</option>
+                        <option value="revision" {% if tarea.estado == 'revision' %}selected{% endif %}>En Revision</option>
                     </select>
                 </div>
                 {% endif %}
-            </div>
-            <div class="d-flex gap-2 mt-3">
-                <button type="submit" class="btn btn-primary btn-sm">{% if editando %}Actualizar{% else %}Crear{% endif %} Tarea</button>
-                <a href="{% url 'proyectos:tarea_list' proyecto.pk %}" class="btn btn-outline-secondary btn-sm">Cancelar</a>
-            </div>
-        </form>
-    </div></div>
+
+                {% if sel_historia and tareas_historia.exists %}
+                <div class="p-3 rounded mb-3" style="background:var(--slate-50);">
+                    <div class="fw-semibold mb-1" style="font-size:0.7rem;color:var(--slate-500);">Tareas existentes en {{ sel_historia.codigo }}</div>
+                    {% for ta in tareas_historia %}
+                    <span class="badge bg-light text-dark border" style="font-size:0.6rem;">{{ ta.codigo }}</span>
+                    <span class="badge {% if ta.estado == 'finalizada' %}bg-success{% elif ta.estado == 'en_curso' %}bg-warning text-dark{% elif ta.estado == 'revision' %}bg-info{% elif ta.estado == 'cancelada' %}bg-danger{% else %}bg-secondary{% endif %}" style="font-size:0.55rem;">{{ ta.get_estado_display }}</span>
+                    {% if not forloop.last %} &middot; {% endif %}
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <div class="d-flex gap-2 pt-3 border-top">
+                    <button type="submit" class="btn btn-primary" style="font-size:0.8rem;padding:0.4rem 1.2rem;">{% if editando %}Guardar cambios{% else %}Crear Tarea{% endif %}</button>
+                    <a href="{% url 'proyectos:tarea_list' proyecto.pk %}" class="btn btn-outline-secondary" style="font-size:0.8rem;padding:0.4rem 1.2rem;">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
+
+<script>
+function filtrarActividades() {
+    var tipoSel = document.getElementById('tipoActividad');
+    var actSel = document.getElementById('actividadCatalogo');
+    var fechaInp = document.getElementById('fechaLimite');
+    var flReq = document.getElementById('flReq');
+    var flHint = document.getElementById('flHint');
+    var tipoParams = document.getElementById('tipoParams');
+
+    var tipoId = tipoSel.value;
+    var reqFecha = false, reqEntregable = false;
+
+    if (tipoId) {
+        var opt = tipoSel.options[tipoSel.selectedIndex];
+        reqFecha = opt.getAttribute('data-req-fecha') === '1';
+        reqEntregable = opt.getAttribute('data-req-entregable') === '1';
+    }
+
+    var params = [];
+    if (reqFecha) params.push('<span class="param-badge" style="background:#fef3c7;color:#92400e;">Requiere fecha limite</span>');
+    if (reqEntregable) params.push('<span class="param-badge" style="background:#dcfce7;color:#166534;">Requiere entregable al finalizar</span>');
+    tipoParams.innerHTML = params.join('');
+    tipoParams.style.display = params.length ? 'block' : 'none';
+
+    flReq.style.display = reqFecha ? 'inline' : 'none';
+    flHint.style.display = reqFecha ? 'block' : 'none';
+    if (reqFecha) {
+        fechaInp.setAttribute('required', '');
+        fechaInp.style.borderColor = '#f59e0b';
+    } else {
+        fechaInp.removeAttribute('required');
+        fechaInp.style.borderColor = '';
+    }
+
+    for (var i = 0; i < actSel.options.length; i++) {
+        var o = actSel.options[i];
+        if (o.value === '') { o.style.display = ''; continue; }
+        var oTipo = o.getAttribute('data-tipo') || '';
+        o.style.display = (!tipoId || oTipo === tipoId) ? '' : 'none';
+    }
+    actSel.value = '';
+}
+
+document.getElementById('tareaForm').addEventListener('submit', function(e) {
+    var tipoSel = document.getElementById('tipoActividad');
+    var fechaInp = document.getElementById('fechaLimite');
+    if (tipoSel.value) {
+        var opt = tipoSel.options[tipoSel.selectedIndex];
+        if (opt.getAttribute('data-req-fecha') === '1' && !fechaInp.value) {
+            e.preventDefault();
+            fechaInp.style.borderColor = '#dc2626';
+            fechaInp.style.backgroundColor = '#fef2f2';
+            fechaInp.focus();
+        }
+    }
+});
+</script>
 {% endblock %}

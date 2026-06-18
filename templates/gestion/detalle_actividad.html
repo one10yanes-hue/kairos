@@ -26,21 +26,30 @@
     <div class="row g-3">
         <div class="col-lg-8">
             <div class="card shadow-sm mb-3">
-                <div class="card-header">Informaci&oacute;n</div>
-                <div class="card-body">
+                <div class="card-header py-1 px-2"><small class="fw-semibold">Informacion</small></div>
+                <div class="card-body p-2">
                     <div class="row g-2">
-                        <div class="col-md-6"><small class="text-muted d-block" style="font-size:0.6rem;">AREA / SUBAREA</small><span>{{ asignacion.actividad.subarea.area.nombre }} &gt; {{ asignacion.actividad.subarea.nombre }}</span></div>
-                        <div class="col-md-6"><small class="text-muted d-block" style="font-size:0.6rem;">TIEMPO TRANSCURRIDO</small><span class="fw-bold" style="font-size:0.85rem;">{{ tiempo_efectivo }}</span></div>
-                        <div class="col-md-6"><small class="text-muted d-block" style="font-size:0.6rem;">CREACI&Oacute;N</small><span>{{ asignacion.fecha_asignacion|date:"d/m/Y H:i" }}</span></div>
-                        <div class="col-md-6"><small class="text-muted d-block" style="font-size:0.6rem;">ORIGEN</small><span>{{ asignacion.origen|default:"Manual" }}{% if asignacion.origen_user %} por {{ asignacion.origen_user.get_full_name }}{% endif %}</span></div>
+                        <div class="col-md-6"><small class="text-muted d-block" style="font-size:0.6rem;">AREA / SUBAREA</small><span style="font-size:0.7rem;">{{ asignacion.actividad.subarea.area.nombre }} &gt; {{ asignacion.actividad.subarea.nombre }}</span></div>
+                        <div class="col-md-6"><small class="text-muted d-block" style="font-size:0.6rem;">TIEMPO EFECTIVO</small><span class="fw-bold" style="font-size:0.8rem;color:var(--accent);">{{ tiempo_efectivo }}</span></div>
+                        <div class="col-md-6"><small class="text-muted d-block" style="font-size:0.6rem;">CREACION</small><span style="font-size:0.7rem;">{{ asignacion.fecha_asignacion|date:"d/m/Y H:i" }}</span></div>
+                        <div class="col-md-6"><small class="text-muted d-block" style="font-size:0.6rem;">ORIGEN</small>
+                            <span class="badge {% if asignacion.origen == 'Proyecto' %}bg-primary{% elif asignacion.origen == 'Planificacion' %}bg-info{% elif asignacion.origen == 'Revision' %}bg-warning text-dark{% elif asignacion.origen == 'Traslado' %}bg-secondary{% else %}bg-light text-muted{% endif %}" style="font-size:0.6rem;">
+                                <i class="bi bi-{% if asignacion.origen == 'Proyecto' %}kanban{% elif asignacion.origen == 'Planificacion' %}calendar-check{% elif asignacion.origen == 'Revision' %}file-earmark-check{% elif asignacion.origen == 'Traslado' %}arrow-left-right{% else %}dot{% endif %}"></i>
+                                {{ asignacion.origen|default:"Manual" }}
+                            </span>
+                            {% if asignacion.origen == 'Proyecto' and asignacion.tarea_proyecto %}
+                            <small class="d-block" style="font-size:0.55rem;color:var(--slate-400);">{{ asignacion.tarea_proyecto.proyecto.codigo }} &gt; {{ asignacion.tarea_proyecto.codigo }}</small>
+                            {% endif %}
+                            {% if asignacion.origen_user %}<small class="d-block" style="font-size:0.52rem;color:var(--slate-400);">por {{ asignacion.origen_user.get_full_name }}</small>{% endif %}
+                        </div>
                         {% if asignacion.planificacion_detalle.fecha_programada %}
-                        <div class="col-md-6"><small class="text-muted d-block" style="font-size:0.6rem;">PROGRAMADA</small><span>{{ asignacion.planificacion_detalle.fecha_programada|date:"d/m/Y" }}</span></div>
+                        <div class="col-md-6"><small class="text-muted d-block" style="font-size:0.6rem;">PROGRAMADA</small><span style="font-size:0.7rem;">{{ asignacion.planificacion_detalle.fecha_programada|date:"d/m/Y" }}</span></div>
                         {% endif %}
                         {% if asignacion.planificacion_detalle.fecha_vencimiento %}
-                        <div class="col-md-6"><small class="text-muted d-block" style="font-size:0.6rem;">FECHA L&Iacute;MITE</small><span>{{ asignacion.planificacion_detalle.fecha_vencimiento|date:"d/m/Y" }}</span></div>
+                        <div class="col-md-6"><small class="text-muted d-block" style="font-size:0.6rem;">FECHA LIMITE</small><span style="font-size:0.7rem;">{{ asignacion.planificacion_detalle.fecha_vencimiento|date:"d/m/Y" }}</span></div>
                         {% endif %}
                         {% if asignacion.actividad.descripcion %}
-                        <div class="col-12"><small class="text-muted d-block" style="font-size:0.6rem;">DESCRIPCI&Oacute;N</small><span>{{ asignacion.actividad.descripcion }}</span></div>
+                        <div class="col-12"><small class="text-muted d-block" style="font-size:0.6rem;">DESCRIPCION</small><span style="font-size:0.7rem;">{{ asignacion.actividad.descripcion }}</span></div>
                         {% endif %}
                     </div>
                 </div>
@@ -48,65 +57,36 @@
 
             {% if asignacion.entregable or asignacion.estado_revision != 'pendiente' %}
             <div class="card shadow-sm mb-3">
-                <div class="card-header">Entregable</div>
-                <div class="card-body">
+                <div class="card-header py-1 px-2"><small class="fw-semibold">Entregable</small></div>
+                <div class="card-body p-2">
                     <div class="row g-2">
                         {% if asignacion.entregable %}
-                        <div class="col-md-6"><small class="text-muted d-block" style="font-size:0.6rem;">ARCHIVO</small><span><a href="{{ asignacion.entregable.url }}" target="_blank" class="btn btn-sm btn-outline-primary py-0 px-1" style="font-size:0.7rem;"><i class="bi bi-download"></i> Descargar</a></span></div>
+                        <div class="col-md-6"><small class="text-muted d-block" style="font-size:0.6rem;">ARCHIVO</small><a href="{{ asignacion.entregable.url }}" target="_blank" class="btn btn-sm btn-outline-primary py-0 px-1" style="font-size:0.65rem;"><i class="bi bi-download"></i> Descargar</a></div>
                         {% endif %}
                         {% if asignacion.estado_revision == 'aprobado' %}
-                        <div class="col-md-6"><small class="text-muted d-block" style="font-size:0.6rem;">REVISI&Oacute;N</small><span class="text-success fw-semibold"><i class="bi bi-check-circle"></i> Aprobado</span></div>
+                        <div class="col-md-6"><small class="text-muted d-block" style="font-size:0.6rem;">REVISION</small><span class="text-success fw-semibold" style="font-size:0.7rem;"><i class="bi bi-check-circle"></i> Aprobado</span></div>
                         {% endif %}
                         {% if asignacion.estado_revision == 'rechazado' and asignacion.revision_comentario %}
-                        <div class="col-12"><small class="text-muted d-block" style="font-size:0.6rem;">RECHAZADO</small><span class="text-danger">{{ asignacion.revision_comentario }}</span></div>
+                        <div class="col-12"><small class="text-muted d-block" style="font-size:0.6rem;">RECHAZADO</small><span class="text-danger" style="font-size:0.7rem;">{{ asignacion.revision_comentario }}</span></div>
                         {% endif %}
                     </div>
                 </div>
             </div>
             {% endif %}
 
-            {% if registros %}
+            <!-- Linea de Tiempo unificada (match tarea_detail) -->
             <div class="card shadow-sm mb-3">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span>Registro de Tiempo</span>
-                    <span class="fw-bold" style="font-size:0.75rem;color:var(--accent);">{{ tiempo_efectivo }}</span>
+                <div class="card-header py-1 px-2 d-flex justify-content-between align-items-center">
+                    <small class="fw-semibold"><i class="bi bi-clock-history"></i> Linea de Tiempo</small>
+                    <span class="badge bg-light text-muted" style="font-size:0.5rem;">{{ timeline|length }} eventos</span>
                 </div>
-                <div class="card-body">
-                    {% for r in registros %}
-                    <div class="d-flex justify-content-between py-1 border-bottom" style="font-size:0.7rem;">
-                        <span>
-                            <span class="badge {% if r.evento == 'Inicio' %}bg-success{% elif r.evento == 'Pausa' %}bg-secondary{% elif r.evento == 'Reanudacion' %}bg-info text-dark{% elif r.evento == 'Finalizacion' %}bg-dark{% else %}bg-light text-muted{% endif %}" style="font-size:0.5rem;">{{ r.evento }}</span>
-                            {{ r.fecha_hora|date:"d/m/Y H:i" }}
-                            {% if r.motivo_pausa %}<small class="text-muted" style="font-size:0.6rem;"> ({{ r.motivo_pausa }})</small>{% endif %}
-                            {% if r.nro_actividad %}<small class="text-muted" style="font-size:0.6rem;"> Nro: {{ r.nro_actividad }}</small>{% endif %}
-                        </span>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-            {% endif %}
-
-            <!-- Linea de Tiempo -->
-            <div class="card shadow-sm mb-3">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span><i class="bi bi-clock-history"></i> L&iacute;nea de Tiempo</span>
-                    <span class="badge bg-light text-muted" style="font-size:0.55rem;">{{ registros.count }} eventos</span>
-                </div>
-                <div class="card-body" style="max-height:280px;overflow-y:auto;">
-                    {% if asignacion.estado_revision == 'rechazado' and asignacion.revision_comentario %}
-                    <div class="d-flex gap-2 py-1 border-bottom" style="font-size:0.7rem;">
-                        <span class="text-muted" style="min-width:32px;font-size:0.55rem;">{{ asignacion.fecha_update|date:"d/m" }}</span>
-                        <span style="color:var(--danger);"><i class="bi bi-x-circle"></i></span>
-                        <span>Tarea rechazada: {{ asignacion.revision_comentario }}</span>
-                        <span class="text-muted" style="font-size:0.55rem;margin-left:auto;">{{ asignacion.fecha_update|date:"H:i" }}</span>
-                    </div>
-                    {% endif %}
-                    {% for r in registros %}
-                    <div class="d-flex gap-2 py-1 border-bottom" style="font-size:0.7rem;">
-                        <span class="text-muted" style="min-width:32px;font-size:0.55rem;">{{ r.fecha_hora|date:"d/m" }}</span>
-                        <span style="color:{% if r.evento == 'Finalizacion' %}var(--success){% elif r.evento == 'Pausa' %}var(--slate-500){% elif r.evento == 'Reanudacion' %}var(--accent){% else %}var(--slate-700){% endif %}"><i class="bi bi-{% if r.evento == 'Inicio' %}play-fill{% elif r.evento == 'Pausa' %}pause-fill{% elif r.evento == 'Reanudacion' %}arrow-clockwise{% elif r.evento == 'Finalizacion' %}check-circle-fill{% else %}circle{% endif %}"></i></span>
-                        <span>{{ r.get_evento_display }}{% if r.comentario %}: {{ r.comentario }}{% endif %}</span>
-                        <span class="text-muted" style="font-size:0.55rem;margin-left:auto;">{{ r.fecha_hora|date:"H:i" }}</span>
+                <div class="card-body p-2" style="max-height:300px;overflow-y:auto;">
+                    {% for ev in timeline %}
+                    <div class="d-flex gap-2 py-1 border-bottom" style="font-size:0.68rem;">
+                        <span class="text-muted" style="min-width:32px;font-size:0.52rem;">{{ ev.fecha|date:"d/m" }}</span>
+                        <span style="color:{% if ev.tipo == 'creacion' %}var(--accent){% elif ev.tipo == 'registro' and 'Finalizacion' in ev.descripcion %}var(--success){% elif ev.tipo == 'registro' and 'Pausa' in ev.descripcion %}var(--slate-500){% elif ev.tipo == 'comentario' %}var(--accent){% elif ev.tipo == 'revision' and 'Aprobacion' in ev.descripcion %}var(--success){% elif ev.tipo == 'revision' %}var(--danger){% elif ev.tipo == 'traslado' %}var(--warning){% elif ev.tipo == 'incidencia' %}var(--danger){% else %}var(--slate-700){% endif %}"><i class="bi bi-{{ ev.icono }}"></i></span>
+                        <span>{{ ev.descripcion }}</span>
+                        <span class="text-muted" style="font-size:0.52rem;margin-left:auto;">{{ ev.fecha|date:"H:i" }}</span>
                     </div>
                     {% empty %}
                     <p class="text-muted text-center small mb-0">Sin eventos registrados</p>
@@ -116,17 +96,29 @@
         </div>
 
         <div class="col-lg-4">
+            <!-- Proyecto (si existe) -->
+            {% if asignacion.tarea_proyecto %}
+            <div class="card shadow-sm mb-3">
+                <div class="card-header py-1 px-2"><small class="fw-semibold">Proyecto</small></div>
+                <div class="card-body p-2">
+                    {% with p=asignacion.tarea_proyecto.proyecto %}
+                    <div class="d-flex justify-content-between border-bottom py-1"><small class="text-muted" style="font-size:0.6rem;">Codigo</small><span style="font-size:0.68rem;">{{ p.codigo }}</span></div>
+                    <div class="d-flex justify-content-between border-bottom py-1"><small class="text-muted" style="font-size:0.6rem;">Nombre</small><span style="font-size:0.68rem;"><a href="{% url 'proyectos:proyecto_detail' p.pk %}" class="text-decoration-none">{{ p.nombre }}</a></span></div>
+                    <div class="d-flex justify-content-between border-bottom py-1"><small class="text-muted" style="font-size:0.6rem;">Tarea</small><span style="font-size:0.68rem;"><a href="{% url 'proyectos:tarea_detail' p.pk asignacion.tarea_proyecto.pk %}" class="text-decoration-none">{{ asignacion.tarea_proyecto.codigo }}</a></span></div>
+                    <div class="d-flex justify-content-between py-1"><small class="text-muted" style="font-size:0.6rem;">Avance</small><span style="font-size:0.68rem;">{{ p.avance }}%</span></div>
+                    {% endwith %}
+                </div>
+            </div>
+            {% endif %}
+
             <!-- Revision -->
             {% if asignacion.estado == 'Revision' and request.user.rol.nombre in 'Master,Admin' %}
             <div class="card shadow-sm mb-3">
-                <div class="card-header">Revisi&oacute;n</div>
-                <div class="card-body">
+                <div class="card-header py-1 px-2"><small class="fw-semibold">Revision</small></div>
+                <div class="card-body p-2">
                     <div class="d-flex gap-2">
-                        <form method="POST" action="{% url 'dashboard:revision_aprobar' asignacion.pk %}" class="w-50">
-                            {% csrf_token %}
-                            <button class="btn btn-sm btn-outline-primary w-100" style="font-size:0.7rem;"><i class="bi bi-check-lg"></i> Aprobar</button>
-                        </form>
-                        <button class="btn btn-sm btn-outline-secondary w-50" style="font-size:0.7rem;" onclick="document.getElementById('rechazoDetalleModal').style.display='flex'"><i class="bi bi-x-lg"></i> Rechazar</button>
+                        <form method="POST" action="{% url 'dashboard:revision_aprobar' asignacion.pk %}" class="w-50">{% csrf_token %}<button class="btn btn-sm btn-outline-primary w-100" style="font-size:0.65rem;"><i class="bi bi-check-lg"></i> Aprobar</button></form>
+                        <button class="btn btn-sm btn-outline-secondary w-50" style="font-size:0.65rem;" onclick="document.getElementById('rechazoDetalleModal').style.display='flex'"><i class="bi bi-x-lg"></i> Rechazar</button>
                     </div>
                 </div>
             </div>
@@ -134,15 +126,12 @@
 
             {% if historial %}
             <div class="card shadow-sm mb-3">
-                <div class="card-header">Historial de Revisi&oacute;n</div>
-                <div class="card-body" style="max-height:180px;overflow-y:auto;">
+                <div class="card-header py-1 px-2"><small class="fw-semibold">Historial de Revision</small></div>
+                <div class="card-body p-2" style="max-height:180px;overflow-y:auto;">
                     {% for h in historial %}
-                    <div class="d-flex justify-content-between py-1 border-bottom" style="font-size:0.7rem;">
-                        <div>
-                            <small style="font-size:0.65rem;">{{ h.user.get_full_name }}</small>
-                            {% if h.comentario %}<small class="text-muted d-block" style="font-size:0.6rem;">{{ h.comentario }}</small>{% endif %}
-                        </div>
-                        <span class="badge {% if h.accion == 'aprobado' %}bg-success{% else %}bg-danger{% endif %}" style="font-size:0.5rem;height:fit-content;">{{ h.get_accion_display }}</span>
+                    <div class="d-flex justify-content-between py-1 border-bottom" style="font-size:0.68rem;">
+                        <div><small style="font-size:0.62rem;">{{ h.user.get_full_name }}</small>{% if h.comentario %}<small class="text-muted d-block" style="font-size:0.58rem;">{{ h.comentario }}</small>{% endif %}</div>
+                        <span class="badge {% if h.accion == 'aprobado' %}bg-success{% else %}bg-danger{% endif %}" style="font-size:0.48rem;height:fit-content;">{{ h.get_accion_display }}</span>
                     </div>
                     {% endfor %}
                 </div>
@@ -151,40 +140,35 @@
 
             <!-- Comentarios -->
             <div class="card shadow-sm mb-3">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span>Comentarios</span>
-                    <span class="badge bg-light text-muted" style="font-size:0.55rem;">{{ comentarios.count }}</span>
+                <div class="card-header py-1 px-2 d-flex justify-content-between align-items-center">
+                    <small class="fw-semibold">Comentarios</small>
+                    <span class="badge bg-light text-muted" style="font-size:0.5rem;">{{ comentarios.count }}</span>
                 </div>
-                <div class="card-body" style="max-height:300px;overflow-y:auto;">
+                <div class="card-body p-2" style="max-height:280px;overflow-y:auto;">
                     <form method="POST" action="{% url 'gestion:agregar_comentario' asignacion.pk %}" class="mb-2">
                         {% csrf_token %}
                         <div class="input-group input-group-sm">
-                            <input type="text" name="texto" class="form-control" placeholder="Agregar comentario..." required>
-                            <button class="btn btn-primary btn-sm">Enviar</button>
+                            <input type="text" name="texto" class="form-control" placeholder="Agregar comentario..." required style="font-size:0.7rem;">
+                            <button class="btn btn-primary btn-sm" style="font-size:0.65rem;">Enviar</button>
                         </div>
                     </form>
                     {% for c in comentarios %}
                     <div class="border-bottom pb-2 mb-2">
-                        <div class="d-flex justify-content-between">
-                            <strong style="font-size:0.7rem;">{{ c.user.get_full_name }}</strong>
-                            <small class="text-muted" style="font-size:0.6rem;">{{ c.fecha_creacion|date:"d/m H:i" }}</small>
-                        </div>
-                        <div style="font-size:0.72rem;margin-top:2px;">{{ c.texto }}</div>
+                        <div class="d-flex justify-content-between"><strong style="font-size:0.68rem;">{{ c.user.get_full_name }}</strong><small class="text-muted" style="font-size:0.58rem;">{{ c.fecha_creacion|date:"d/m H:i" }}</small></div>
+                        <div style="font-size:0.7rem;margin-top:2px;">{{ c.texto }}</div>
                     </div>
-                    {% empty %}
-                    <p class="text-muted small text-center mb-0">Sin comentarios</p>
-                    {% endfor %}
+                    {% empty %}<p class="text-muted small text-center mb-0">Sin comentarios</p>{% endfor %}
                 </div>
             </div>
 
             {% if traslados %}
             <div class="card shadow-sm mb-3">
-                <div class="card-header">Traslados</div>
-                <div class="card-body">
+                <div class="card-header py-1 px-2"><small class="fw-semibold">Traslados</small></div>
+                <div class="card-body p-2">
                     {% for t in traslados %}
-                    <div class="d-flex justify-content-between py-1 border-bottom" style="font-size:0.7rem;">
+                    <div class="d-flex justify-content-between py-1 border-bottom" style="font-size:0.68rem;">
                         <span>{{ t.user_origen.get_full_name }} &rarr; {{ t.user_destino.get_full_name }}</span>
-                        <span class="badge {% if t.estado == 'Aceptado' %}bg-success{% elif t.estado == 'Rechazado' %}bg-danger{% else %}bg-warning text-dark{% endif %}" style="font-size:0.5rem;">{{ t.estado }}</span>
+                        <span class="badge {% if t.estado == 'Aceptado' %}bg-success{% elif t.estado == 'Rechazado' %}bg-danger{% else %}bg-warning text-dark{% endif %}" style="font-size:0.48rem;">{{ t.estado }}</span>
                     </div>
                     {% endfor %}
                 </div>
@@ -197,20 +181,10 @@
 {% if asignacion.estado == 'Revision' and request.user.rol.nombre in 'Master,Admin' %}
 <div id="rechazoDetalleModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:9999;align-items:center;justify-content:center;">
     <div style="background:#fff;border-radius:0.75rem;max-width:400px;width:90%;padding:1.5rem;box-shadow:0 8px 32px rgba(0,0,0,0.12);">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h6 class="fw-bold mb-0"><i class="bi bi-x-circle"></i> Rechazar Actividad</h6>
-            <button type="button" class="btn-close" onclick="document.getElementById('rechazoDetalleModal').style.display='none'"></button>
-        </div>
-        <form method="POST" action="{% url 'dashboard:revision_rechazar' asignacion.pk %}">
-            {% csrf_token %}
-            <div class="mb-3">
-                <label class="form-label small fw-semibold">Motivo del rechazo <span class="text-danger">*</span></label>
-                <textarea name="comentario" class="form-control" rows="3" placeholder="Explica por que se rechaza..." required></textarea>
-            </div>
-            <div class="d-flex justify-content-end gap-2">
-                <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('rechazoDetalleModal').style.display='none'">Cancelar</button>
-                <button type="submit" class="btn btn-sm btn-outline-secondary">Rechazar</button>
-            </div>
+        <div class="d-flex justify-content-between align-items-center mb-3"><h6 class="fw-bold mb-0"><i class="bi bi-x-circle"></i> Rechazar</h6><button type="button" class="btn-close" onclick="document.getElementById('rechazoDetalleModal').style.display='none'"></button></div>
+        <form method="POST" action="{% url 'dashboard:revision_rechazar' asignacion.pk %}">{% csrf_token %}
+            <div class="mb-3"><label class="form-label small fw-semibold">Motivo <span class="text-danger">*</span></label><textarea name="comentario" class="form-control" rows="3" required></textarea></div>
+            <div class="d-flex justify-content-end gap-2"><button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('rechazoDetalleModal').style.display='none'">Cancelar</button><button type="submit" class="btn btn-sm btn-outline-danger">Rechazar</button></div>
         </form>
     </div>
 </div>

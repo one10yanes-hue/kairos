@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from ..models import Proyecto, Incidencia, Tarea
+from ..models import Proyecto, Incidencia, Tarea, RegistroAvance
 from ..decorators import miembro_requerido, ROLES_EDICION
 
 
@@ -31,6 +31,8 @@ def incidencia_create(request, pk):
         )
         inc.codigo = f"{proyecto.codigo}-INC-{inc.pk:03d}"
         inc.save()
+        RegistroAvance.objects.create(proyecto=proyecto, tipo="comentario",
+            descripcion=f"Incidencia {inc.codigo} reportada: {inc.titulo[:60]}", user=request.user)
         messages.success(request, f"Incidencia {inc.codigo} reportada.")
         return redirect("proyectos:incidencia_list", pk=proyecto.pk)
     miembros = proyecto.membresias.filter(activo=True).select_related("user")

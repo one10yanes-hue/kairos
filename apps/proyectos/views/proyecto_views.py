@@ -273,7 +273,7 @@ def proyecto_detail(request, pk):
         "sprints_finalizados": sprints_hist.count(),
         "velocidad_prom": round(sum(velocidades) / len(velocidades), 1) if velocidades else 0,
         "tareas_aging": tareas_aging,
-        "avances": proyecto.avances.order_by("-fecha")[:5],
+        "avances": proyecto.avances.order_by("-fecha")[:50],
         # CFD / distribucion
         "cfd_labels": ["Pendientes", "En Curso", "Revision", "Finalizadas"],
         "cfd_data": [

@@ -11,6 +11,7 @@ class TipoActividad(models.Model):
     requiere_fecha_limite = models.BooleanField(default=True, help_text="Si esta activo, al planificar esta actividad la fecha limite sera obligatoria")
     requiere_entregable = models.BooleanField(default=False, help_text="Si esta activo, la actividad requiere archivo entregable al finalizar")
     es_flash = models.BooleanField(default=False, help_text="Si esta activo, las actividades de este tipo aparecen como evento flash")
+    solo_proyecto = models.BooleanField(default=False, help_text="Si esta activo, este tipo solo aplica para tareas de proyecto, no como actividad normal")
     activo = models.BooleanField(default=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_update = models.DateTimeField(auto_now=True)
