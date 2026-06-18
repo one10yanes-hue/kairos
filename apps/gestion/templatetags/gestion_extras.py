@@ -45,7 +45,7 @@ def deadline_label(fecha):
     if d == hoy:
         return "Vence hoy"
     if d == hoy + timedelta(days=1):
-        return "Vence manana"
+        return "Vence ma\u00f1ana"
     return f"Vence en {(d - hoy).days}d"
 
 
