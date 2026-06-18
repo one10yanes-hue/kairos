@@ -44,6 +44,7 @@ class Actividad(models.Model):
         db_table = "actividad"
         verbose_name = "Actividad"
         verbose_name_plural = "Actividades"
+        unique_together = [["nombre", "subarea", "tipo_actividad"]]
 
     def __str__(self):
         return self.nombre
@@ -51,6 +52,11 @@ class Actividad(models.Model):
     def clean(self):
         if self.tipo_actividad and self.tipo_actividad.subarea_id != self.subarea_id:
             raise ValidationError("La actividad debe pertenecer a la misma subarea que su tipo de actividad.")
+        qs = Actividad.objects.filter(nombre=self.nombre, subarea=self.subarea, tipo_actividad=self.tipo_actividad, activo=True)
+        if self.pk:
+            qs = qs.exclude(pk=self.pk)
+        if qs.exists():
+            raise ValidationError(f"Ya existe una actividad '{self.nombre}' en {self.subarea.nombre} con el tipo {self.tipo_actividad.nombre}.")
 
     def save(self, *args, **kwargs):
         self.clean()

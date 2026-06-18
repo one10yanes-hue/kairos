@@ -1,25 +1,18 @@
 {% extends "base.html" %}{% block content %}
-<div class="container-fluid mt-4">
-    <nav aria-label="breadcrumb"><ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{% url 'actividades:actividad_list' %}">Actividades</a></li>
-        <li class="breadcrumb-item active">{{ title }}</li>
-    </ol></nav>
-
-    <div class="card shadow-sm" style="max-width:900px;">
+<div class="container-fluid mt-4 d-flex justify-content-center">
+    <div class="card shadow-sm" style="max-width:600px;width:100%;">
         <div class="card-header d-flex align-items-center gap-2">
             <i class="bi bi-list-check" style="color:var(--accent);"></i>
-            <h5 class="mb-0 fw-bold">{{ title }}</h5>
+            <h5 class="mb-0 fw-bold" style="font-size:0.95rem;">{{ title }}</h5>
         </div>
         <div class="card-body p-4">
             <script>
             var _subareaId = '{{ subarea_id|default:"" }}';
-
             document.addEventListener('DOMContentLoaded', function() {
                 if (_subareaId) {
                     var tip = document.querySelector('[data-model="tipo_actividad"]');
                     if (tip) tip.dataset.filters = 'subarea_id=' + _subareaId;
                 }
-
                 setTimeout(function() {
                     var subareaLast = _subareaId;
                     setInterval(function() {
@@ -34,34 +27,27 @@
                 }, 300);
             });
             </script>
-
             <form method="POST" id="mainForm">
                 {% csrf_token %}
-                <div class="row g-3 mb-4">
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold" style="font-size:0.85rem;">SubArea</label>
-                        {{ form.subarea }}
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold" style="font-size:0.85rem;">Tipo de Actividad</label>
-                        {{ form.tipo_actividad }}
-                    </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;">SubArea</label>
+                    {{ form.subarea }}
                 </div>
-                <div class="row g-3 mb-4">
-                    <div class="col-12">
-                        <label class="form-label fw-semibold" style="font-size:0.85rem;">Nombre</label>
-                        {{ form.nombre }}
-                    </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;">Tipo de Actividad</label>
+                    {{ form.tipo_actividad }}
                 </div>
-                <div class="row g-3 mb-4">
-                    <div class="col-12">
-                        <label class="form-label fw-semibold" style="font-size:0.85rem;">Descripcion</label>
-                        {{ form.descripcion }}
-                    </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;">Nombre</label>
+                    {{ form.nombre }}
                 </div>
-                <div class="d-flex gap-2">
-                    <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Guardar</button>
-                    <a href="{% url 'actividades:actividad_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;">Descripcion</label>
+                    {{ form.descripcion }}
+                </div>
+                <div class="d-flex gap-2 pt-2">
+                    <button type="submit" class="btn btn-primary" style="font-size:0.8rem;padding:0.4rem 1.2rem;"><i class="bi bi-save"></i> Guardar</button>
+                    <a href="{% url 'actividades:actividad_list' %}" class="btn btn-outline-secondary" style="font-size:0.8rem;padding:0.4rem 1.2rem;">Cancelar</a>
                 </div>
             </form>
         </div>
