@@ -7,19 +7,21 @@
     <div class="card shadow-sm">
         <div class="card-body p-0">
             <table class="table table-hover mb-0" style="font-size:0.78rem;">
-                <thead class="table-light"><tr><th>Código</th><th>Título</th><th>Tipo</th><th>Estado</th><th>Asignado</th><th>Sprint</th></tr></thead>
+                <thead class="table-light"><tr><th>Código</th><th>Título</th><th>Pr</th><th>Historia</th><th>Estado</th><th>Asignado</th><th>Sprint</th><th>Vence</th><th></th></tr></thead>
                 <tbody>
                     {% for t in tareas %}
                     <tr>
                         <td><span class="badge bg-light text-muted" style="font-size:0.6rem;">{{ t.codigo }}</span></td>
                         <td><a href="{% url 'proyectos:tarea_detail' proyecto.pk t.pk %}" class="text-decoration-none fw-semibold">{{ t.titulo }}</a></td>
-                        <td><span class="badge bg-light text-muted" style="font-size:0.55rem;">{{ t.get_tipo_display }}</span></td>
+                        <td><span class="badge {% if t.prioridad == 'must' %}bg-danger{% elif t.prioridad == 'should' %}bg-warning text-dark{% elif t.prioridad == 'could' %}bg-info text-dark{% else %}bg-light text-muted{% endif %}" style="font-size:0.48rem;padding:1px 3px;">{{ t.get_prioridad_display|slice:":1" }}</span></td>
+                        <td style="font-size:0.65rem;">{% if t.historia %}<span class="badge bg-light text-muted" style="font-size:0.55rem;">{{ t.historia.codigo }}</span>{% else %}-{% endif %}</td>
                         <td><span class="badge {% if t.estado == 'finalizada' %}bg-success{% elif t.estado == 'en_curso' %}bg-warning text-dark{% elif t.estado == 'pausada' %}bg-secondary{% else %}bg-light text-muted{% endif %}" style="font-size:0.55rem;">{{ t.get_estado_display }}</span></td>
                         <td style="font-size:0.7rem;">{{ t.asignado_a.get_full_name|default:"-" }}</td>
                         <td style="font-size:0.7rem;">{{ t.sprint.nombre|default:"-" }}</td>
+                        <td style="font-size:0.65rem;">{% if t.fecha_limite %}<span class="badge {% if t.fecha_limite < today %}bg-danger{% else %}bg-light text-muted{% endif %}" style="font-size:0.55rem;">{{ t.fecha_limite|date:"d/m/Y" }}</span>{% else %}-{% endif %}</td>
                         <td>{% if request.membresia|puede_editar %}<a href="{% url 'proyectos:tarea_edit' proyecto.pk t.pk %}" class="btn btn-sm btn-outline-secondary py-0 px-1" style="font-size:0.55rem;">✎</a>{% endif %}</td>
                     </tr>
-                    {% empty %}<tr><td colspan="6" class="text-center text-muted py-4">Sin tareas.</td></tr>
+                    {% empty %}<tr><td colspan="9" class="text-center text-muted py-4">Sin tareas.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>

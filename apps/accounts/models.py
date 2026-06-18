@@ -59,6 +59,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     foto = models.ImageField(upload_to=foto_upload_path, blank=True, null=True)
     rol = models.ForeignKey(Rol, on_delete=models.PROTECT, related_name="usuarios")
     roles_adicionales = models.ManyToManyField(Rol, blank=True, related_name="usuarios_extra")
+    maneja_proyectos = models.BooleanField(default=False, verbose_name="Maneja proyectos")
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     activo = models.BooleanField(default=True)

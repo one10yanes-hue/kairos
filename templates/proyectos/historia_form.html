@@ -1,3 +1,53 @@
-{% extends 'base.html' %}{% block content %}
-<div class='container-fluid mt-3'><h5>Historia</h5></div>
+{% extends "base.html" %}{% load static %}
+{% block content %}
+<div class="container-fluid mt-3">
+    <h5 class="fw-bold mb-3">
+        {% if editando %}Editar Historia · {{ proyecto.codigo }}{% else %}Nueva Historia · {{ proyecto.codigo }}{% endif %}
+    </h5>
+    <div class="card shadow-sm"><div class="card-body p-4">
+        <form method="POST">{% csrf_token %}
+            <div class="row g-3">
+                <div class="col-md-8">
+                    <label class="form-label small fw-semibold">Título <span class="text-danger">*</span></label>
+                    <input type="text" name="titulo" class="form-control" value="{{ historia.titulo|default:'' }}" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-semibold">Prioridad</label>
+                    <select name="prioridad" class="form-select">
+                        <option value="must" {% if historia.prioridad == 'must' %}selected{% endif %}>Must Have</option>
+                        <option value="should" {% if historia.prioridad == 'should' %}selected{% endif %}>Should Have</option>
+                        <option value="could" {% if historia.prioridad == 'could' %}selected{% endif %}>Could Have</option>
+                        <option value="wont" {% if historia.prioridad == 'wont' %}selected{% endif %}>Won't Have</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-semibold">Puntos</label>
+                    <input type="number" name="puntos" class="form-control" value="{{ historia.puntos_historia|default:'0' }}" min="0">
+                </div>
+                <div class="col-12">
+                    <label class="form-label small fw-semibold">Descripción</label>
+                    <textarea name="descripcion" class="form-control" rows="3">{{ historia.descripcion|default:'' }}</textarea>
+                </div>
+                <div class="col-12">
+                    <label class="form-label small fw-semibold">Criterios de Aceptación</label>
+                    <textarea name="criterios" class="form-control" rows="3">{{ historia.criterios_aceptacion|default:'' }}</textarea>
+                </div>
+                {% if editando %}
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold">Estado</label>
+                    <select name="estado" class="form-select">
+                        {% for val, label in historia.ESTADOS %}
+                        <option value="{{ val }}" {% if historia.estado == val %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+            </div>
+            <div class="d-flex gap-2 mt-3">
+                <button type="submit" class="btn btn-primary btn-sm">{% if editando %}Actualizar{% else %}Crear{% endif %} Historia</button>
+                <a href="{% url 'proyectos:backlog' proyecto.pk %}" class="btn btn-outline-secondary btn-sm">Cancelar</a>
+            </div>
+        </form>
+    </div></div>
+</div>
 {% endblock %}

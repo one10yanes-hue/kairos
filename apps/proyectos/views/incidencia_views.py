@@ -7,14 +7,14 @@ from ..decorators import miembro_requerido, ROLES_EDICION
 
 @miembro_requerido()
 def incidencia_list(request, pk):
-    proyecto = get_object_or_404(Proyecto, pk=pk, activo=True)
+    proyecto = request.proyecto
     incidencias = proyecto.incidencias.filter(activo=True).select_related("reportado_por", "asignado_a")
     return render(request, "proyectos/incidencia_list.html", {"proyecto": proyecto, "incidencias": incidencias})
 
 
-@login_required
+@miembro_requerido()
 def incidencia_create(request, pk):
-    proyecto = get_object_or_404(Proyecto, pk=pk, activo=True)
+    proyecto = request.proyecto
     if request.method == "POST":
         titulo = request.POST.get("titulo", "").strip()
         if not titulo:
@@ -67,15 +67,20 @@ def incidencia_convertir(request, pk, iid):
 def incidencia_detail(request, pk, iid):
     proyecto = request.proyecto
     incidencia = get_object_or_404(Incidencia, pk=iid, proyecto=proyecto)
+    membresia = request.membresia
     if request.method == "POST":
         nuevo_estado = request.POST.get("estado")
+        # Solo roles de edicion inician/resuelven. Cualquiera puede cerrar.
         if nuevo_estado in dict(Incidencia.ESTADOS):
-            incidencia.estado = nuevo_estado
-            if nuevo_estado == "cerrada":
-                from django.utils import timezone
-                incidencia.fecha_resolucion = timezone.now()
-            incidencia.save()
-            messages.success(request, f"Incidencia {incidencia.codigo} actualizada.")
+            if nuevo_estado in ["en_progreso", "resuelta"] and membresia and membresia.rol not in ["lider", "responsable", "ejecutor"]:
+                messages.error(request, "Solo Lider, Responsable o Ejecutor pueden cambiar a este estado.")
+            else:
+                incidencia.estado = nuevo_estado
+                if nuevo_estado == "cerrada":
+                    from django.utils import timezone
+                    incidencia.fecha_resolucion = timezone.now()
+                incidencia.save()
+                messages.success(request, f"Incidencia {incidencia.codigo} actualizada.")
         return redirect("proyectos:incidencia_detail", pk=proyecto.pk, iid=incidencia.pk)
     miembros = proyecto.membresias.filter(activo=True).select_related("user")
     return render(request, "proyectos/incidencia_detail.html", {

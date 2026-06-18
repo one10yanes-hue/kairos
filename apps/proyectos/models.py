@@ -16,6 +16,7 @@ class Proyecto(models.Model):
     objetivo = models.TextField(blank=True)
 
     subareas = models.ManyToManyField("estructura.SubArea", blank=True, related_name="proyectos")
+    empresa = models.ForeignKey("accounts.Empresa", on_delete=models.PROTECT, null=True, blank=True, related_name="proyectos")
     manager = models.ForeignKey(User, on_delete=models.PROTECT, related_name="proyectos_gestionados")
 
     estado = models.CharField(max_length=20, choices=ESTADOS, default="activo")
@@ -40,6 +41,11 @@ class Proyecto(models.Model):
         if total == 0:
             return 0
         return int(self.tareas.filter(activo=True, estado="finalizada").count() / total * 100)
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.fecha_inicio and self.fecha_fin_estimada and self.fecha_inicio > self.fecha_fin_estimada:
+            raise ValidationError("La fecha de inicio no puede ser posterior a la fecha fin estimada.")
 
 
 class MiembroProyecto(models.Model):
@@ -84,6 +90,7 @@ class Sprint(models.Model):
         ("planificado", "Planificado"),
         ("activo", "Activo"),
         ("finalizado", "Finalizado"),
+        ("cancelado", "Cancelado"),
     ]
     proyecto = models.ForeignKey(Proyecto, on_delete=models.CASCADE, related_name="sprints")
     nombre = models.CharField(max_length=200)
@@ -114,6 +121,18 @@ class Sprint(models.Model):
         return self.historias.filter(activo=True).aggregate(
             total=Sum("puntos_historia")
         )["total"] or 0
+
+    @property
+    def avance_tareas(self):
+        total = self.tareas.filter(activo=True).count()
+        if total == 0:
+            return 0
+        return int(self.tareas.filter(activo=True, estado="finalizada").count() / total * 100)
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.fecha_inicio and self.fecha_fin and self.fecha_inicio > self.fecha_fin:
+            raise ValidationError("La fecha de inicio del sprint no puede ser posterior a la fecha fin.")
 
 
 class HistoriaUsuario(models.Model):
@@ -152,6 +171,13 @@ class HistoriaUsuario(models.Model):
     def __str__(self):
         return f"{self.codigo}: {self.titulo}"
 
+    @property
+    def avance_tareas(self):
+        total = self.tareas.filter(activo=True).count()
+        if total == 0:
+            return 0
+        return int(self.tareas.filter(activo=True, estado="finalizada").count() / total * 100)
+
     def actualizar_estado(self):
         tareas = self.tareas.filter(activo=True)
         if not tareas.exists():
@@ -159,7 +185,7 @@ class HistoriaUsuario(models.Model):
         estados = set(tareas.values_list("estado", flat=True))
         if estados == {"finalizada"}:
             self.estado = "revision"
-        elif "en_curso" in estados or "pausada" in estados:
+        elif "en_curso" in estados or "pausada" in estados or "bloqueada" in estados:
             self.estado = "en_progreso"
         elif "pendiente" in estados and "finalizada" in estados:
             self.estado = "en_progreso"
@@ -169,14 +195,7 @@ class HistoriaUsuario(models.Model):
 
     def clean(self):
         from django.core.exceptions import ValidationError
-        # Validar transiciones de estado
-        transiciones = {
-            "backlog": ["sprint_backlog"],
-            "sprint_backlog": ["en_progreso", "backlog"],
-            "en_progreso": ["revision", "backlog", "sprint_backlog"],
-            "revision": ["done", "en_progreso"],
-            "done": ["backlog"],
-        }
+        transiciones = _get_transiciones(self.proyecto, "historia")
         if self.pk:
             try:
                 old = HistoriaUsuario.objects.get(pk=self.pk)
@@ -199,9 +218,16 @@ class Tarea(models.Model):
         ("pendiente", "Pendiente"),
         ("en_curso", "En Curso"),
         ("pausada", "Pausada"),
+        ("bloqueada", "Bloqueada"),
         ("finalizada", "Finalizada"),
         ("revision", "En Revision"),
         ("cancelada", "Cancelada"),
+    ]
+    PRIORIDADES = [
+        ("must", "Must Have"),
+        ("should", "Should Have"),
+        ("could", "Could Have"),
+        ("wont", "Won't Have"),
     ]
     proyecto = models.ForeignKey(Proyecto, on_delete=models.CASCADE, related_name="tareas")
     historia = models.ForeignKey(HistoriaUsuario, on_delete=models.CASCADE, null=True, blank=True, related_name="tareas")
@@ -214,9 +240,11 @@ class Tarea(models.Model):
     titulo = models.CharField(max_length=300)
     descripcion = models.TextField(blank=True)
     tipo = models.CharField(max_length=20, choices=TIPOS, default="tarea")
+    prioridad = models.CharField(max_length=10, choices=PRIORIDADES, default="should")
     estado = models.CharField(max_length=20, choices=ESTADOS, default="pendiente")
     asignado_a = models.ForeignKey(User, on_delete=models.PROTECT, null=True, blank=True, related_name="tareas_asignadas")
     creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="tareas_creadas")
+    fecha_limite = models.DateField(null=True, blank=True, verbose_name="Fecha limite")
     estimacion_horas = models.DecimalField(max_digits=6, decimal_places=1, null=True, blank=True)
     activo = models.BooleanField(default=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
@@ -231,14 +259,7 @@ class Tarea(models.Model):
 
     def clean(self):
         from django.core.exceptions import ValidationError
-        transiciones = {
-            "pendiente": ["en_curso", "cancelada"],
-            "en_curso": ["pausada", "finalizada", "cancelada"],
-            "pausada": ["en_curso", "finalizada", "cancelada"],
-            "finalizada": [],  # estado terminal
-            "revision": ["finalizada", "pendiente"],
-            "cancelada": [],
-        }
+        transiciones = _get_transiciones(self.proyecto, "tarea")
         if self.pk:
             try:
                 old = Tarea.objects.get(pk=self.pk)
@@ -298,14 +319,7 @@ class Incidencia(models.Model):
 
     def clean(self):
         from django.core.exceptions import ValidationError
-        transiciones = {
-            "abierta": ["triaged", "en_progreso", "cerrada", "duplicada"],
-            "triaged": ["en_progreso", "cerrada"],
-            "en_progreso": ["resuelta", "cerrada"],
-            "resuelta": ["cerrada", "en_progreso"],
-            "cerrada": ["abierta"],
-            "duplicada": ["abierta"],
-        }
+        transiciones = _get_transiciones(self.proyecto, "incidencia")
         if self.pk:
             try:
                 old = Incidencia.objects.get(pk=self.pk)
@@ -346,6 +360,53 @@ class RegistroAvance(models.Model):
     class Meta:
         db_table = "registro_avance"
         ordering = ["-fecha"]
+
+
+# ── Workflow engine: transiciones por proyecto ──
+
+HARDCODED_TAREA = {
+    "pendiente": ["en_curso", "cancelada", "bloqueada"],
+    "en_curso": ["pausada", "finalizada", "cancelada", "bloqueada"],
+    "pausada": ["en_curso", "finalizada", "cancelada", "bloqueada"],
+    "bloqueada": ["en_curso", "cancelada"],
+    "finalizada": [],
+    "revision": ["finalizada", "pendiente"],
+    "cancelada": [],
+}
+
+HARDCODED_HISTORIA = {
+    "backlog": ["sprint_backlog"],
+    "sprint_backlog": ["en_progreso", "backlog"],
+    "en_progreso": ["revision", "backlog", "sprint_backlog"],
+    "revision": ["done", "en_progreso"],
+    "done": ["backlog"],
+}
+
+HARDCODED_INCIDENCIA = {
+    "abierta": ["triaged", "en_progreso", "cerrada", "duplicada"],
+    "triaged": ["en_progreso", "cerrada"],
+    "en_progreso": ["resuelta", "cerrada"],
+    "resuelta": ["cerrada", "en_progreso"],
+    "cerrada": ["abierta"],
+    "duplicada": ["abierta"],
+}
+
+
+def _get_transiciones(proyecto, entidad):
+    """Devuelve {estado_origen: [estados_destino]} desde WorkflowConfig o hardcodeado."""
+    configs = WorkflowConfig.objects.filter(proyecto=proyecto, entidad=entidad, activo=True)
+    if not configs.exists():
+        if entidad == "tarea":
+            return HARDCODED_TAREA
+        elif entidad == "historia":
+            return HARDCODED_HISTORIA
+        elif entidad == "incidencia":
+            return HARDCODED_INCIDENCIA
+        return {}
+    trans = {}
+    for cfg in configs:
+        trans.setdefault(cfg.estado_origen, []).append(cfg.estado_destino)
+    return trans
 
 
 class WorkflowConfig(models.Model):

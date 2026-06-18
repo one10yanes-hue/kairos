@@ -50,3 +50,21 @@ class TableroConsumer(AsyncWebsocketConsumer):
             "actividad": event["actividad"],
             "detalle": event.get("destino") or event.get("origen") or "",
         }))
+
+    # Nueva historia en revision pendiente para el revisor
+    async def nueva_revision(self, event):
+        await self.send(text_data=json.dumps({
+            "tipo": "nueva_revision",
+            "historia": event["historia"],
+            "codigo": event["codigo"],
+            "proyecto": event["proyecto"],
+        }))
+
+    # Tarea rechazada (el Ejecutor es notificado)
+    async def tarea_rechazada(self, event):
+        await self.send(text_data=json.dumps({
+            "tipo": "tarea_rechazada",
+            "actividad": event["actividad"],
+            "codigo": event["codigo"],
+            "motivo": event["motivo"],
+        }))

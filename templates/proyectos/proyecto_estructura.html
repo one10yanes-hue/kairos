@@ -1,0 +1,145 @@
+{% extends "base.html" %}{% load proyecto_permisos %}{% block content %}
+<style>
+.tree-list { list-style: none; padding-left: 0; }
+.tree-node { position: relative; padding-left: 0; }
+.tree-toggle { cursor: pointer; display: inline-block; width: 18px; text-align: center; font-size: 0.7rem; color: var(--slate-500); user-select: none; }
+.tree-toggle.collapsed::before { content: '\25B6'; }
+.tree-toggle.expanded::before { content: '\25BC'; }
+.tree-toggle.leaf { visibility: hidden; }
+.tree-children { list-style: none; padding-left: 1.2rem; border-left: 1px dashed var(--slate-200); margin-left: 0.5rem; }
+.tree-children.collapsed { display: none; }
+.tree-item { display: flex; align-items: center; gap: 6px; padding: 3px 0; font-size: 0.78rem; }
+.tree-item .badge { font-size: 0.55rem; }
+.tree-label { font-weight: 500; }
+.sprint-header { background: #f8fafc; border-radius: 4px; padding: 2px 6px; font-weight: 600; }
+.tree-root > .tree-item > .tree-label { font-size: 0.9rem; font-weight: 700; color: var(--accent-dark); }
+</style>
+<div class="container-fluid mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h5 class="fw-bold" style="font-size:0.95rem;">
+            <a href="{% url 'proyectos:proyecto_detail' proyecto.pk %}" class="text-decoration-none">{{ proyecto.codigo }}</a> · Estructura
+        </h5>
+        <div class="d-flex gap-1">
+            <button onclick="expandirTodo()" class="btn btn-sm btn-outline-secondary" style="font-size:0.65rem;">Expandir todo</button>
+            <button onclick="colapsarTodo()" class="btn btn-sm btn-outline-secondary" style="font-size:0.65rem;">Colapsar todo</button>
+        </div>
+    </div>
+
+    <div class="card shadow-sm"><div class="card-body p-3">
+        <ul class="tree-list tree-root">
+            <li class="tree-node">
+                <div class="tree-item">
+                    <span class="tree-toggle expanded" onclick="toggleNode(this)"></span>
+                    <span class="tree-label">{{ proyecto.codigo }} &mdash; {{ proyecto.nombre }}</span>
+                    <span class="badge bg-light text-muted" style="font-size:0.5rem;">{{ proyecto.get_estado_display }}</span>
+                </div>
+                <ul class="tree-children">
+                    {% for sp in sprints %}
+                    <li class="tree-node">
+                        <div class="tree-item">
+                            <span class="tree-toggle expanded" onclick="toggleNode(this)"></span>
+                            <span class="tree-label sprint-header">
+                                Sprint {{ sp.numero }}: {{ sp.nombre }}
+                                <span class="badge {% if sp.estado == 'activo' %}bg-success{% elif sp.estado == 'finalizado' %}bg-secondary{% else %}bg-light text-muted{% endif %}" style="font-size:0.5rem;margin-left:4px;">{{ sp.get_estado_display }}</span>
+                            </span>
+                        </div>
+                        <ul class="tree-children">
+                            {% for h in sp.historias.all %}
+                            <li class="tree-node">
+                                <div class="tree-item">
+                                    <span class="tree-toggle expanded" onclick="toggleNode(this)"></span>
+                                    <span class="badge bg-light text-muted" style="font-size:0.5rem;">{{ h.codigo }}</span>
+                                    <span class="tree-label">{{ h.titulo }}</span>
+                                    <span class="badge {% if h.prioridad == 'must' %}bg-danger{% elif h.prioridad == 'should' %}bg-warning text-dark{% else %}bg-light text-muted{% endif %}" style="font-size:0.5rem;">{{ h.get_prioridad_display }}</span>
+                                    <span class="badge bg-primary" style="font-size:0.5rem;">{{ h.puntos_historia }} pts</span>
+                                </div>
+                                <ul class="tree-children">
+                                     {% for t in h.tareas.all %}
+                                     <li class="tree-node">
+                                         <div class="tree-item">
+                                             <span class="tree-toggle leaf"></span>
+                                             <span class="badge bg-light text-muted" style="font-size:0.5rem;">{{ t.codigo }}</span>
+                                             <a href="{% url 'proyectos:tarea_detail' proyecto.pk t.pk %}" class="tree-label text-decoration-none" style="font-size:0.72rem;">{{ t.titulo }}</a>
+                                             <span class="badge {% if t.estado == 'finalizada' %}bg-success{% elif t.estado == 'en_curso' %}bg-warning text-dark{% elif t.estado == 'pausada' %}bg-secondary{% else %}bg-light text-muted{% endif %}" style="font-size:0.5rem;">{{ t.get_estado_display }}</span>
+                                             <span style="font-size:0.6rem;color:var(--slate-500);">{{ t.asignado_a.get_full_name|default:'Sin asignar' }}</span>
+                                         </div>
+                                         {% for inc in t.incidencias.all %}
+                                         <ul class="tree-children open" style="margin-left:2rem;">
+                                             <li class="tree-node">
+                                                 <div class="tree-item">
+                                                     <span class="tree-toggle leaf"></span>
+                                                     <span class="badge bg-danger" style="font-size:0.45rem;">{{ inc.codigo }}</span>
+                                                     <a href="{% url 'proyectos:incidencia_detail' proyecto.pk inc.pk %}" class="tree-label text-decoration-none" style="font-size:0.65rem;">{{ inc.titulo }}</a>
+                                                     <span class="badge bg-light text-muted" style="font-size:0.45rem;">{{ inc.get_estado_display }}</span>
+                                                 </div>
+                                             </li>
+                                         </ul>
+                                         {% endfor %}
+                                    </li>
+                                    {% empty %}
+                                    <li class="tree-node"><div class="tree-item"><span class="tree-toggle leaf"></span><span style="font-size:0.65rem;color:var(--slate-400);">Sin tareas</span></div></li>
+                                    {% endfor %}
+                                </ul>
+                            </li>
+                            {% empty %}
+                            <li class="tree-node"><div class="tree-item"><span class="tree-toggle leaf"></span><span style="font-size:0.65rem;color:var(--slate-400);">Sin historias en este sprint</span></div></li>
+                            {% endfor %}
+                        </ul>
+                    </li>
+                    {% endfor %}
+                    {% if tareas_sin %}
+                    <li class="tree-node">
+                        <div class="tree-item">
+                            <span class="tree-toggle expanded" onclick="toggleNode(this)"></span>
+                            <span class="tree-label" style="color:var(--slate-500);font-style:italic;">Tareas sin sprint ni historia ({{ tareas_sin.count }})</span>
+                        </div>
+                        <ul class="tree-children">
+                            {% for t in tareas_sin %}
+                            <li class="tree-node">
+                                <div class="tree-item">
+                                    <span class="tree-toggle leaf"></span>
+                                    <span class="badge bg-light text-muted" style="font-size:0.5rem;">{{ t.codigo }}</span>
+                                    <a href="{% url 'proyectos:tarea_detail' proyecto.pk t.pk %}" class="tree-label text-decoration-none" style="font-size:0.72rem;">{{ t.titulo }}</a>
+                                    <span class="badge bg-light text-muted" style="font-size:0.5rem;">{{ t.get_estado_display }}</span>
+                                     <span style="font-size:0.6rem;color:var(--slate-500);">{{ t.asignado_a.get_full_name|default:'Sin asignar' }}</span>
+                                 </div>
+                                 {% for inc in t.incidencias.all %}
+                                 <ul class="tree-children open" style="margin-left:2rem;">
+                                     <li class="tree-node"><div class="tree-item">
+                                         <span class="tree-toggle leaf"></span>
+                                         <span class="badge bg-danger" style="font-size:0.45rem;">{{ inc.codigo }}</span>
+                                         <a href="{% url 'proyectos:incidencia_detail' proyecto.pk inc.pk %}" class="tree-label text-decoration-none" style="font-size:0.65rem;">{{ inc.titulo }}</a>
+                                         <span class="badge bg-light text-muted" style="font-size:0.45rem;">{{ inc.get_estado_display }}</span>
+                                     </div></li>
+                                 </ul>
+                                 {% endfor %}
+                             </li>
+                            {% endfor %}
+                        </ul>
+                    </li>
+                    {% endif %}
+                </ul>
+            </li>
+        </ul>
+    </div></div>
+</div>
+
+<script>
+function toggleNode(el) {
+    el.classList.toggle('expanded');
+    el.classList.toggle('collapsed');
+    var children = el.parentElement.nextElementSibling;
+    if (children && children.classList.contains('tree-children')) {
+        children.classList.toggle('collapsed');
+    }
+}
+function expandirTodo() {
+    document.querySelectorAll('.tree-children').forEach(function(c){ c.classList.remove('collapsed'); });
+    document.querySelectorAll('.tree-toggle:not(.leaf)').forEach(function(t){ t.classList.add('expanded'); t.classList.remove('collapsed'); });
+}
+function colapsarTodo() {
+    document.querySelectorAll('.tree-children').forEach(function(c){ c.classList.add('collapsed'); });
+    document.querySelectorAll('.tree-toggle:not(.leaf)').forEach(function(t){ t.classList.add('collapsed'); t.classList.remove('expanded'); });
+}
+</script>
+{% endblock %}

@@ -1,21 +1,21 @@
 """Template tags para permisos de proyecto"""
 from django import template
-from apps.proyectos.decorators import ROLES_EDICION, ROLES_ADMIN
+from apps.proyectos.decorators import ROLES_EDICION, ROLES_ADMIN, ROLES_REVISION
 
 register = template.Library()
 
 
 @register.filter
 def puede_editar(usuario_proyecto):
-    """¿Puede este miembro crear/editar contenido?"""
+    """Puede crear/editar contenido (Lider o Responsable)?"""
     if usuario_proyecto is None:
-        return True  # Master/Admin sin membresía
+        return True  # Master/Admin sin membresia
     return usuario_proyecto.rol in ROLES_EDICION
 
 
 @register.filter
 def puede_administrar(usuario_proyecto):
-    """¿Puede este miembro gestionar equipo, aprobar?"""
+    """Puede gestionar equipo, aprobar?"""
     if usuario_proyecto is None:
         return True
     return usuario_proyecto.rol in ROLES_ADMIN
@@ -23,7 +23,7 @@ def puede_administrar(usuario_proyecto):
 
 @register.filter
 def es_aprobador(usuario_proyecto):
-    """¿Puede este miembro aprobar/rechazar?"""
+    """Puede aprobar/rechazar historias?"""
     if usuario_proyecto is None:
         return True
-    return usuario_proyecto.rol in ["lider", "responsable", "aprobador", "revisor"]
+    return usuario_proyecto.rol in ROLES_REVISION

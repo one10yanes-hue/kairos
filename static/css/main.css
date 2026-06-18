@@ -37,6 +37,7 @@ body {
 }
 
 /* ========== CARDS ========== */
+.card {
     border: 1px solid var(--slate-200);
     border-radius: 0.625rem;
     background: #fff;

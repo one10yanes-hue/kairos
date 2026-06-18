@@ -1,8 +1,26 @@
 {% extends "base.html" %}{% load proyecto_permisos %}{% block content %}
+<style>
+.sprint-card { border:1px solid var(--slate-200); border-radius:0.5rem; overflow:hidden; transition:box-shadow 0.2s; }
+.sprint-card:hover { box-shadow:0 4px 12px rgba(0,0,0,0.08); }
+.sprint-card .top-bar { height:4px; }
+.sprint-card.planificado .top-bar { background:#cbd5e1; }
+.sprint-card.activo .top-bar { background:#22c55e; }
+.sprint-card.finalizado .top-bar { background:#3b82f6; }
+.sprint-body { padding:0.7rem; }
+.sprint-meta { font-size:0.65rem; color:var(--slate-500); display:flex; gap:1rem; flex-wrap:wrap; }
+.stat-chip { display:inline-flex; align-items:center; gap:3px; background:#f8fafc; border-radius:4px; padding:1px 6px; font-size:0.6rem; }
+.stat-chip .num { font-weight:600; color:var(--slate-700); }
+.timeline-bar { position:relative; height:6px; background:#f1f5f9; border-radius:3px; margin:0.3rem 0; overflow:hidden; }
+.timeline-bar .fill { height:100%; border-radius:3px; }
+.timeline-bar .fill.activo { background:linear-gradient(90deg,#22c55e,#16a34a); }
+.timeline-bar .fill.finalizado { background:#3b82f6; }
+.timeline-bar .fill.planificado { background:#cbd5e1; }
+</style>
+
 <div class="container-fluid mt-3">
-    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <h5 class="fw-bold mb-0" style="font-size:0.95rem;">
-            <a href="{% url 'proyectos:proyecto_detail' proyecto.pk %}" class="text-decoration-none">{{ proyecto.codigo }}</a> · Sprints
+            <a href="{% url 'proyectos:proyecto_detail' proyecto.pk %}" class="text-decoration-none">{{ proyecto.codigo }}</a> &middot; Sprints
         </h5>
         {% if request.membresia|puede_editar %}<a href="{% url 'proyectos:sprint_create' proyecto.pk %}" class="btn btn-primary btn-sm" style="font-size:0.75rem;"><i class="bi bi-plus-lg"></i> Nuevo Sprint</a>{% endif %}
     </div>
@@ -10,22 +28,41 @@
     <div class="row g-3">
         {% for s in sprints %}
         <div class="col-md-6 col-lg-4">
-            <div class="card shadow-sm">
-                <div class="card-header py-1 px-2 d-flex justify-content-between align-items-center">
-                    <small class="fw-semibold">Sprint {{ s.numero }}: {{ s.nombre }}</small>
-                    <span class="badge {% if s.estado == 'activo' %}bg-success{% elif s.estado == 'finalizado' %}bg-secondary{% else %}bg-light text-muted{% endif %}" style="font-size:0.55rem;">{{ s.get_estado_display }}</span>
-                </div>
-                <div class="card-body p-2">
-                    <p class="small mb-1">{{ s.objetivo|default:"Sin objetivo definido"|truncatechars:80 }}</p>
-                    <small class="text-muted d-block" style="font-size:0.65rem;">{{ s.fecha_inicio|date:"d/m/Y"|default:"?" }} → {{ s.fecha_fin|date:"d/m/Y"|default:"?" }}</small>
+            <div class="sprint-card {{ s.estado }}">
+                <div class="top-bar"></div>
+                <div class="sprint-body">
+                    <div class="d-flex justify-content-between align-items-start mb-1">
+                        <h6 class="fw-bold mb-0" style="font-size:0.82rem;">
+                            <a href="{% url 'proyectos:sprint_board' proyecto.pk s.pk %}" class="text-decoration-none" style="color:inherit;">Sprint {{ s.numero }}: {{ s.nombre }}</a>
+                        </h6>
+                        <span class="badge {% if s.estado == 'activo' %}bg-success{% elif s.estado == 'finalizado' %}bg-primary{% else %}bg-light text-muted{% endif %}" style="font-size:0.55rem;">{{ s.get_estado_display }}</span>
+                    </div>
+                    <p class="small mb-1" style="font-size:0.7rem;">{{ s.objetivo|default:"Sin objetivo"|truncatechars:80 }}</p>
+                    <div class="sprint-meta mb-1">
+                        <span><i class="bi bi-calendar3"></i> {{ s.fecha_inicio|date:"d/m/Y"|default:"?" }} &rarr; {{ s.fecha_fin|date:"d/m/Y"|default:"?" }}</span>
+                    </div>
+                    {% if s.fecha_inicio and s.fecha_fin %}
+                    <div class="timeline-bar">
+                        <div class="fill {{ s.estado }}" style="width:{{ s.avance_tareas }}%;"></div>
+                    </div>
+                    {% endif %}
+                    <div class="d-flex gap-1 flex-wrap mt-1">
+                        <span class="stat-chip"><i class="bi bi-bookmark"></i> <span class="num">{{ s.historias.count }}</span> historias</span>
+                        <span class="stat-chip"><i class="bi bi-check-circle"></i> <span class="num">{{ s.avance_tareas }}%</span> completo</span>
+                        <span class="stat-chip"><i class="bi bi-rocket-takeoff"></i> {{ s.puntos_comprometidos }} pts</span>
+                    </div>
                     <div class="d-flex gap-1 mt-2">
                         <a href="{% url 'proyectos:sprint_board' proyecto.pk s.pk %}" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size:0.65rem;">Board</a>
+                        <a href="{% url 'proyectos:sprint_burndown' proyecto.pk s.pk %}" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:0.65rem;">Burndown</a>
+                        {% if s.estado == 'planificado' and request.membresia|puede_editar %}
+                        <a href="{% url 'proyectos:sprint_edit' proyecto.pk s.pk %}" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:0.65rem;">Editar</a>
+                        {% endif %}
                     </div>
                 </div>
             </div>
         </div>
         {% empty %}
-        <div class="col-12"><p class="text-muted text-center py-4">No hay sprints. Crea el primero.</p></div>
+        <div class="col-12"><p class="text-muted text-center py-4">No hay sprints. <a href="{% url 'proyectos:sprint_create' proyecto.pk %}">Crea el primero</a>.</p></div>
         {% endfor %}
     </div>
 </div>

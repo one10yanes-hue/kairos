@@ -1,41 +1,94 @@
 {% extends "base.html" %}{% block content %}
-<div class="container-fluid mt-3">
-    <h5 class="fw-bold mb-3"><i class="bi {% if editando %}bi-pencil{% else %}bi-plus-circle{% endif %}" style="color:var(--accent);"></i> {% if editando %}Editar{% else %}Nuevo{% endif %} Proyecto</h5>
+<div class="container-fluid mt-3" style="max-width:1100px;">
+    <h5 class="fw-bold mb-3">
+        <i class="bi {% if editando %}bi-pencil{% else %}bi-plus-circle{% endif %}" style="color:var(--accent);"></i>
+        {% if editando %}Editar{% else %}Nuevo{% endif %} Proyecto
+    </h5>
     <div class="card shadow-sm">
         <div class="card-body p-4">
-            <form method="POST">
-                {% csrf_token %}
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label small fw-semibold">Nombre <span class="text-danger">*</span></label>
-                        <input type="text" name="nombre" class="form-control" value="{{ proyecto.nombre|default:'' }}" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label small fw-semibold">SubAreas</label>
-                        <input type="text" class="form-control form-control-sm mb-2" id="filtroSubareas" placeholder="Filtrar subareas..." onkeyup="filtrarSubareas()" style="font-size:0.8rem;">
-                        <div class="border rounded p-2" id="subareasContainer" style="max-height:130px;overflow-y:auto;">
-                            {% for s in subareas %}
-                            <label class="d-flex align-items-center gap-2 px-1" style="cursor:pointer;font-size:0.75rem;border-bottom:1px solid #f1f5f9;" data-nombre="{{ s.nombre }} {{ s.area.nombre }}">
-                                <input type="checkbox" name="subareas" value="{{ s.pk }}" class="form-check-input mt-0" onchange="filtrarUsuariosSubareas()">
-                                <span>{{ s.nombre }} <small class="text-muted">({{ s.area.nombre }})</small></span>
+            <form method="POST">{% csrf_token %}
+                <!-- Nombre -->
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold mb-1">Nombre del proyecto <span class="text-danger">*</span></label>
+                    <input type="text" name="nombre" class="form-control" value="{{ proyecto.nombre|default:'' }}" required placeholder="Ej: Portal de Clientes">
+                </div>
+                <!-- Areas + SubAreas -->
+                <div class="row g-3 mb-3">
+                    <div class="col-md-5">
+                        <label class="form-label small fw-semibold mb-1">Areas</label>
+                        <div class="border rounded p-2" id="areasContainer" style="max-height:200px;height:200px;overflow-y:auto;background:#fafbfc;">
+                            {% for a in areas %}
+                            <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;font-size:0.78rem;border-bottom:1px solid #f1f5f9;margin:0;">
+                                <input type="checkbox" class="form-check-input mt-0 area-check" value="{{ a.pk }}" onchange="filtrarSubareas()">
+                                <span>{{ a.nombre }}</span>
                             </label>
                             {% endfor %}
                         </div>
+                        <small class="text-muted" style="font-size:0.6rem;">Selecciona para ver sus sub&aacute;reas</small>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label small fw-semibold">Manager <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control form-control-sm mb-2" id="filtroManager" placeholder="Filtrar usuarios..." onkeyup="filtrarManagers()" style="font-size:0.8rem;">
-                        <select name="manager" id="managerSelect" class="form-select" required style="font-size:0.8rem;">
-                            <option value="">Seleccione...</option>
-                            {% for u in usuarios %}
-                            <option value="{{ u.pk }}" data-subareas="{{ u.subareas.all|join:',' }}">{{ u.get_full_name }}</option>
+                    <div class="col-md-7">
+                        <label class="form-label small fw-semibold mb-1">Sub&aacute;reas <span class="text-danger">*</span></label>
+                        <div class="border rounded p-2" id="subareasContainer" style="max-height:200px;height:200px;overflow-y:auto;background:#fafbfc;">
+                            <div id="subareasPlaceholder" style="color:var(--slate-400);font-size:0.75rem;text-align:center;padding:1.5rem 0;">
+                                <i class="bi bi-arrow-left" style="font-size:1.2rem;"></i><br>Selecciona una o m&aacute;s &aacute;reas
+                            </div>
+                            {% for a in areas %}
+                            <div class="subarea-group mb-2" data-area-id="{{ a.pk }}" style="display:none;">
+                                <div class="fw-semibold px-2 py-1" style="font-size:0.65rem;color:var(--accent-dark);background:#eff6ff;border-radius:3px;">{{ a.nombre }}</div>
+                                {% for s in subareas %}
+                                {% if s.area_id == a.pk %}
+                                <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;font-size:0.75rem;border-bottom:1px solid #f1f5f9;margin:0;" data-area-id="{{ s.area_id }}">
+                                    <input type="checkbox" name="subareas" value="{{ s.pk }}" class="form-check-input mt-0 subarea-check" onchange="filtrarManagers()" {% if editando and s in proyecto.subareas.all %}checked{% endif %}>
+                                    <span>{{ s.nombre }}</span>
+                                </label>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <!-- Manager + Empresa -->
+                <div class="row g-3 mb-3">
+                    <div class="col-md-8">
+                        <label class="form-label small fw-semibold mb-1">Manager <span class="text-danger">*</span></label>
+                        <div id="managerWrapper">
+                            <input type="text" class="form-control form-control-sm mb-1" id="filtroManager" placeholder="Buscar por nombre..." onkeyup="filtrarManagers()" style="font-size:0.78rem;">
+                            <select name="manager" id="managerSelect" class="form-select" required style="font-size:0.8rem;">
+                                <option value="">Seleccionar...</option>
+                                {% for u in usuarios %}
+                                <option value="{{ u.pk }}" data-subareas="{% for us in u.subareas.all %}{{ us.subarea_id }}{% if not forloop.last %},{% endif %}{% endfor %}" {% if editando and proyecto.manager_id == u.pk %}selected{% endif %}>{{ u.get_full_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div id="managerPlaceholder" style="display:none;color:var(--slate-400);font-size:0.75rem;padding:0.5rem 0;">
+                            <i class="bi bi-arrow-up" style="font-size:0.9rem;"></i> Seleccione sub&aacute;reas primero
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold mb-1">Empresa</label>
+                        <select name="empresa" class="form-select" style="font-size:0.8rem;">
+                            <option value="">Sin empresa</option>
+                            {% for e in empresas %}
+                            <option value="{{ e.pk }}" {% if editando and proyecto.empresa_id == e.pk %}selected{% endif %}>{{ e.nombre }}</option>
                             {% endfor %}
                         </select>
                     </div>
+                </div>
+                <!-- Fechas + Estado -->
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold mb-1">Fecha Inicio</label>
+                        <input type="date" name="fecha_inicio" class="form-control" value="{{ proyecto.fecha_inicio|date:'Y-m-d'|default:'' }}"{% if not editando %} min="{% now 'Y-m-d' %}"{% endif %} style="font-size:0.8rem;">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold mb-1">Fecha Fin Estimada</label>
+                        <input type="date" name="fecha_fin_estimada" class="form-control" value="{{ proyecto.fecha_fin_estimada|date:'Y-m-d'|default:'' }}"{% if not editando %} min="{% now 'Y-m-d' %}"{% endif %} style="font-size:0.8rem;">
+                    </div>
                     {% if editando %}
-                    <div class="col-md-6">
-                        <label class="form-label small fw-semibold">Estado</label>
-                        <select name="estado" class="form-select">
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold mb-1">Estado</label>
+                        <select name="estado" class="form-select" style="font-size:0.8rem;">
                             <option value="activo" {% if proyecto.estado == 'activo' %}selected{% endif %}>Activo</option>
                             <option value="pausado" {% if proyecto.estado == 'pausado' %}selected{% endif %}>Pausado</option>
                             <option value="finalizado" {% if proyecto.estado == 'finalizado' %}selected{% endif %}>Finalizado</option>
@@ -43,26 +96,21 @@
                         </select>
                     </div>
                     {% endif %}
+                </div>
+                <!-- Descripcion + Objetivo -->
+                <div class="row g-3">
                     <div class="col-md-6">
-                        <label class="form-label small fw-semibold">Fecha Inicio</label>
-                        <input type="date" name="fecha_inicio" class="form-control" value="{{ proyecto.fecha_inicio|date:'Y-m-d'|default:'' }}">
+                        <label class="form-label small fw-semibold mb-1">Descripci&oacute;n</label>
+                        <textarea name="descripcion" class="form-control" rows="2" style="font-size:0.8rem;">{{ proyecto.descripcion|default:'' }}</textarea>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label small fw-semibold">Fecha Fin Estimada</label>
-                        <input type="date" name="fecha_fin_estimada" class="form-control" value="{{ proyecto.fecha_fin_estimada|date:'Y-m-d'|default:'' }}">
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label small fw-semibold">Descripción</label>
-                        <textarea name="descripcion" class="form-control" rows="2">{{ proyecto.descripcion|default:'' }}</textarea>
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label small fw-semibold">Objetivo</label>
-                        <textarea name="objetivo" class="form-control" rows="2">{{ proyecto.objetivo|default:'' }}</textarea>
+                        <label class="form-label small fw-semibold mb-1">Objetivo</label>
+                        <textarea name="objetivo" class="form-control" rows="2" style="font-size:0.8rem;">{{ proyecto.objetivo|default:'' }}</textarea>
                     </div>
                 </div>
-                <div class="d-flex gap-2 mt-3">
-                    <button type="submit" class="btn btn-primary btn-sm">Guardar</button>
-                    <a href="{% if editando %}{% url 'proyectos:proyecto_detail' proyecto.pk %}{% else %}{% url 'proyectos:proyecto_list' %}{% endif %}" class="btn btn-outline-secondary btn-sm">Cancelar</a>
+                <div class="d-flex gap-2 mt-3 pt-2 border-top">
+                    <button type="submit" class="btn btn-primary btn-sm px-3">Guardar</button>
+                    <a href="{% if editando %}{% url 'proyectos:proyecto_detail' proyecto.pk %}{% else %}{% url 'proyectos:proyecto_list' %}{% endif %}" class="btn btn-outline-secondary btn-sm px-3">Cancelar</a>
                 </div>
             </form>
         </div>
@@ -73,19 +121,115 @@
 {% block extra_js %}
 <script>
 function filtrarSubareas() {
-    var f = document.getElementById('filtroSubareas').value.toLowerCase();
-    document.querySelectorAll('#subareasContainer label').forEach(function(l) {
-        l.style.display = l.textContent.toLowerCase().includes(f) ? '' : 'none';
-    });
+    var checks = document.querySelectorAll('.area-check:checked');
+    var areasActivas = [];
+    for (var i = 0; i < checks.length; i++) { areasActivas.push(checks[i].value); }
+    var groups = document.querySelectorAll('.subarea-group');
+    var placeholder = document.getElementById('subareasPlaceholder');
+    if (areasActivas.length === 0) {
+        placeholder.style.display = 'block';
+        for (var i = 0; i < groups.length; i++) { groups[i].style.display = 'none'; }
+        filtrarManagers();
+        return;
+    }
+    placeholder.style.display = 'none';
+    for (var i = 0; i < groups.length; i++) {
+        var g = groups[i];
+        var areaActiva = areasActivas.indexOf(g.getAttribute('data-area-id')) >= 0;
+        g.style.display = areaActiva ? '' : 'none';
+        if (!areaActiva) {
+            var cbs = g.querySelectorAll('input[type=checkbox]');
+            for (var j = 0; j < cbs.length; j++) { cbs[j].checked = false; }
+        }
+    }
+    filtrarManagers();
 }
 
 function filtrarManagers() {
-    var f = document.getElementById('filtroManager').value.toLowerCase();
+    var subChecks = document.querySelectorAll('.subarea-check:checked');
+    var subSeleccionadas = [];
+    for (var i = 0; i < subChecks.length; i++) { subSeleccionadas.push(subChecks[i].value); }
+
+    var wrapper = document.getElementById('managerWrapper');
+    var placeholder = document.getElementById('managerPlaceholder');
+
+    // Si no hay subareas seleccionadas, mostrar placeholder
+    if (subSeleccionadas.length === 0) {
+        wrapper.style.display = 'none';
+        placeholder.style.display = 'block';
+        return;
+    }
+    wrapper.style.display = 'block';
+    placeholder.style.display = 'none';
+
     var sel = document.getElementById('managerSelect');
-    Array.from(sel.options).forEach(function(o) {
-        if (o.value === '') return;
-        o.style.display = o.text.toLowerCase().includes(f) ? '' : 'none';
-    });
+    var f = document.getElementById('filtroManager').value.toLowerCase();
+    for (var i = 0; i < sel.options.length; i++) {
+        var o = sel.options[i];
+        if (o.value === '') { o.style.display = ''; continue; }
+        var matchText = o.text.toLowerCase().indexOf(f) >= 0;
+        var matchSub = tieneSubarea(o, subSeleccionadas);
+        o.style.display = (matchText && matchSub) ? '' : 'none';
+    }
+    if (sel.value && sel.options[sel.selectedIndex] && sel.options[sel.selectedIndex].style.display === 'none') {
+        sel.value = '';
+    }
 }
+
+function tieneSubarea(option, subIds) {
+    var data = option.getAttribute('data-subareas') || '';
+    var ids = data.split(',');
+    for (var i = 0; i < ids.length; i++) {
+        if (ids[i].trim() && subIds.indexOf(ids[i].trim()) >= 0) return true;
+    }
+    return false;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    var q = document.querySelector('[name="fecha_inicio"]');
+    var f = document.querySelector('[name="fecha_fin_estimada"]');
+    if (q && f) {
+        q.addEventListener('change', function() {
+            if (q.value) f.min = q.value;
+            if (q.value && f.value && f.value < q.value) f.value = q.value;
+        });
+        if (q.value) f.min = q.value;
+    }
+    // En edicion, auto-marcar areas de subareas ya seleccionadas
+    var areaChecks = document.querySelectorAll('.area-check');
+    var subChecks = document.querySelectorAll('.subarea-check:checked');
+    if (subChecks.length > 0 && areaChecks.length > 0) {
+        var areaIds = [];
+        for (var i = 0; i < subChecks.length; i++) {
+            var aid = subChecks[i].parentElement.getAttribute('data-area-id');
+            if (aid && areaIds.indexOf(aid) < 0) areaIds.push(aid);
+        }
+        for (var i = 0; i < areaChecks.length; i++) {
+            if (areaIds.indexOf(areaChecks[i].value) >= 0) areaChecks[i].checked = true;
+        }
+        filtrarSubareas();
+    }
+    filtrarManagers();
+
+    // Validacion de subareas al enviar
+    var form = document.querySelector('form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            var subChecks = document.querySelectorAll('.subarea-check:checked');
+            if (subChecks.length === 0) {
+                e.preventDefault();
+                var container = document.getElementById('subareasContainer');
+                container.style.borderColor = '#dc2626';
+                container.style.backgroundColor = '#fef2f2';
+                var placeholder = document.getElementById('subareasPlaceholder');
+                if (placeholder) {
+                    placeholder.innerHTML = '<i class="bi bi-exclamation-triangle" style="color:#dc2626;"></i><br><span style="color:#dc2626;">Debes seleccionar al menos una subarea</span>';
+                    placeholder.style.display = 'block';
+                }
+                document.querySelector('[name="nombre"]').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+    }
+});
 </script>
 {% endblock %}

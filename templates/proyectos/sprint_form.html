@@ -1,29 +1,58 @@
 {% extends "base.html" %}{% block content %}
 <div class="container-fluid mt-3">
-    <h5 class="fw-bold mb-3">Crear Sprint · {{ proyecto.codigo }}</h5>
+    <h5 class="fw-bold mb-3">{% if editando %}Editar Sprint · {{ proyecto.codigo }}{% else %}Crear Sprint · {{ proyecto.codigo }}{% endif %}</h5>
     <div class="row g-3">
         <div class="col-lg-8">
             <div class="card shadow-sm"><div class="card-body p-4">
                 <form method="POST">{% csrf_token %}
                     <div class="row g-3 mb-3">
-                        <div class="col-md-6"><label class="form-label small fw-semibold">Nombre <span class="text-danger">*</span></label><input type="text" name="nombre" class="form-control" required></div>
-                        <div class="col-md-3"><label class="form-label small fw-semibold">Inicio</label><input type="date" name="fecha_inicio" class="form-control"></div>
-                        <div class="col-md-3"><label class="form-label small fw-semibold">Fin</label><input type="date" name="fecha_fin" class="form-control"></div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Nombre <span class="text-danger">*</span></label>
+                            <input type="text" name="nombre" class="form-control" value="{{ sprint.nombre|default:'' }}" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold">Inicio</label>
+                            <input type="date" name="fecha_inicio" class="form-control" value="{{ sprint.fecha_inicio|date:'Y-m-d'|default:'' }}" min="{% now 'Y-m-d' %}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold">Fin</label>
+                            <input type="date" name="fecha_fin" class="form-control" value="{{ sprint.fecha_fin|date:'Y-m-d'|default:'' }}" min="{% now 'Y-m-d' %}">
+                        </div>
                     </div>
-                    <div class="mb-3"><label class="form-label small fw-semibold">Objetivo</label><textarea name="objetivo" class="form-control" rows="2" placeholder="Meta del sprint..."></textarea></div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Objetivo</label>
+                        <textarea name="objetivo" class="form-control" rows="2" placeholder="Meta del sprint...">{{ sprint.objetivo|default:'' }}</textarea>
+                    </div>
                     <h6 class="fw-semibold small mt-3">Seleccionar historias del backlog</h6>
                     <div style="max-height:300px;overflow-y:auto;" class="border rounded p-2">
+                        {% if editando %}
+                            {% for h in historias_sprint %}
+                            <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;font-size:0.8rem;border-bottom:1px solid #f1f5f9;">
+                                <input type="checkbox" name="historias" value="{{ h.pk }}" class="form-check-input mt-0" checked>
+                                <span class="badge bg-light text-muted" style="font-size:0.55rem;">{{ h.codigo }}</span>
+                                <span>{{ h.titulo }}</span>
+                                <span class="badge {% if h.prioridad == 'must' %}bg-danger{% elif h.prioridad == 'should' %}bg-warning text-dark{% else %}bg-light text-muted{% endif %}" style="font-size:0.55rem;margin-left:auto;">{{ h.puntos_historia }} pts</span>
+                            </label>
+                            {% endfor %}
+                        {% endif %}
                         {% for h in historias %}
+                        {% if not editando or h.pk not in historias_ids_sprint %}
                         <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;font-size:0.8rem;border-bottom:1px solid #f1f5f9;">
                             <input type="checkbox" name="historias" value="{{ h.pk }}" class="form-check-input mt-0">
                             <span class="badge bg-light text-muted" style="font-size:0.55rem;">{{ h.codigo }}</span>
                             <span>{{ h.titulo }}</span>
                             <span class="badge {% if h.prioridad == 'must' %}bg-danger{% elif h.prioridad == 'should' %}bg-warning text-dark{% else %}bg-light text-muted{% endif %}" style="font-size:0.55rem;margin-left:auto;">{{ h.puntos_historia }} pts</span>
                         </label>
-                        {% empty %}<p class="text-muted small text-center py-2 mb-0">No hay historias en el backlog</p>{% endfor %}
+                        {% endif %}
+                        {% endfor %}
+                        {% if not historias_sprint and not historias %}<p class="text-muted small text-center py-2 mb-0">No hay historias disponibles</p>{% endif %}
                     </div>
-                    <button type="submit" class="btn btn-primary btn-sm mt-3">Crear Sprint</button>
+                    <button type="submit" class="btn btn-primary btn-sm mt-3">{% if editando %}Actualizar{% else %}Crear{% endif %} Sprint</button>
+                    {% if editando %}
+                    <a href="{% url 'proyectos:sprint_board' proyecto.pk sprint.pk %}" class="btn btn-outline-secondary btn-sm mt-3 ms-2">Cancelar</a>
+                    {% else %}
                     <a href="{% url 'proyectos:sprint_list' proyecto.pk %}" class="btn btn-outline-secondary btn-sm mt-3 ms-2">Cancelar</a>
+                    {% endif %}
                 </form>
             </div></div>
         </div>
@@ -38,4 +67,20 @@
         </div>
     </div>
 </div>
+{% endblock %}
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var inicio = document.querySelector('[name="fecha_inicio"]');
+    var fin = document.querySelector('[name="fecha_fin"]');
+    if (inicio && fin) {
+        function ajustarMinFin() {
+            if (inicio.value) fin.min = inicio.value;
+            if (inicio.value && fin.value && fin.value < inicio.value) fin.value = inicio.value;
+        }
+        inicio.addEventListener('change', ajustarMinFin);
+        ajustarMinFin();
+    }
+});
+</script>
 {% endblock %}

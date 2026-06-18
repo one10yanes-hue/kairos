@@ -24,6 +24,20 @@
                             {% endfor %}
                         </div>
 
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-12">
+                                <div class="border rounded p-3 d-flex align-items-center gap-3" style="background:#fafafa;">
+                                    <div class="form-check form-switch mb-0">
+                                        <input type="checkbox" name="maneja_proyectos" class="form-check-input" id="id_maneja_proyectos" role="switch" style="width:2.5rem;height:1.4rem;" {% if form.maneja_proyectos.value %}checked{% endif %}>
+                                        <label class="form-check-label fw-semibold fs-6" for="id_maneja_proyectos">
+                                            <i class="bi bi-kanban"></i> Gestion de Proyectos
+                                        </label>
+                                    </div>
+                                    <small class="text-muted" style="font-size:0.72rem;">Al activarlo, el usuario podr&aacute; acceder al m&oacute;dulo de proyectos en el sidebar</small>
+                                </div>
+                            </div>
+                        </div>
+
                         <hr>
                         <h6 class="fw-semibold mb-3" style="color:var(--accent);"><i class="bi bi-building"></i> Contratos</h6>
                         <div class="d-flex flex-wrap gap-2 mb-4">

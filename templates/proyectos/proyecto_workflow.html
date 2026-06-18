@@ -1,0 +1,203 @@
+{% extends "base.html" %}{% load proyecto_permisos %}{% block content %}
+<style>
+.preset-btn { display:block; width:100%; border:2px solid var(--slate-200); border-radius:0.625rem; padding:0.8rem 1rem; text-align:left; text-decoration:none; background:#fff; transition:all 0.15s; position:relative; height:100%; color:inherit; }
+.preset-btn:hover { border-color:var(--accent); box-shadow:0 2px 8px rgba(59,130,246,0.06); color:inherit; text-decoration:none; }
+.preset-btn.activo { border-color:#22c55e; background:#f0fdf4; box-shadow:0 0 0 1px #22c55e; }
+.preset-btn .p-name { font-weight:600; font-size:0.78rem; color:var(--slate-700); display:block; }
+.preset-btn .p-flow { font-size:0.58rem; color:var(--slate-400); display:block; margin-top:2px; }
+.preset-btn .p-roles { font-size:0.55rem; color:var(--slate-500); margin-top:4px; }
+.preset-btn .p-check { position:absolute; top:0.5rem; right:0.7rem; width:20px; height:20px; border-radius:50%; border:2px solid var(--slate-300); background:#fff; display:flex; align-items:center; justify-content:center; font-size:0.65rem; line-height:1; }
+.preset-btn.activo .p-check { border-color:#22c55e; background:#22c55e; color:#fff; }
+.miembro-sobra td { background:#fef2f2; }
+.miembro-sobra .sobra-badge { font-size:0.5rem; background:#fee2e2; color:#dc2626; padding:1px 5px; border-radius:2px; margin-left:3px; }
+</style>
+
+<div class="container-fluid mt-3" style="max-width:1200px;">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <div>
+            <h5 class="fw-bold mb-0"><i class="bi bi-sliders" style="color:var(--accent);font-size:1.1rem;"></i> {{ proyecto.codigo }} &middot; Configuracion</h5>
+            <small style="font-size:0.6rem;color:var(--slate-400);">{{ proyecto.nombre }} &middot; {% for s in proyecto.subareas.all %}{{ s.area.nombre }} > {{ s.nombre }}{% if not forloop.last %}, {% endif %}{% empty %}Global{% endfor %}</small>
+        </div>
+    </div>
+
+    <!-- Plantilla de Flujo -->
+    <div class="mb-2">
+        <small class="fw-semibold text-uppercase" style="color:var(--slate-500);font-size:0.68rem;">Plantilla de Flujo</small>
+        <small class="text-muted" style="font-size:0.55rem;"> &mdash; Selecciona una y revisa el equipo antes de aplicar</small>
+    </div>
+    <div class="row g-1 mb-2">
+        <div class="col-md-4">
+            <a href="?preset=simple" class="preset-btn {% if preset_activo == 'simple' %}activo{% endif %}">
+                <span class="p-check">{% if preset_activo == 'simple' %}&#10003;{% endif %}</span>
+                <span class="p-name">Simple</span>
+                <span class="p-flow">pendiente &rarr; en_curso &rarr; finalizada</span>
+                <span class="p-roles">Lider, Ejecutor</span>
+            </a>
+        </div>
+        <div class="col-md-4">
+            <a href="?preset=revision" class="preset-btn {% if preset_activo == 'revision' %}activo{% endif %}">
+                <span class="p-check">{% if preset_activo == 'revision' %}&#10003;{% endif %}</span>
+                <span class="p-name">Con Revision</span>
+                <span class="p-flow">pend. &rarr; curso &rarr; final. &rarr; revision</span>
+                <span class="p-roles">Lider, Responsable, Ejecutor, Revisor, Aprobador</span>
+            </a>
+        </div>
+        <div class="col-md-4">
+            <a href="?preset=completo" class="preset-btn {% if preset_activo == 'completo' %}activo{% endif %}">
+                <span class="p-check">{% if preset_activo == 'completo' %}&#10003;{% endif %}</span>
+                <span class="p-name">Completo</span>
+                <span class="p-flow">Todos los estados disponibles</span>
+                <span class="p-roles">Lider, Responsable, Ejecutor, Revisor, Aprobador, Observador</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Botones Actualizar / Cancelar -->
+    {% if mostrar_actualizar %}
+    <form method="POST" class="d-flex gap-1 align-items-center mb-2">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="actualizar">
+        <input type="hidden" name="preset" value="{{ preset_activo }}">
+        <button class="btn btn-primary btn-sm" style="font-size:0.7rem;padding:0.3rem 0.8rem;">Actualizar configuracion</button>
+        <a href="?" class="btn btn-outline-secondary btn-sm" style="font-size:0.7rem;padding:0.3rem 0.8rem;">Cancelar</a>
+        {% if miembros_sobran %}<small style="color:var(--danger);font-size:0.6rem;" class="ms-2">Hay miembros con roles que no aplican. Quitalos primero.</small>{% endif %}
+    </form>
+    {% endif %}
+
+    {% if messages %}
+    {% for m in messages %}<small class="d-block mb-1" style="color:{% if m.tags == 'error' %}var(--danger){% else %}var(--success){% endif %};font-size:0.6rem;">{{ m }}</small>{% endfor %}
+    {% endif %}
+
+    <!-- Flujo resultante -->
+    <div class="mb-2 mt-2">
+        <small class="fw-semibold text-uppercase" style="color:var(--slate-500);font-size:0.68rem;">Flujo {{ preset_activo|title }}</small>
+    </div>
+    <div class="row g-1 mb-3">
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header py-1 px-2"><small class="fw-semibold" style="font-size:0.65rem;">Tareas</small></div>
+                <div class="card-body p-2" style="font-size:0.55rem;min-height:80px;">
+                    {% for origen, destinos in flujos.tarea.items %}
+                    {% if destinos %}
+                    <span class="badge bg-light text-dark border" style="font-size:0.5rem;">{{ origen }}</span> &rarr;
+                    {% for d in destinos %}<span class="badge {% if d == 'finalizada' %}bg-success{% elif d == 'cancelada' %}bg-danger{% elif d == 'revision' %}bg-info{% elif d == 'bloqueada' %}bg-warning text-dark{% elif d == 'pendiente' %}bg-secondary{% else %}bg-light text-dark{% endif %}" style="font-size:0.5rem;">{{ d }}</span>{% if not forloop.last %} {% endif %}{% endfor %}<br>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header py-1 px-2"><small class="fw-semibold" style="font-size:0.65rem;">Historias</small></div>
+                <div class="card-body p-2" style="font-size:0.55rem;min-height:80px;">
+                    {% for origen, destinos in flujos.historia.items %}
+                    {% if destinos %}
+                    <span class="badge bg-light text-dark border" style="font-size:0.5rem;">{{ origen }}</span> &rarr;
+                    {% for d in destinos %}<span class="badge {% if d == 'done' %}bg-success{% elif d == 'revision' %}bg-info{% elif d == 'en_progreso' %}bg-warning text-dark{% else %}bg-light text-dark{% endif %}" style="font-size:0.5rem;">{{ d }}</span>{% if not forloop.last %} {% endif %}{% endfor %}<br>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header py-1 px-2"><small class="fw-semibold" style="font-size:0.65rem;">Incidencias</small></div>
+                <div class="card-body p-2" style="font-size:0.55rem;min-height:80px;">
+                    {% for origen, destinos in flujos.incidencia.items %}
+                    {% if destinos %}
+                    <span class="badge bg-light text-dark border" style="font-size:0.5rem;">{{ origen }}</span> &rarr;
+                    {% for d in destinos %}<span class="badge {% if d == 'cerrada' or d == 'resuelta' %}bg-success{% elif d == 'duplicada' %}bg-warning text-dark{% elif d == 'en_progreso' %}bg-warning text-dark{% else %}bg-light text-dark{% endif %}" style="font-size:0.5rem;">{{ d }}</span>{% if not forloop.last %} {% endif %}{% endfor %}<br>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Revision y Aprobacion -->
+    <div class="mb-2">
+        <small class="fw-semibold text-uppercase" style="color:var(--slate-500);font-size:0.68rem;">Revision y Aprobacion</small>
+    </div>
+    <div class="row g-1 mb-3">
+        <div class="col-md-3"><div class="card shadow-sm h-100"><div class="card-body p-2"><div class="fw-semibold" style="font-size:0.62rem;color:var(--slate-600);">1. Ejecutor finaliza</div><div style="font-size:0.55rem;color:var(--slate-400);">Trabaja la tarea y la marca <span class="badge bg-success" style="font-size:0.5rem;">finalizada</span></div></div></div></div>
+        <div class="col-md-3"><div class="card shadow-sm h-100"><div class="card-body p-2"><div class="fw-semibold" style="font-size:0.62rem;color:var(--slate-600);">2. Revisor inspecciona</div><div style="font-size:0.55rem;color:var(--slate-400);">Aprueba <span class="badge bg-success" style="font-size:0.5rem;">finalizada</span> o rechaza <span class="badge bg-secondary" style="font-size:0.5rem;">pendiente</span></div></div></div></div>
+        <div class="col-md-3"><div class="card shadow-sm h-100"><div class="card-body p-2"><div class="fw-semibold" style="font-size:0.62rem;color:var(--slate-600);">3. Historia en Kanban</div><div style="font-size:0.55rem;color:var(--slate-400);">Al completar todas sus tareas llega al Aprobador como <span class="badge bg-info" style="font-size:0.5rem;">revision</span></div></div></div></div>
+        <div class="col-md-3"><div class="card shadow-sm h-100"><div class="card-body p-2"><div class="fw-semibold" style="font-size:0.62rem;color:var(--slate-600);">4. Aprobador decide</div><div style="font-size:0.55rem;color:var(--slate-400);"><span class="badge bg-success" style="font-size:0.5rem;">Aprobar</span> historia o <span class="badge bg-danger" style="font-size:0.5rem;">Rechazar</span> tarea (genera incidencia)</div></div></div></div>
+    </div>
+
+    <!-- Roles -->
+    <div class="mb-2">
+        <small class="fw-semibold text-uppercase" style="color:var(--slate-500);font-size:0.68rem;">Roles</small>
+    </div>
+    <div class="row g-1 mb-3">
+        <div class="col-md-2"><div class="card shadow-sm h-100" style="border-left:3px solid var(--accent);"><div class="card-body p-2"><div class="fw-semibold" style="font-size:0.62rem;color:var(--slate-700);">Lider</div><div style="font-size:0.52rem;color:var(--slate-400);">Crea y gestiona proyecto, historias, sprints y equipo</div></div></div></div>
+        <div class="col-md-2"><div class="card shadow-sm h-100" style="border-left:3px solid #8b5cf6;"><div class="card-body p-2"><div class="fw-semibold" style="font-size:0.62rem;color:var(--slate-700);">Responsable</div><div style="font-size:0.52rem;color:var(--slate-400);">Crea y edita contenido. Cierra sprints</div></div></div></div>
+        <div class="col-md-2"><div class="card shadow-sm h-100" style="border-left:3px solid #22c55e;"><div class="card-body p-2"><div class="fw-semibold" style="font-size:0.62rem;color:var(--slate-700);">Ejecutor</div><div style="font-size:0.52rem;color:var(--slate-400);">Inicia, pausa y finaliza tareas en su Kanban</div></div></div></div>
+        <div class="col-md-2"><div class="card shadow-sm h-100" style="border-left:3px solid #f59e0b;"><div class="card-body p-2"><div class="fw-semibold" style="font-size:0.62rem;color:var(--slate-700);">Revisor / QA</div><div style="font-size:0.52rem;color:var(--slate-400);">Revisa tareas finalizadas. Aprueba o rechaza</div></div></div></div>
+        <div class="col-md-2"><div class="card shadow-sm h-100" style="border-left:3px solid #ef4444;"><div class="card-body p-2"><div class="fw-semibold" style="font-size:0.62rem;color:var(--slate-700);">Aprobador</div><div style="font-size:0.52rem;color:var(--slate-400);">Cierra historias. Aprueba/rechaza individual</div></div></div></div>
+        <div class="col-md-2"><div class="card shadow-sm h-100" style="border-left:3px solid var(--slate-400);"><div class="card-body p-2"><div class="fw-semibold" style="font-size:0.62rem;color:var(--slate-700);">Observador</div><div style="font-size:0.52rem;color:var(--slate-400);">Solo lectura. Ve el proyecto</div></div></div></div>
+    </div>
+
+    <!-- Equipo -->
+    <div class="card shadow-sm">
+        <div class="card-header py-1 px-2 d-flex justify-content-between align-items-center">
+            <small class="fw-semibold" style="font-size:0.68rem;">Equipo <span class="text-muted">({{ miembros|length }})</span></small>
+            <div class="d-flex gap-1 align-items-center">
+                {% if roles_faltantes %}<small style="color:var(--warning);font-size:0.55rem;">Sin asignar: {{ roles_faltantes|join:", " }}</small>{% endif %}
+                {% if roles_sobran %}<small style="color:var(--danger);font-size:0.55rem;" class="ms-1">Sobran: {{ roles_sobran|join:", " }}</small>{% endif %}
+            </div>
+        </div>
+        <div class="card-body p-2">
+            <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-1">
+                <input type="text" class="form-control form-control-sm" id="filtroEquipo" placeholder="Buscar miembro..." style="width:160px;font-size:0.7rem;" onkeyup="filtrarEquipo()">
+                <form method="POST" class="d-flex gap-1">{% csrf_token %}
+                    <input type="hidden" name="accion" value="agregar_equipo">
+                    <select name="user_id" class="form-select form-select-sm" style="font-size:0.7rem;width:180px;">
+                        <option value="">Agregar miembro...</option>
+                        {% for u in usuarios %}<option value="{{ u.pk }}">{{ u.get_full_name }}</option>{% endfor %}
+                    </select>
+                    <select name="rol" class="form-select form-select-sm" style="font-size:0.7rem;width:140px;">
+                        <option value="ejecutor">Ejecutor</option>
+                        <option value="lider">Lider</option>
+                        <option value="responsable">Responsable</option>
+                        <option value="revisor">Revisor / QA</option>
+                        <option value="aprobador">Aprobador</option>
+                        <option value="observador">Observador</option>
+                    </select>
+                    <button class="btn btn-primary btn-sm" style="font-size:0.65rem;padding:0.15rem 0.5rem;">+</button>
+                </form>
+            </div>
+            <table class="table table-sm table-borderless mb-0" style="font-size:0.65rem;">
+                <thead><tr style="font-size:0.55rem;color:var(--slate-500);text-transform:uppercase;"><th>Miembro</th><th>Rol</th><th style="width:90px;">Ingreso</th><th style="width:30px;"></th></tr></thead>
+                <tbody>
+                    {% for m in miembros %}
+                    <tr data-busqueda="{{ m.user.get_full_name|lower }}" class="{% if m.rol in roles_sobran %}miembro-sobra{% endif %}">
+                        <td class="fw-semibold" style="font-size:0.68rem;">{{ m.user.get_full_name }}{% if m.rol in roles_sobran %}<span class="sobra-badge">sobra</span>{% endif %}</td>
+                        <td><span class="badge {% if m.rol == 'lider' %}bg-primary{% elif m.rol == 'ejecutor' %}bg-success{% elif m.rol == 'revisor' or m.rol == 'aprobador' %}bg-warning{% elif m.rol == 'responsable' %}bg-info{% else %}bg-secondary{% endif %}" style="font-size:0.5rem;">{{ m.get_rol_display }}</span></td>
+                        <td style="font-size:0.58rem;color:var(--slate-400);">{{ m.fecha_ingreso|date:"d/m/Y" }}</td>
+                        <td>
+                            <form method="POST" class="d-inline">{% csrf_token %}
+                                <input type="hidden" name="accion" value="remover_equipo">
+                                <input type="hidden" name="user_id" value="{{ m.user_id }}">
+                                <button class="btn btn-sm btn-outline-danger py-0 px-1" style="font-size:0.5rem;" title="Remover" onclick="return confirm('Quitar a {{ m.user.get_full_name }}?')">&times;</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="text-center text-muted py-3" style="font-size:0.6rem;">Sin miembros. Agrega al menos un lider y ejecutor.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+function filtrarEquipo() {
+    var q = document.getElementById('filtroEquipo').value.toLowerCase();
+    document.querySelectorAll('table tbody tr[data-busqueda]').forEach(function(r) {
+        r.style.display = (r.getAttribute('data-busqueda')||'').includes(q) ? '' : 'none';
+    });
+}
+</script>
+{% endblock %}

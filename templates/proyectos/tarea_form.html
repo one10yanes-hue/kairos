@@ -1,18 +1,78 @@
 {% extends "base.html" %}{% block content %}
 <div class="container-fluid mt-3">
-    <h5 class="fw-bold mb-3">Nueva Tarea · {{ proyecto.codigo }}</h5>
+    <h5 class="fw-bold mb-3">{% if editando %}Editar Tarea{% else %}Nueva Tarea{% endif %} · {{ proyecto.codigo }}</h5>
     <div class="card shadow-sm"><div class="card-body p-4">
         <form method="POST">{% csrf_token %}
             <div class="row g-3">
-                <div class="col-12"><label class="form-label small fw-semibold">Título <span class="text-danger">*</span></label><input type="text" name="titulo" class="form-control" required></div>
-                <div class="col-12"><label class="form-label small fw-semibold">Descripción</label><textarea name="descripcion" class="form-control" rows="2"></textarea></div>
-                <div class="col-md-4"><label class="form-label small fw-semibold">Tipo</label><select name="tipo" class="form-select"><option value="tarea">Tarea</option><option value="mejora">Mejora</option><option value="bug">Bug</option><option value="documentacion">Documentación</option><option value="prueba">Prueba</option><option value="diseno">Diseño</option></select></div>
-                <div class="col-md-4"><label class="form-label small fw-semibold">Asignado a</label><select name="user_id" class="form-select"><option value="">Sin asignar</option>{% for m in miembros %}<option value="{{ m.user.pk }}">{{ m.user.get_full_name }}</option>{% endfor %}</select></div>
-                <div class="col-md-4"><label class="form-label small fw-semibold">Historia</label><select name="historia_id" class="form-select"><option value="">Ninguna</option>{% for h in historias %}<option value="{{ h.pk }}">{{ h.codigo }}: {{ h.titulo|truncatechars:40 }}</option>{% endfor %}</select></div>
-                <div class="col-md-4"><label class="form-label small fw-semibold">Actividad (catálogo)</label><select name="actividad_id" class="form-select"><option value="">Genérica del proyecto</option>{% for a in actividades %}<option value="{{ a.pk }}">{{ a.nombre }} ({{ a.tipo_actividad.nombre }})</option>{% endfor %}</select></div>
-                <div class="col-md-4"><label class="form-label small fw-semibold">Sprint</label><select name="sprint_id" class="form-select"><option value="">Ninguno</option>{% for s in sprints %}<option value="{{ s.pk }}">Sprint {{ s.numero }}: {{ s.nombre }}</option>{% endfor %}</select></div>
+                <div class="col-12"><label class="form-label small fw-semibold">Título <span class="text-danger">*</span></label><input type="text" name="titulo" class="form-control" value="{{ tarea.titulo|default:'' }}" required></div>
+                <div class="col-12"><label class="form-label small fw-semibold">Descripción</label><textarea name="descripcion" class="form-control" rows="2">{{ tarea.descripcion|default:'' }}</textarea></div>
+                <div class="col-md-4"><label class="form-label small fw-semibold">Tipo</label>
+                    <select name="tipo" class="form-select">
+                        <option value="tarea" {% if tarea.tipo == 'tarea' %}selected{% endif %}>Tarea</option>
+                        <option value="mejora" {% if tarea.tipo == 'mejora' %}selected{% endif %}>Mejora</option>
+                        <option value="bug" {% if tarea.tipo == 'bug' %}selected{% endif %}>Bug</option>
+                        <option value="documentacion" {% if tarea.tipo == 'documentacion' %}selected{% endif %}>Documentación</option>
+                        <option value="prueba" {% if tarea.tipo == 'prueba' %}selected{% endif %}>Prueba</option>
+                        <option value="diseno" {% if tarea.tipo == 'diseno' %}selected{% endif %}>Diseño</option>
+                    </select>
+                </div>
+                <div class="col-md-4"><label class="form-label small fw-semibold">Prioridad</label>
+                    <select name="prioridad" class="form-select">
+                        <option value="must" {% if tarea.prioridad == 'must' %}selected{% endif %}>Must Have</option>
+                        <option value="should" {% if tarea.prioridad == 'should' %}selected{% endif %}>Should Have</option>
+                        <option value="could" {% if tarea.prioridad == 'could' %}selected{% endif %}>Could Have</option>
+                        <option value="wont" {% if tarea.prioridad == 'wont' %}selected{% endif %}>Won't Have</option>
+                    </select>
+                </div>
+                <div class="col-md-4"><label class="form-label small fw-semibold">Asignado a</label>
+                    <select name="user_id" class="form-select">
+                        <option value="">Sin asignar</option>
+                        {% for m in miembros %}
+                        <option value="{{ m.user.pk }}" {% if tarea.asignado_a_id == m.user.pk %}selected{% endif %}>{{ m.user.get_full_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4"><label class="form-label small fw-semibold">Historia</label>
+                    <select name="historia_id" class="form-select">
+                        <option value="">Ninguna</option>
+                        {% for h in historias %}
+                        <option value="{{ h.pk }}" {% if selected_historia == h.pk|stringformat:'s' %}selected{% endif %}>{{ h.codigo }}: {{ h.titulo|truncatechars:40 }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4"><label class="form-label small fw-semibold">Actividad (catálogo)</label>
+                    <select name="actividad_id" class="form-select">
+                        <option value="">Genérica del proyecto</option>
+                        {% for a in actividades %}
+                        <option value="{{ a.pk }}" {% if tarea.actividad_catalogo_id == a.pk %}selected{% endif %}>{{ a.nombre }} ({{ a.tipo_actividad.nombre }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4"><label class="form-label small fw-semibold">Sprint</label>
+                    <select name="sprint_id" class="form-select">
+                        <option value="">Ninguno</option>
+                        {% for s in sprints %}
+                        <option value="{{ s.pk }}" {% if selected_sprint == s.pk|stringformat:'s' %}selected{% endif %}>{{ s.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4"><label class="form-label small fw-semibold">Fecha L&iacute;mite</label>
+                    <input type="date" name="fecha_limite" class="form-control" value="{{ tarea.fecha_limite|date:'Y-m-d'|default:'' }}" min="{% now 'Y-m-d' %}">
+                </div>
+                {% if editando %}
+                <div class="col-md-4"><label class="form-label small fw-semibold">Estado</label>
+                    <select name="estado" class="form-select">
+                        {% for val, label in tarea.ESTADOS %}
+                        <option value="{{ val }}" {% if tarea.estado == val %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
             </div>
-            <div class="d-flex gap-2 mt-3"><button type="submit" class="btn btn-primary btn-sm">Crear Tarea</button><a href="{% url 'proyectos:tarea_list' proyecto.pk %}" class="btn btn-outline-secondary btn-sm">Cancelar</a></div>
+            <div class="d-flex gap-2 mt-3">
+                <button type="submit" class="btn btn-primary btn-sm">{% if editando %}Actualizar{% else %}Crear{% endif %} Tarea</button>
+                <a href="{% url 'proyectos:tarea_list' proyecto.pk %}" class="btn btn-outline-secondary btn-sm">Cancelar</a>
+            </div>
         </form>
     </div></div>
 </div>

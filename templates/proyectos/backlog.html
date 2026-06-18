@@ -1,113 +1,196 @@
 {% extends "base.html" %}{% load proyecto_permisos %}{% block content %}
+<style>
+.backlog-row { cursor:default; transition:background 0.1s; }
+.backlog-row[data-id] { cursor:grab; }
+.backlog-row:hover { background:var(--slate-50); }
+.backlog-row .expand-icon { display:inline-block; width:16px; font-size:0.55rem; color:var(--slate-400); transition:transform 0.15s; }
+.backlog-row.expanded .expand-icon { transform:rotate(90deg); }
+.type-badge { font-size:0.48rem; padding:1px 5px; border-radius:2px; font-weight:500; }
+.type-badge.historia { background:#dbeafe; color:#1d4ed8; }
+.type-badge.tarea { background:#dcfce7; color:#166534; }
+.type-badge.incidencia { background:#fef3c7; color:#92400e; }
+.tarea-minibar { width:30px; height:3px; background:var(--slate-200); border-radius:1px; overflow:hidden; display:inline-block; vertical-align:middle; }
+.tarea-minibar-fill { height:100%; background:#22c55e; border-radius:1px; }
+.subtareas { display:none; }
+.backlog-row.expanded + tr.subtareas { display:table-row; }
+</style>
+
 <div class="container-fluid mt-3">
     <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-        <h5 class="fw-bold mb-0" style="font-size:0.95rem;">
-            <a href="{% url 'proyectos:proyecto_detail' proyecto.pk %}" class="text-decoration-none">{{ proyecto.codigo }}</a> · Backlog
-        </h5>
-        {% if request.membresia|puede_editar %}<button type="button" class="btn btn-primary btn-sm" style="font-size:0.75rem;" onclick="document.getElementById('historiaModal').style.display='flex'">
-            <i class="bi bi-plus-lg"></i> Nueva Historia
-        </button>{% endif %}
+        <div>
+            <h5 class="fw-bold mb-0" style="font-size:0.95rem;">
+                <a href="{% url 'proyectos:proyecto_detail' proyecto.pk %}" class="text-decoration-none">{{ proyecto.codigo }}</a>
+                <small class="text-muted ms-1">| Backlog</small>
+            </h5>
+            <small style="font-size:0.6rem;color:var(--slate-400);">Historias, tareas e incidencias del proyecto</small>
+        </div>
+        <div class="d-flex gap-1">
+            {% if request.membresia|puede_editar %}
+            <button type="button" class="btn btn-primary btn-sm" style="font-size:0.68rem;padding:0.2rem 0.6rem;" onclick="abrirModal()"><i class="bi bi-plus-lg"></i> Historia</button>
+            <a href="{% url 'proyectos:tarea_create' proyecto.pk %}" class="btn btn-outline-primary btn-sm" style="font-size:0.68rem;padding:0.2rem 0.6rem;">+ Tarea</a>
+            <a href="{% url 'proyectos:incidencia_create' proyecto.pk %}" class="btn btn-outline-warning btn-sm" style="font-size:0.68rem;padding:0.2rem 0.6rem;">+ Incidencia</a>
+            {% endif %}
+        </div>
     </div>
 
-    <div class="row g-2 mb-2">
-        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#0ea5e9;">{{ historias.count }}</div><small class="text-muted" style="font-size:0.6rem;">Total</small></div></div></div>
-        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#ca8a04;">{{ proyecto.sprints.filter.activo.count }}</div><small class="text-muted" style="font-size:0.6rem;">Sprints</small></div></div></div>
+    <div class="mb-2">
+        <small class="fw-semibold text-uppercase" style="color:var(--slate-500);font-size:0.68rem;">Resumen del Backlog</small>
     </div>
+    <div class="row row-cols-4 row-cols-md-7 g-1 mt-1 mb-2">
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:var(--accent);">{{ total_h }}</div><small class="text-muted" style="font-size:0.6rem;">Historias</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#22c55e;">{{ total_t }}</div><small class="text-muted" style="font-size:0.6rem;">Tareas</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#f59e0b;">{{ total_i }}</div><small class="text-muted" style="font-size:0.6rem;">Incidencias</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#dc2626;">{{ must_count }}</div><small class="text-muted" style="font-size:0.6rem;">Must Have</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#8b5cf6;">{{ puntos_total }}</div><small class="text-muted" style="font-size:0.6rem;">Story Points</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#0ea5e9;">{{ sprint_count }}</div><small class="text-muted" style="font-size:0.6rem;">Sprints</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:var(--slate-700);">{{ historias.count|add:tareas_sueltas.count|add:incidencias.count }}</div><small class="text-muted" style="font-size:0.6rem;">En backlog</small></div></div></div>
+    </div>
+
+    <form method="GET">
+        <div class="d-flex gap-1 flex-wrap align-items-center mb-2">
+            <input type="text" name="q" class="form-control form-control-sm" value="{{ q }}" placeholder="Buscar..." style="width:170px;font-size:0.7rem;">
+            <select name="prioridad" class="form-select form-select-sm" style="width:115px;font-size:0.7rem;" onchange="this.form.submit()">
+                <option value="">Prioridad</option>
+                <option value="must" {% if filtro_prioridad == 'must' %}selected{% endif %}>Must</option>
+                <option value="should" {% if filtro_prioridad == 'should' %}selected{% endif %}>Should</option>
+                <option value="could" {% if filtro_prioridad == 'could' %}selected{% endif %}>Could</option>
+                <option value="wont" {% if filtro_prioridad == 'wont' %}selected{% endif %}>Won't</option>
+            </select>
+            <button type="submit" class="btn btn-outline-secondary btn-sm" style="font-size:0.7rem;padding:0.2rem 0.4rem;"><i class="bi bi-funnel"></i></button>
+            {% if q or filtro_prioridad %}<a href="?" class="btn btn-outline-danger btn-sm" style="font-size:0.65rem;padding:0.2rem 0.4rem;">Limpiar</a>{% endif %}
+        </div>
+    </form>
 
     <div class="card shadow-sm">
+        <div class="card-header py-1 px-2 d-flex justify-content-between align-items-center">
+            <small class="fw-semibold" style="font-size:0.68rem;">Items en Backlog <span class="text-muted">({{ historias.count|add:tareas_sueltas.count|add:incidencias.count }})</span></small>
+            <small class="text-muted" style="font-size:0.55rem;">Arrastra historias para reordenar</small>
+        </div>
         <div class="card-body p-0">
-            <table class="table table-hover mb-0" style="font-size:0.78rem;">
+            <table class="table table-hover mb-0" style="font-size:0.7rem;">
                 <thead class="table-light">
-                    <tr><th style="width:30px;"></th><th>Código</th><th>Título</th><th>Prioridad</th><th>Puntos</th><th>Estado</th><th>Sprint</th><th style="width:60px;"></th></tr>
+                    <tr><th style="width:24px;"></th><th style="width:28px;"></th><th style="width:100px;">Codigo</th><th>Titulo / Descripcion</th><th style="width:70px;">Prioridad</th><th style="width:50px;">Pts</th><th style="width:80px;">Tareas</th><th style="width:85px;">Estado</th><th style="width:80px;">Sprint</th><th style="width:70px;"></th></tr>
                 </thead>
                 <tbody id="backlogTable">
                     {% for h in historias %}
-                    <tr data-id="{{ h.pk }}" data-orden="{{ h.orden }}" style="cursor:grab;">
-                        <td class="text-muted" style="font-size:0.6rem;"><i class="bi bi-grip-vertical"></i></td>
-                        <td><span class="badge bg-light text-muted" style="font-size:0.6rem;">{{ h.codigo }}</span></td>
-                        <td><a href="#" onclick="editarHistoria({{ h.pk }},'{{ h.titulo|escapejs }}','{{ h.descripcion|escapejs }}','{{ h.criterios_aceptacion|escapejs }}','{{ h.prioridad }}',{{ h.puntos_historia }},'{{ h.estado }}')" class="text-decoration-none fw-semibold">{{ h.titulo }}</a></td>
-                        <td><span class="badge {% if h.prioridad == 'must' %}bg-danger{% elif h.prioridad == 'should' %}bg-warning text-dark{% elif h.prioridad == 'could' %}bg-info text-dark{% else %}bg-light text-muted{% endif %}" style="font-size:0.55rem;">{{ h.get_prioridad_display }}</span></td>
-                        <td><span class="badge bg-primary" style="font-size:0.55rem;">{{ h.puntos_historia }} pts</span></td>
-                        <td><span class="badge {% if h.estado == 'done' %}bg-success{% elif h.estado == 'backlog' %}bg-light text-muted{% else %}bg-warning text-dark{% endif %}" style="font-size:0.55rem;">{{ h.get_estado_display }}</span></td>
-                        <td style="font-size:0.65rem;">{% if h.sprint %}{{ h.sprint.nombre }}{% else %}-{% endif %}</td>
+                    <tr data-id="{{ h.pk }}" data-orden="{{ h.orden }}" class="backlog-row" onclick="toggleExpand(this, {{ h.pk }})">
+                        <td class="text-muted drag-handle" style="font-size:0.5rem;cursor:grab;"><i class="bi bi-grip-vertical"></i></td>
+                        <td>{% if h.tareas.exists %}<span class="expand-icon">&#9654;</span>{% endif %}</td>
+                        <td><span class="type-badge historia">US</span> <span class="badge bg-light text-muted" style="font-size:0.52rem;">{{ h.codigo }}</span></td>
+                        <td>
+                            <span class="fw-semibold" style="font-size:0.7rem;">{{ h.titulo }}</span>
+                            {% if h.descripcion %}<small class="d-block text-muted" style="font-size:0.52rem;">{{ h.descripcion|truncatechars:70 }}</small>{% endif %}
+                        </td>
+                        <td><span class="badge {% if h.prioridad == 'must' %}bg-danger{% elif h.prioridad == 'should' %}bg-warning{% elif h.prioridad == 'could' %}bg-info{% else %}bg-light text-muted{% endif %}" style="font-size:0.5rem;">{{ h.get_prioridad_display }}</span></td>
+                        <td class="text-center"><span class="badge bg-primary" style="font-size:0.52rem;">{{ h.puntos_historia }}</span></td>
+                        <td>{% with tc=h.tareas.count %}{% if tc %}<div class="tarea-minibar"><div class="tarea-minibar-fill" style="width:{{ h.avance_tareas }}%;"></div></div> <small style="font-size:0.5rem;color:var(--slate-400);">{{ tc }}</small>{% else %}<small style="font-size:0.5rem;color:var(--slate-400);">-</small>{% endif %}{% endwith %}</td>
+                        <td><span class="badge {% if h.estado == 'done' %}bg-success{% elif h.estado == 'backlog' %}bg-secondary{% elif h.estado == 'revision' %}bg-info{% else %}bg-warning{% endif %}" style="font-size:0.5rem;">{{ h.get_estado_display }}</span></td>
+                        <td style="font-size:0.52rem;">{% if h.sprint %}<span class="badge bg-light text-dark border" style="font-size:0.48rem;">{{ h.sprint.nombre }}</span>{% else %}<span class="text-muted" style="font-size:0.48rem;">-</span>{% endif %}</td>
                         <td>
                             {% if h.estado == 'revision' and request.membresia|es_aprobador %}
-                            <div class="d-flex gap-1">
-                            <form method="POST" action="{% url 'proyectos:historia_aprobar' proyecto.pk h.pk %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-success py-0 px-1" style="font-size:0.55rem;" title="Aprobar como Done">✓</button></form>
-                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-1" style="font-size:0.55rem;" title="Rechazar" onclick="rechazarHistoria({{ h.pk }})">✗</button>
-                            </div>
+                            <form method="POST" action="{% url 'proyectos:historia_aprobar' proyecto.pk h.pk %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-success py-0 px-1" style="font-size:0.5rem;" title="Aprobar">&#10003;</button></form>
+                            {% endif %}
+                            {% if request.membresia|puede_editar %}
+                            <a href="#" onclick="event.stopPropagation();editarHistoria({{ h.pk }},'{{ h.titulo|escapejs }}','{{ h.descripcion|escapejs }}','{{ h.criterios_aceptacion|escapejs }}','{{ h.prioridad }}',{{ h.puntos_historia }},'{{ h.estado }}')" class="btn btn-sm btn-outline-secondary py-0 px-1" style="font-size:0.45rem;" title="Editar">E</a>
+                            <a href="{% url 'proyectos:tarea_create' proyecto.pk %}?historia={{ h.pk }}" class="btn btn-sm btn-outline-primary py-0 px-1" style="font-size:0.45rem;" title="+ Tarea">+T</a>
                             {% endif %}
                         </td>
                     </tr>
-                    {% empty %}
-                    <tr><td colspan="8" class="text-center text-muted py-4">Backlog vacío. Crea tu primera historia de usuario.</td></tr>
+                    <tr class="subtareas" id="child-{{ h.pk }}">
+                        <td colspan="10" style="padding:0.3rem 0.6rem;background:#fafbfc;">
+                            <table class="table table-sm table-borderless mb-0" style="font-size:0.55rem;margin:0;">
+                                <thead><tr style="color:var(--slate-400);"><th style="width:120px;">Tarea</th><th>Estado</th><th style="width:80px;">Asignado</th><th style="width:50px;">Hrs</th></tr></thead>
+                                <tbody>
+                                    {% for t in h.tareas.all %}
+                                    <tr>
+                                        <td><span class="badge bg-light text-muted" style="font-size:0.48rem;">{{ t.codigo }}</span> {{ t.titulo|truncatechars:40 }}</td>
+                                        <td><span class="badge {% if t.estado == 'finalizada' %}bg-success{% elif t.estado == 'en_curso' %}bg-warning text-dark{% elif t.estado == 'revision' %}bg-info{% elif t.estado == 'cancelada' %}bg-danger{% else %}bg-secondary{% endif %}" style="font-size:0.45rem;">{{ t.get_estado_display }}</span></td>
+                                        <td style="font-size:0.5rem;">{{ t.asignado_a.get_full_name|default:"-" }}</td>
+                                        <td><span class="badge bg-primary" style="font-size:0.45rem;">{{ t.estimacion_horas|default:"-" }}</span></td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr><td colspan="4" class="text-muted" style="font-size:0.5rem;">Sin tareas. <a href="{% url 'proyectos:tarea_create' proyecto.pk %}?historia={{ h.pk }}">Crear primera tarea</a></td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </td>
+                    </tr>
                     {% endfor %}
+
+                    {% for t in tareas_sueltas %}
+                    <tr class="backlog-row no-drag" style="cursor:default;">
+                        <td></td><td></td>
+                        <td><span class="type-badge tarea">TK</span> <span class="badge bg-light text-muted" style="font-size:0.52rem;">{{ t.codigo }}</span></td>
+                        <td><span style="font-size:0.68rem;">{{ t.titulo }}</span></td>
+                        <td><span class="badge {% if t.prioridad == 'must' %}bg-danger{% elif t.prioridad == 'should' %}bg-warning{% elif t.prioridad == 'could' %}bg-info{% else %}bg-light text-muted{% endif %}" style="font-size:0.5rem;">{{ t.get_prioridad_display }}</span></td>
+                        <td class="text-center"><small style="font-size:0.5rem;color:var(--slate-400);">-</small></td>
+                        <td><small style="font-size:0.5rem;color:var(--slate-400);">-</small></td>
+                        <td><span class="badge {% if t.estado == 'finalizada' %}bg-success{% elif t.estado == 'en_curso' %}bg-warning{% elif t.estado == 'cancelada' %}bg-danger{% elif t.estado == 'revision' %}bg-info{% else %}bg-secondary{% endif %}" style="font-size:0.5rem;">{{ t.get_estado_display }}</span></td>
+                        <td style="font-size:0.5rem;">{% if t.sprint %}<span class="badge bg-light text-dark border" style="font-size:0.48rem;">{{ t.sprint.nombre }}</span>{% else %}<span class="text-muted" style="font-size:0.48rem;">-</span>{% endif %}</td>
+                        <td></td>
+                    </tr>
+                    {% endfor %}
+
+                    {% for i in incidencias %}
+                    <tr class="backlog-row no-drag" style="cursor:default;">
+                        <td></td><td></td>
+                        <td><span class="type-badge incidencia">IN</span> <span class="badge bg-light text-muted" style="font-size:0.52rem;">{{ i.codigo }}</span></td>
+                        <td><span style="font-size:0.68rem;"><i class="bi bi-bug"></i> {{ i.titulo }}</span><small class="ms-1 text-muted" style="font-size:0.5rem;">{{ i.get_tipo_display }} &middot; {{ i.get_severidad_display }}</small></td>
+                        <td><span class="badge bg-warning text-dark" style="font-size:0.5rem;">{{ i.get_severidad_display }}</span></td>
+                        <td class="text-center"><small style="font-size:0.5rem;color:var(--slate-400);">-</small></td>
+                        <td><small style="font-size:0.5rem;color:var(--slate-400);">-</small></td>
+                        <td><span class="badge {% if i.estado == 'abierta' %}bg-danger{% elif i.estado == 'triaged' %}bg-info{% elif i.estado == 'en_progreso' %}bg-warning{% elif i.estado == 'resuelta' or i.estado == 'cerrada' %}bg-success{% else %}bg-secondary{% endif %}" style="font-size:0.5rem;">{{ i.get_estado_display }}</span></td>
+                        <td style="font-size:0.5rem;color:var(--slate-400);">-</td>
+                        <td></td>
+                    </tr>
+                    {% endfor %}
+
+                    {% if not historias and not tareas_sueltas and not incidencias %}
+                    <tr><td colspan="10" class="text-center text-muted py-4" style="font-size:0.65rem;">Backlog vacio.</td></tr>
+                    {% endif %}
                 </tbody>
             </table>
         </div>
     </div>
 </div>
 
-<!-- Historia Modal -->
+<!-- Modal Historia -->
 <div id="historiaModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:9999;align-items:center;justify-content:center;">
-    <div style="background:#fff;border-radius:0.75rem;max-width:500px;width:90%;padding:1.5rem;box-shadow:0 8px 32px rgba(0,0,0,0.12);">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h6 class="fw-bold mb-0" id="historiaModalTitle">Nueva Historia</h6>
-            <button type="button" class="btn-close" onclick="document.getElementById('historiaModal').style.display='none'"></button>
-        </div>
-        <form method="POST" id="historiaForm" action="{% url 'proyectos:historia_create' proyecto.pk %}">
-            {% csrf_token %}
+    <div style="background:#fff;border-radius:0.75rem;max-width:520px;width:95%;padding:1.5rem;box-shadow:0 8px 32px rgba(0,0,0,0.12);max-height:90vh;overflow-y:auto;">
+        <div class="d-flex justify-content-between align-items-center mb-3"><h6 class="fw-bold mb-0" id="historiaModalTitle">Nueva Historia</h6><button type="button" class="btn-close" onclick="document.getElementById('historiaModal').style.display='none'"></button></div>
+        <form method="POST" id="historiaForm" action="{% url 'proyectos:historia_create' proyecto.pk %}">{% csrf_token %}
             <input type="hidden" name="historia_id" id="historiaId">
-            <div class="mb-2">
-                <label class="form-label small fw-semibold">Título <span class="text-danger">*</span></label>
-                <input type="text" name="titulo" id="historiaTitulo" class="form-control form-control-sm" required>
-            </div>
-            <div class="mb-2">
-                <label class="form-label small fw-semibold">Descripción</label>
-                <textarea name="descripcion" id="historiaDesc" class="form-control form-control-sm" rows="2" placeholder="Como [rol], quiero [funcionalidad] para [beneficio]"></textarea>
-            </div>
-            <div class="mb-2">
-                <label class="form-label small fw-semibold">Criterios de aceptación</label>
-                <textarea name="criterios" id="historiaCrit" class="form-control form-control-sm" rows="2"></textarea>
-            </div>
+            <div class="mb-2"><label class="form-label small fw-semibold" style="font-size:0.68rem;">Titulo <span class="text-danger">*</span></label><input type="text" name="titulo" id="historiaTitulo" class="form-control form-control-sm" required style="font-size:0.75rem;" placeholder="Como [rol], quiero [funcionalidad] para [beneficio]"></div>
+            <div class="mb-2"><label class="form-label small fw-semibold" style="font-size:0.68rem;">Descripcion</label><textarea name="descripcion" id="historiaDesc" class="form-control form-control-sm" rows="2" style="font-size:0.75rem;"></textarea></div>
+            <div class="mb-2"><label class="form-label small fw-semibold" style="font-size:0.68rem;">Criterios de aceptacion</label><textarea name="criterios" id="historiaCrit" class="form-control form-control-sm" rows="2" style="font-size:0.75rem;"></textarea></div>
             <div class="row g-2 mb-2">
-                <div class="col-6">
-                    <label class="form-label small fw-semibold">Prioridad</label>
-                    <select name="prioridad" id="historiaPrioridad" class="form-select form-select-sm">
-                        <option value="must">Must Have</option>
-                        <option value="should">Should Have</option>
-                        <option value="could">Could Have</option>
-                        <option value="wont">Won't Have</option>
-                    </select>
-                </div>
-                <div class="col-6">
-                    <label class="form-label small fw-semibold">Story Points</label>
-                    <select name="puntos" id="historiaPuntos" class="form-select form-select-sm">
-                        <option value="1">1</option><option value="2">2</option><option value="3">3</option>
-                        <option value="5">5</option><option value="8">8</option><option value="13">13</option>
-                        <option value="21">21</option>
-                    </select>
-                </div>
+                <div class="col-6"><label class="form-label small fw-semibold" style="font-size:0.68rem;">Prioridad</label><select name="prioridad" id="historiaPrioridad" class="form-select form-select-sm" style="font-size:0.75rem;"><option value="must">Must Have</option><option value="should" selected>Should Have</option><option value="could">Could Have</option><option value="wont">Won't Have</option></select></div>
+                <div class="col-6"><label class="form-label small fw-semibold" style="font-size:0.68rem;">Story Points</label><select name="puntos" id="historiaPuntos" class="form-select form-select-sm" style="font-size:0.75rem;"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="5">5</option><option value="8">8</option><option value="13">13</option><option value="21">21</option></select></div>
             </div>
-            <div class="mb-2" id="estadoField" style="display:none;">
-                <label class="form-label small fw-semibold">Estado</label>
-                <select name="estado" id="historiaEstado" class="form-select form-select-sm">
-                    <option value="backlog">Backlog</option>
-                    <option value="sprint_backlog">Sprint Backlog</option>
-                    <option value="en_progreso">En Progreso</option>
-                    <option value="revision">En Revisión</option>
-                    <option value="done">Done</option>
-                </select>
-            </div>
-            <div class="d-flex justify-content-end gap-2">
-                <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('historiaModal').style.display='none'">Cancelar</button>
-                <button type="submit" class="btn btn-sm btn-primary">Guardar</button>
-            </div>
+            <div class="mb-2" id="estadoField" style="display:none;"><label class="form-label small fw-semibold" style="font-size:0.68rem;">Estado</label><select name="estado" id="historiaEstado" class="form-select form-select-sm" style="font-size:0.75rem;"><option value="backlog">Backlog</option><option value="sprint_backlog">Sprint Backlog</option><option value="en_progreso">En Progreso</option><option value="revision">En Revision</option><option value="done">Done</option></select></div>
+            <div class="d-flex justify-content-end gap-2"><button type="button" class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('historiaModal').style.display='none'" style="font-size:0.7rem;">Cancelar</button><button type="submit" class="btn btn-sm btn-primary" style="font-size:0.7rem;">Guardar</button></div>
         </form>
     </div>
 </div>
 
 <script>
+function toggleExpand(row, pk) {
+    row.classList.toggle('expanded');
+    var child = document.getElementById('child-' + pk);
+    if (child) child.style.display = child.style.display === 'none' ? 'table-row' : 'none';
+}
+function abrirModal() {
+    document.getElementById('historiaModalTitle').textContent = 'Nueva Historia';
+    document.getElementById('historiaForm').action = '/proyectos/{{ proyecto.pk }}/historias/crear/';
+    document.getElementById('historiaId').value = '';
+    document.getElementById('historiaTitulo').value = '';
+    document.getElementById('historiaDesc').value = '';
+    document.getElementById('historiaCrit').value = '';
+    document.getElementById('historiaPrioridad').value = 'should';
+    document.getElementById('historiaPuntos').value = '0';
+    document.getElementById('estadoField').style.display = 'none';
+    document.getElementById('historiaModal').style.display = 'flex';
+}
 function editarHistoria(id, titulo, desc, crit, prioridad, puntos, estado) {
     document.getElementById('historiaModalTitle').textContent = 'Editar Historia';
     document.getElementById('historiaForm').action = '/proyectos/{{ proyecto.pk }}/historias/' + id + '/editar/';
@@ -121,38 +204,33 @@ function editarHistoria(id, titulo, desc, crit, prioridad, puntos, estado) {
     document.getElementById('estadoField').style.display = '';
     document.getElementById('historiaModal').style.display = 'flex';
 }
-
 document.addEventListener('DOMContentLoaded', function(){
-    // SortableJS para drag & drop
     var tbody = document.getElementById('backlogTable');
-    if (tbody && typeof Sortable !== 'undefined') {
-        new Sortable(tbody, {
-            handle: 'td:first-child',
-            animation: 150,
-            onEnd: function() {
-                var ordenes = [];
-                tbody.querySelectorAll('tr[data-id]').forEach(function(tr, i){
-                    ordenes.push({id: tr.dataset.id, orden: i});
-                });
-                fetch('/proyectos/{{ proyecto.pk }}/backlog/reordenar/', {
-                    method: 'POST',
-                    headers: {'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value},
-                    body: JSON.stringify({ordenes: ordenes})
-                });
-            }
-        });
-    }
-});
+    if (!tbody || typeof Sortable === 'undefined') return;
 
-function rechazarHistoria(hid) {
-    var motivo = prompt('Motivo del rechazo (obligatorio):');
-    if (!motivo || !motivo.trim()) return;
-    var form = document.createElement('form');
-    form.method = 'POST';
-    form.action = '/proyectos/{{ proyecto.pk }}/historias/' + hid + '/rechazar/';
-    form.innerHTML = '{% csrf_token %}<input type="hidden" name="motivo" value="' + motivo.replace(/"/g,'&quot;') + '">';
-    document.body.appendChild(form);
-    form.submit();
-}
+    var sortable = new Sortable(tbody, {
+        handle: '.drag-handle',
+        animation: 150,
+        filter: '.subtareas,.no-drag',
+        onEnd: function(evt) {
+            var ordenes = [];
+            tbody.querySelectorAll('tr[data-orden]').forEach(function(tr, i){
+                ordenes.push({id: tr.dataset.id, orden: i});
+            });
+            if (ordenes.length === 0) return;
+            // POST via form
+            var form = document.getElementById('reorderForm');
+            form.querySelector('[name=ordenes_json]').value = JSON.stringify({ordenes: ordenes});
+            form.submit();
+        }
+    });
+
+    document.getElementById('historiaModal').addEventListener('click', function(e) {
+        if (e.target === this) this.style.display = 'none';
+    });
+});
 </script>
+<form id="reorderForm" method="POST" action="{% url 'proyectos:backlog_reordenar' proyecto.pk %}" style="display:none;">
+    {% csrf_token %}<input type="hidden" name="ordenes_json" value="">
+</form>
 {% endblock %}

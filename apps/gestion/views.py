@@ -152,6 +152,26 @@ def tablero(request):
             user_origen=request.user, estado="Pendiente", activo=True
         ).select_related("asignacion_origen__actividad", "user_destino"),
     }
+
+    # --- Tareas pendientes de Revision de Proyectos ---
+    from apps.proyectos.models import Tarea, HistoriaUsuario, MiembroProyecto
+    from apps.proyectos.decorators import ROLES_REVISION
+    proyectos_revisor = MiembroProyecto.objects.filter(
+        user=request.user, activo=True, rol__in=ROLES_REVISION
+    ).values_list("proyecto_id", flat=True)
+    if proyectos_revisor:
+        tareas_revision = Tarea.objects.filter(
+            proyecto_id__in=proyectos_revisor, activo=True, estado="revision"
+        ).select_related("proyecto", "historia", "asignado_a", "creador").order_by("-fecha_creacion")
+        historias_revision = HistoriaUsuario.objects.filter(
+            proyecto_id__in=proyectos_revisor, activo=True, estado="revision"
+        ).select_related("proyecto", "sprint", "creador").prefetch_related("tareas__asignado_a").order_by("-fecha_creacion")
+    else:
+        tareas_revision = Tarea.objects.none()
+        historias_revision = HistoriaUsuario.objects.none()
+    context["tareas_revision"] = tareas_revision
+    context["historias_revision"] = historias_revision
+
     return render(request, "gestion/tablero.html", context)
 
 
@@ -249,13 +269,54 @@ def finalizar_actividad(request, pk):
         messages.error(request, f"Solo puedes finalizar actividades En Curso o Pausadas. Estado actual: '{asignacion.get_estado_display()}'.")
         return redirect("gestion:tablero")
 
+    # --- Revision de proyecto: aprobar o rechazar via el modal Finalizar ---
+    accion_rev = request.POST.get("accion_revision")
+    if accion_rev and asignacion.origen == "Revision":
+        # Formato: "[Revision] US-019: Recuperar contraseña"
+        historia_codigo = asignacion.nombre_actividad.split("] ")[1].split(":")[0].strip() if "] " in asignacion.nombre_actividad else ""
+        from apps.proyectos.models import HistoriaUsuario
+        historia = HistoriaUsuario.objects.filter(codigo=historia_codigo, activo=True).first()
+        if historia:
+            if accion_rev == "aprobar":
+                historia.estado = "done"
+                historia.save()
+                from apps.proyectos.models import RegistroAvance
+                RegistroAvance.objects.create(
+                    proyecto=historia.proyecto, tipo="historia_completada",
+                    descripcion=f"Historia {historia.codigo} aprobada por {request.user.get_full_name()}",
+                    user=request.user, referencia_id=historia.pk
+                )
+                messages.success(request, f"Historia {historia.codigo} aprobada.")
+            elif accion_rev == "rechazar":
+                motivo = request.POST.get("motivo_rechazo", "").strip()
+                if not motivo:
+                    messages.error(request, "Debes indicar el motivo del rechazo.")
+                    return redirect("gestion:tablero")
+                # Devolver todas las tareas de la historia a pendiente
+                for t in historia.tareas.filter(activo=True, estado="finalizada"):
+                    t.estado = "pendiente"
+                    t.save()
+                    if t.asignacion:
+                        t.asignacion.estado = "Pendiente"
+                        t.asignacion.estado_revision = "rechazado"
+                        t.asignacion.revision_comentario = motivo
+                        t.asignacion.save()
+                historia.actualizar_estado()
+                messages.warning(request, f"Historia {historia.codigo} rechazada. Tareas devueltas al Ejecutor.")
+            # Cerrar todas las AsignacionActividad de revision para esta historia
+            AsignacionActividad.objects.filter(
+                nombre_actividad__startswith=f"[Revision] {historia.codigo}:",
+                activo=True
+            ).update(activo=False, estado="Finalizada")
+        return redirect("gestion:tablero")
+
     reemplazo = request.POST.get("reemplazo_actividad")
     entregable_file = request.FILES.get("entregable")
 
     form = RegistroTiempoForm(request.POST, request.FILES)
     if form.is_valid():
         requiere_ent = asignacion.actividad.tipo_actividad.requiere_entregable
-        if not requiere_ent and not form.cleaned_data.get("nro_actividad", "").strip():
+        if not requiere_ent and not form.cleaned_data.get("nro_actividad"):
             messages.error(request, "El numero de actividad (cantidad realizada) es obligatorio para finalizar.")
             return redirect("gestion:tablero")
         if requiere_ent and not entregable_file:
@@ -416,6 +477,18 @@ def trasladar_actividad(request, pk):
         return redirect("gestion:tablero")
 
     user_destino = get_object_or_404(User, pk=user_destino_id, activo=True)
+    # Si la actividad pertenece a un proyecto, validar que el destino sea miembro Ejecutor
+    try:
+        tarea_proyecto = asignacion.tarea_proyecto
+        if tarea_proyecto:
+            from apps.proyectos.models import MiembroProyecto
+            if not MiembroProyecto.objects.filter(
+                proyecto=tarea_proyecto.proyecto, user=user_destino, activo=True, rol="ejecutor"
+            ).exists():
+                messages.error(request, "El usuario destino debe ser miembro Ejecutor del proyecto.")
+                return redirect("gestion:tablero")
+    except:
+        pass
     actividad_reemplazo = None
     if actividad_reemplazo_id:
         actividad_reemplazo = get_object_or_404(Actividad, pk=actividad_reemplazo_id, activo=True)
@@ -584,33 +657,54 @@ def buscar_usuarios_traslado(request):
     if request.headers.get("x-requested-with") == "XMLHttpRequest":
         query = request.GET.get("q", "")
         subarea_id = request.GET.get("subarea_id")
+        proyecto_id = request.GET.get("proyecto_id")
         usuarios = User.objects.filter(
             activo=True, is_active=True
         ).exclude(id=request.user.id)
 
-        # Mismo nivel: Usuario solo ve Usuario, Admin ve Usuarios
-        if request.user.rol.nombre == "Usuario":
-            usuarios = usuarios.filter(
-                Q(rol__nombre="Usuario") | Q(roles_adicionales__nombre="Usuario")
-            )
-        elif request.user.rol.nombre == "Admin":
-            usuarios = usuarios.filter(
-                Q(rol__nombre__in=["Usuario", "Admin"]) | Q(roles_adicionales__nombre__in=["Usuario", "Admin"])
-            ).exclude(rol__nombre="Master")
+        # Si es tarea de proyecto, filtrar solo Ejecutores del proyecto
+        if proyecto_id:
+            from apps.proyectos.models import MiembroProyecto
+            miembros_ids = MiembroProyecto.objects.filter(
+                proyecto_id=proyecto_id, activo=True, rol="ejecutor"
+            ).values_list("user_id", flat=True)
+            usuarios = usuarios.filter(id__in=miembros_ids)
+        else:
+            # Mismo nivel: Usuario solo ve Usuario, Admin ve Usuarios
+            if request.user.rol.nombre == "Usuario":
+                usuarios = usuarios.filter(
+                    Q(rol__nombre="Usuario") | Q(roles_adicionales__nombre="Usuario")
+                )
+            elif request.user.rol.nombre == "Admin":
+                usuarios = usuarios.filter(
+                    Q(rol__nombre__in=["Usuario", "Admin"]) | Q(roles_adicionales__nombre__in=["Usuario", "Admin"])
+                ).exclude(rol__nombre="Master")
 
-        usuarios = usuarios.filter(
-            subareas__subarea__in=SubArea.objects.filter(usuarios__user=request.user, activo=True),
-            subareas__activo=True
-        )
-        if query:
             usuarios = usuarios.filter(
-                Q(nombre__icontains=query) | Q(apellido__icontains=query) | Q(cedula__icontains=query)
+                subareas__subarea__in=SubArea.objects.filter(usuarios__user=request.user, activo=True),
+                subareas__activo=True
             )
-        if subarea_id:
-            usuarios = usuarios.filter(subareas__subarea_id=subarea_id, subareas__activo=True)
+            if subarea_id:
+                usuarios = usuarios.filter(subareas__subarea_id=subarea_id, subareas__activo=True)
         data = [{"id": u.id, "nombre": u.get_full_name(), "cedula": u.cedula} for u in usuarios.distinct()[:10]]
         return JsonResponse(data, safe=False)
     return JsonResponse([], safe=False)
+
+
+@login_required
+def asignacion_proyecto(request, pk):
+    from apps.gestion.models import AsignacionActividad
+    try:
+        a = AsignacionActividad.objects.get(pk=pk, activo=True)
+        try:
+            tarea = a.tarea_proyecto
+        except:
+            tarea = None
+        if tarea:
+            return JsonResponse({"proyecto_id": tarea.proyecto_id, "proyecto_codigo": tarea.proyecto.codigo})
+    except:
+        pass
+    return JsonResponse({"proyecto_id": None})
 
 
 @login_required

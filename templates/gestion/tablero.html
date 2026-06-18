@@ -15,6 +15,47 @@
         </div>
     </div>
 
+    {% if historias_revision %}
+    <div class="card shadow-sm mb-2" style="border-left:4px solid #f59e0b;">
+        <div class="card-header py-1 px-2 d-flex justify-content-between align-items-center" style="background:#fffbeb;">
+            <small class="fw-semibold"><i class="bi bi-hourglass-split" style="color:#f59e0b;"></i> Pendientes de Revisi&oacute;n ({{ historias_revision|length }})</small>
+        </div>
+        <div class="card-body p-2" style="max-height:260px;overflow-y:auto;">
+            <div class="row g-2">
+                {% for h in historias_revision %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="border rounded p-2" style="font-size:0.75rem;background:#fff;border-left:3px solid #f59e0b;">
+                        <div class="d-flex justify-content-between align-items-start mb-1">
+                            <div>
+                                <span class="badge bg-light text-muted" style="font-size:0.5rem;">{{ h.proyecto.codigo }}</span>
+                                <span class="badge bg-light text-muted" style="font-size:0.5rem;">{{ h.codigo }}</span>
+                            </div>
+                            <span class="badge {% if h.prioridad == 'must' %}bg-danger{% elif h.prioridad == 'should' %}bg-warning text-dark{% else %}bg-light text-muted{% endif %}" style="font-size:0.5rem;">{{ h.puntos_historia }}pts</span>
+                        </div>
+                        <p class="fw-semibold mb-1" style="font-size:0.78rem;line-height:1.2;">{{ h.titulo }}</p>
+                        {% for t in h.tareas.all %}
+                        <div class="d-flex justify-content-between align-items-center py-1 {% if not forloop.last %}border-bottom{% endif %}">
+                            <div>
+                                <span class="badge bg-light text-muted" style="font-size:0.45rem;">{{ t.codigo }}</span>
+                                <span style="font-size:0.62rem;">{{ t.titulo|truncatechars:20 }}</span>
+                                <small class="text-muted" style="font-size:0.55rem;">{{ t.asignado_a.get_full_name|truncatechars:12|default:'-' }}</small>
+                            </div>
+                            <button class="btn btn-sm btn-outline-danger py-0 px-1" style="font-size:0.45rem;" title="Rechazar esta tarea" onclick="rechazarTareaHistoria({{ h.proyecto_id }}, {{ h.pk }}, {{ t.pk }})">&times;</button>
+                        </div>
+                        {% endfor %}
+                        <div class="d-flex gap-1 mt-2">
+                            <form method="POST" action="{% url 'proyectos:historia_aprobar' h.proyecto_id h.pk %}" class="d-inline">{% csrf_token %}
+                                <button class="btn btn-sm btn-success py-0 px-1" style="font-size:0.55rem;" title="Aprobar toda la historia">&check; Aprobar todo</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <div class="tablero-main">
 
     
@@ -26,9 +67,9 @@
         </div>
         <div class="card-body p-2 tablero-hoy-scroll">
             {% if actividades_hoy %}
-            <div class="row g-2">
+            <div class="row g-2 mx-0 flex-nowrap">
                 {% for a in actividades_hoy %}
-                <div class="col-md-6 col-lg-4 col-xl-3">
+                <div class="col-auto px-1" style="min-width:220px;">
                     <div class="card h-100" style="border-left:3px solid {% if a.estado == 'EnCurso' %}var(--warning){% elif a.estado == 'Pausada' %}var(--slate-400){% else %}var(--accent){% endif %};">
                         <div class="card-body py-1 px-2">
                             <div class="d-flex justify-content-between align-items-start">
@@ -190,7 +231,7 @@
                             </div>
                             <div class="d-flex gap-1" style="margin-top:0.25rem;">
                                 <button type="button" class="btn btn-sm py-0 px-1 btn-warning" style="font-size:0.6rem;" title="Pausar" onclick="abrirPausa({{ a.pk }}, '{{ a.actividad.nombre|escapejs }}')"><i class="bi bi-pause-fill"></i></button>
-                                <button type="button" class="btn btn-sm py-0 px-1 btn-success" style="font-size:0.6rem;" title="Finalizar" onclick="abrirFinalizar({{ a.pk }}, '{{ a.actividad.nombre|escapejs }}', {{ a.actividad.subarea_id }}, {{ a.actividad.tipo_actividad.requiere_entregable|lower }})"><i class="bi bi-check-circle-fill"></i></button>
+                                <button type="button" class="btn btn-sm py-0 px-1 btn-success" style="font-size:0.6rem;" title="Finalizar" onclick="abrirFinalizar({{ a.pk }}, '{{ a.actividad.nombre|escapejs }}', {{ a.actividad.subarea_id }}, {{ a.actividad.tipo_actividad.requiere_entregable|lower }}, '{{ a.origen|default:'' }}')"><i class="bi bi-check-circle-fill"></i></button>
                                 <button type="button" class="btn btn-sm py-0 px-1 btn-outline-info" style="font-size:0.6rem;" title="Trasladar" onclick="abrirTraslado({{ a.pk }}, '{{ a.actividad.nombre|escapejs }}', {{ a.actividad_id }})"><i class="bi bi-arrow-right-circle"></i></button>
                                 <button type="button" class="btn btn-sm py-0 px-1 btn-outline-secondary" style="font-size:0.6rem;" title="Detalle" onclick="location.href='{% url 'gestion:detalle_actividad' a.pk %}'"><i class="bi bi-eye"></i></button>
                             </div>
@@ -235,7 +276,7 @@
                                     {% csrf_token %}
                                     <button type="submit" class="btn btn-sm py-0 px-1 btn-success" style="font-size:0.6rem;" title="Reanudar"><i class="bi bi-play-fill"></i></button>
                                 </form>
-                                <button type="button" class="btn btn-sm py-0 px-1 btn-success" style="font-size:0.6rem;" title="Finalizar" onclick="abrirFinalizar({{ a.pk }}, '{{ a.actividad.nombre|escapejs }}', {{ a.actividad.subarea_id }}, {{ a.actividad.tipo_actividad.requiere_entregable|lower }})"><i class="bi bi-check-circle-fill"></i></button>
+                                <button type="button" class="btn btn-sm py-0 px-1 btn-success" style="font-size:0.6rem;" title="Finalizar" onclick="abrirFinalizar({{ a.pk }}, '{{ a.actividad.nombre|escapejs }}', {{ a.actividad.subarea_id }}, {{ a.actividad.tipo_actividad.requiere_entregable|lower }}, '{{ a.origen|default:'' }}')"><i class="bi bi-check-circle-fill"></i></button>
                                 <button type="button" class="btn btn-sm py-0 px-1 btn-outline-info" style="font-size:0.6rem;" title="Trasladar" onclick="abrirTraslado({{ a.pk }}, '{{ a.actividad.nombre|escapejs }}', {{ a.actividad_id }})"><i class="bi bi-arrow-right-circle"></i></button>
                                 <button type="button" class="btn btn-sm py-0 px-1 btn-outline-secondary" style="font-size:0.6rem;" title="Detalle" onclick="location.href='{% url 'gestion:detalle_actividad' a.pk %}'"><i class="bi bi-eye"></i></button>
                             </div>
@@ -374,6 +415,18 @@
                 <label class="form-label small fw-semibold">Archivo entregable <span class="text-danger">*</span></label>
                 <input type="file" name="entregable" class="form-control form-control-sm" style="font-size:0.78rem;">
             </div>
+            <div class="mb-3" id="revisionSection" style="display:none;background:#fffbeb;padding:0.7rem;border-radius:0.4rem;border:1px solid #f59e0b;">
+                <label class="form-label small fw-semibold" style="color:#92400e;">Acci&oacute;n de revisi&oacute;n</label>
+                <div class="d-flex gap-2 align-items-center">
+                    <button type="submit" name="accion_revision" value="aprobar" class="btn btn-sm btn-success">&#10003; Aprobar todas las tareas</button>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="mostrarMotivoRechazo()">&#10007; Rechazar y devolver</button>
+                </div>
+                <div id="revisionMotivo" style="display:none;margin-top:0.5rem;">
+                    <textarea name="motivo_rechazo" class="form-control form-control-sm" rows="2" placeholder="Motivo del rechazo..." required></textarea>
+                    <button type="submit" name="accion_revision" value="rechazar" class="btn btn-sm btn-outline-danger mt-1" style="font-size:0.65rem;">Confirmar Rechazo</button>
+                </div>
+                <small class="text-muted d-block mt-2" style="font-size:0.58rem;">Las tareas individuales se rechazan desde la card de la historia en "Pendientes de Revisi&oacute;n"</small>
+            </div>
             <hr class="my-2">
             <div class="mb-3">
                 <label class="form-label small fw-semibold">Iniciar siguiente actividad</label>
@@ -392,7 +445,7 @@
                             {% for p in planificadas %}
                             <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:0.78rem;">
                                 <input type="radio" name="reemplazo_actividad" value="{{ p.pk }}" class="form-check-input mt-0">
-                                <span>{{ p.actividad.nombre }} <small class="text-muted">({{ p.actividad.tipo_actividad.nombre }})</small></span>
+                                <span>{{ p.nombre_actividad|default:p.actividad.nombre }} <small class="text-muted">({{ p.nombre_tipo|default:p.actividad.tipo_actividad.nombre }})</small></span>
                             </label>
                             {% endfor %}
                         </div>
@@ -454,7 +507,7 @@
                             {% for p in planificadas %}
                             <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:0.78rem;">
                                 <input type="radio" name="traslado_reemplazo" value="{{ p.actividad_id }}" class="form-check-input mt-0" onchange="seleccionarReemplazoTraslado(this)">
-                                <span>{{ p.actividad.nombre }} <small class="text-muted">({{ p.actividad.tipo_actividad.nombre }})</small></span>
+                                <span>{{ p.nombre_actividad|default:p.actividad.nombre }} <small class="text-muted">({{ p.nombre_tipo|default:p.actividad.tipo_actividad.nombre }})</small></span>
                             </label>
                             {% endfor %}
                         </div>
@@ -480,12 +533,39 @@
         </form>
     </div>
 </div>
+
+<div id="rechazoRevisionModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:0.75rem;max-width:400px;width:90%;padding:1.5rem;box-shadow:0 8px 32px rgba(0,0,0,0.12);">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold mb-0"><i class="bi bi-x-circle" style="color:var(--danger);"></i> Rechazar Historia</h6>
+            <button type="button" class="btn-close" onclick="document.getElementById('rechazoRevisionModal').style.display='none'"></button>
+        </div>
+        <form id="rechazoRevisionForm" method="POST">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="form-label small fw-semibold">Motivo del rechazo <span class="text-danger">*</span></label>
+                <textarea name="motivo" class="form-control" rows="3" placeholder="Explica por que se rechaza..." required></textarea>
+            </div>
+            <div class="mb-3">
+                <label class="d-flex align-items-center gap-2 small" style="cursor:pointer;font-size:0.72rem;">
+                    <input type="checkbox" name="crear_bug" value="1" class="form-check-input mt-0">
+                    <span>Crear incidencia (bug) de este rechazo</span>
+                </label>
+            </div>
+            <div class="d-flex justify-content-end gap-2">
+                <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('rechazoRevisionModal').style.display='none'">Cancelar</button>
+                <button type="submit" class="btn btn-sm btn-outline-danger">Rechazar</button>
+            </div>
+        </form>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
 var currentAsignacionId = null;
 var currentActividadId = null;
+var currentProyectoId = null;
 var timeoutBusqueda = null;
 
 function abrirTraslado(asignacionId, nombreActividad, actividadId) {
@@ -498,8 +578,13 @@ function abrirTraslado(asignacionId, nombreActividad, actividadId) {
     to.style.zIndex = '99999';
     currentAsignacionId = asignacionId;
     currentActividadId = actividadId;
+    currentProyectoId = null;
     document.getElementById('trasladoNombreActividad').textContent = nombreActividad;
     document.getElementById('trasladoForm').action = '/usuario/actividad/' + asignacionId + '/trasladar/';
+    // Obtener info del proyecto si esta tarea pertenece a uno
+    fetch('/usuario/api/asignacion/' + asignacionId + '/proyecto/', {headers:{'X-Requested-With':'XMLHttpRequest'}})
+    .then(function(r){return r.json()})
+    .then(function(d){ currentProyectoId = d.proyecto_id; });
     limpiarUsuario();
     document.getElementById('traslado_actividad_reemplazo').value = '';
     trasResetSecciones();
@@ -543,7 +628,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (q.length < 1) { limpiarUsuario(); return; }
         clearTimeout(timeoutBusqueda);
         timeoutBusqueda = setTimeout(function() {
-            fetch('/usuario/api/usuarios/buscar/?q=' + encodeURIComponent(q), { headers: {'X-Requested-With':'XMLHttpRequest'} })
+            var url = '/usuario/api/usuarios/buscar/?q=' + encodeURIComponent(q);
+            if (currentProyectoId) url += '&proyecto_id=' + currentProyectoId;
+            fetch(url, { headers: {'X-Requested-With':'XMLHttpRequest'} })
             .then(function(r){return r.json()})
             .then(function(d){
                 var h = '';
@@ -697,7 +784,7 @@ function cerrarPausa() {
 
 var finalizarSubareaId = null;
 
-function abrirFinalizar(actividadId, nombre, subareaId, requiereEntregable) {
+function abrirFinalizar(actividadId, nombre, subareaId, requiereEntregable, origen) {
     document.getElementById('pausaOverlay').style.display = 'none';
     document.getElementById('trasladoOverlay').style.display = 'none';
     finalizarSubareaId = subareaId;
@@ -712,7 +799,18 @@ function abrirFinalizar(actividadId, nombre, subareaId, requiereEntregable) {
     } else {
         entSection.style.display = 'none';
     }
+    var revSection = document.getElementById('revisionSection');
+    if (origen === 'Revision') {
+        revSection.style.display = 'block';
+    } else {
+        revSection.style.display = 'none';
+    }
+    document.getElementById('revisionMotivo').style.display = 'none';
     document.getElementById('finalizarOverlay').style.display = 'flex';
+}
+
+function mostrarMotivoRechazo() {
+    document.getElementById('revisionMotivo').style.display = 'block';
 }
 
 function cargarFlashActividades() {
@@ -817,6 +915,12 @@ ws.onmessage = function(e) {
     } else if (data.tipo === 'revision') {
         mostrarToast('Revision ' + data.accion + ': ' + data.actividad, data.accion === 'aprobado' ? 'success' : 'danger');
         setTimeout(function(){ window.location.reload(); }, 4000);
+    } else if (data.tipo === 'nueva_revision') {
+        mostrarToast('Historia pendiente de revision: ' + data.codigo + ' - ' + data.historia + ' (' + data.proyecto + ')', 'warning');
+        setTimeout(function(){ window.location.reload(); }, 5000);
+    } else if (data.tipo === 'tarea_rechazada') {
+        mostrarToast('Tarea rechazada: ' + data.codigo + ' - ' + data.actividad + '. Motivo: ' + (data.motivo||''), 'danger');
+        setTimeout(function(){ window.location.reload(); }, 5000);
     }
 };
 
@@ -891,5 +995,26 @@ setInterval(function(){
         }
     }
 })();
+
+function rechazarDesdeTablero(proyectoId, historiaId) {
+    var modal = document.getElementById('rechazoRevisionModal');
+    var form = document.getElementById('rechazoRevisionForm');
+    form.action = '/proyectos/' + proyectoId + '/historias/' + historiaId + '/rechazar/';
+    modal.style.display = 'flex';
+}
+
+function abrirRechazarTarea(proyectoId, tareaId) {
+    var modal = document.getElementById('rechazoRevisionModal');
+    var form = document.getElementById('rechazoRevisionForm');
+    form.action = '/proyectos/' + proyectoId + '/tareas/' + tareaId + '/rechazar/';
+    modal.style.display = 'flex';
+}
+
+function rechazarTareaHistoria(proyectoId, historiaId, tareaId) {
+    var modal = document.getElementById('rechazoRevisionModal');
+    var form = document.getElementById('rechazoRevisionForm');
+    form.action = '/proyectos/' + proyectoId + '/tareas/' + tareaId + '/rechazar/';
+    modal.style.display = 'flex';
+}
 </script>
 {% endblock %}

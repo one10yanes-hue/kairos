@@ -2,18 +2,23 @@
 <div class="container-fluid mt-3">
     <div class="d-flex justify-content-between align-items-start mb-3">
         <div>
-            <h5 class="fw-bold mb-0">{{ incidencia.codigo }} · {{ incidencia.titulo }}</h5>
-            <small class="text-muted">{{ incidencia.get_tipo_display }} · {{ incidencia.get_severidad_display }} · {{ incidencia.get_estado_display }}</small>
+            <h5 class="fw-bold mb-0">{{ incidencia.codigo }} &middot; {{ incidencia.titulo }}</h5>
+            <small class="text-muted">{{ incidencia.get_tipo_display }} &middot; {{ incidencia.get_severidad_display }} &middot; {{ incidencia.get_estado_display }}</small>
+            {% if incidencia.tarea %}<small class="text-muted d-block" style="font-size:0.65rem;">Derivada de <a href="{% url 'proyectos:tarea_detail' proyecto.pk incidencia.tarea.pk %}">{{ incidencia.tarea.codigo }}</a></small>{% endif %}
         </div>
         <div class="d-flex gap-1">
             {% if not incidencia.tarea and request.membresia|puede_editar %}
             <form method="POST" action="{% url 'proyectos:incidencia_convertir' proyecto.pk incidencia.pk %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-warning" style="font-size:0.7rem;">Convertir a Tarea</button></form>
             {% endif %}
             {% if incidencia.estado == 'abierta' or incidencia.estado == 'triaged' %}
-            <form method="POST" class="d-inline">{% csrf_token %}<input type="hidden" name="estado" value="en_progreso"><button class="btn btn-sm btn-warning" style="font-size:0.7rem;">Iniciar</button></form>
+                {% if not request.membresia or request.membresia.rol == 'lider' or request.membresia.rol == 'responsable' or request.membresia.rol == 'ejecutor' %}
+                <form method="POST" class="d-inline">{% csrf_token %}<input type="hidden" name="estado" value="en_progreso"><button class="btn btn-sm btn-warning" style="font-size:0.7rem;">Iniciar</button></form>
+                {% endif %}
             {% endif %}
             {% if incidencia.estado == 'en_progreso' %}
-            <form method="POST" class="d-inline">{% csrf_token %}<input type="hidden" name="estado" value="resuelta"><button class="btn btn-sm btn-info" style="font-size:0.7rem;">Resolver</button></form>
+                {% if not request.membresia or request.membresia.rol == 'lider' or request.membresia.rol == 'responsable' or request.membresia.rol == 'ejecutor' %}
+                <form method="POST" class="d-inline">{% csrf_token %}<input type="hidden" name="estado" value="resuelta"><button class="btn btn-sm btn-info" style="font-size:0.7rem;">Resolver</button></form>
+                {% endif %}
             {% endif %}
             {% if incidencia.estado == 'resuelta' or incidencia.estado == 'abierta' or incidencia.estado == 'en_progreso' %}
             <form method="POST" class="d-inline">{% csrf_token %}<input type="hidden" name="estado" value="cerrada"><button class="btn btn-sm btn-success" style="font-size:0.7rem;">Cerrar</button></form>
@@ -24,7 +29,10 @@
     <div class="row g-3">
         <div class="col-lg-8">
             {% if incidencia.descripcion %}
-            <div class="card shadow-sm mb-3"><div class="card-body p-3"><small class="fw-semibold">Descripción</small><p class="mb-0 small">{{ incidencia.descripcion }}</p></div></div>
+            <div class="card shadow-sm mb-3"><div class="card-body p-3"><small class="fw-semibold">Descripci&oacute;n</small><p class="mb-0 small">{{ incidencia.descripcion }}</p></div></div>
+            {% endif %}
+            {% if incidencia.pasos_reproducir %}
+            <div class="card shadow-sm mb-3"><div class="card-body p-3"><small class="fw-semibold">Pasos para reproducir</small><p class="mb-0 small">{{ incidencia.pasos_reproducir }}</p></div></div>
             {% endif %}
             <div class="card shadow-sm"><div class="card-body p-3">
                 <small class="fw-semibold">Comentarios</small>
@@ -34,11 +42,18 @@
             </div></div>
         </div>
         <div class="col-lg-4">
-            <div class="card shadow-sm"><div class="card-body p-2" style="font-size:0.75rem;">
+            <div class="card shadow-sm mb-3"><div class="card-body p-2" style="font-size:0.75rem;">
                 <small class="text-muted d-block">Reportado por</small><span>{{ incidencia.reportado_por.get_full_name }}</span>
                 <small class="text-muted d-block mt-2">Asignado a</small><span>{{ incidencia.asignado_a.get_full_name|default:"Sin asignar" }}</span>
                 <small class="text-muted d-block mt-2">Fecha</small><span>{{ incidencia.fecha_creacion|date:"d/m/Y H:i" }}</span>
             </div></div>
+            {% if incidencia.tarea %}
+            <div class="card shadow-sm"><div class="card-body p-2" style="font-size:0.72rem;">
+                <small class="text-muted d-block">Tarea origen</small>
+                <a href="{% url 'proyectos:tarea_detail' proyecto.pk incidencia.tarea.pk %}" class="text-decoration-none">{{ incidencia.tarea.codigo }}: {{ incidencia.tarea.titulo|truncatechars:30 }}</a>
+                <small class="text-muted d-block mt-1">{{ incidencia.tarea.get_estado_display }} &middot; {{ incidencia.tarea.asignado_a.get_full_name|default:"-" }}</small>
+            </div></div>
+            {% endif %}
         </div>
     </div>
 </div>

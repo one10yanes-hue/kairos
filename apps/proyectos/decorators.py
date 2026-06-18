@@ -5,10 +5,14 @@ from django.shortcuts import get_object_or_404, redirect
 from django.contrib import messages
 from .models import Proyecto, MiembroProyecto
 
-# Roles que pueden editar/crear contenido en el proyecto
-ROLES_EDICION = ["lider", "responsable", "ejecutor"]
-# Roles que pueden administrar el proyecto (equipo, cierre, etc.)
+# Roles que pueden crear/editar contenido (sprints, historias, tareas)
+ROLES_EDICION = ["lider", "responsable"]
+# Roles que pueden mover tareas entre estados (drag and drop en sprint board / Kanban)
+ROLES_MOVER = ["lider", "responsable", "ejecutor"]
+# Roles que pueden administrar el proyecto (equipo, cierre, configuracion)
 ROLES_ADMIN = ["lider", "responsable"]
+# Roles que pueden aprobar/rechazar historias
+ROLES_REVISION = ["lider", "responsable", "revisor", "aprobador"]
 # Cualquier miembro puede ver el proyecto
 ROLES_VISUALIZACION = ["lider", "responsable", "revisor", "aprobador", "ejecutor", "observador"]
 

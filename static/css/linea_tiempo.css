@@ -28,6 +28,18 @@
     font-size: 1.2rem;
 }
 
+.tl-sep-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 0.4rem;
+    background: #fef3c7;
+    color: #92400e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+}
+
 .tl-subtitle {
     font-size: 0.7rem;
     color: var(--slate-500);
@@ -69,6 +81,26 @@
 .tl-legend-dot.paus { background: #94a3b8; }
 .tl-legend-dot.pend { background: #93c5fd; }
 .tl-legend-dot.finz { background: #fef3c7; border: 1px dashed #f59e0b; }
+
+.tl-legend-box {
+    width: 14px;
+    height: 10px;
+    border-radius: 3px;
+}
+
+.tl-legend-box.gantt-plan  { background: #cbd5e1; }
+.tl-legend-box.gantt-activo { background: #86efac; }
+.tl-legend-box.gantt-fin    { background: #93c5fd; }
+
+/* Separator between daily timeline and project Gantt */
+.tl-separator {
+    margin: 0.5rem 0;
+    padding: 0.5rem 0.8rem;
+    background: #fafbff;
+    border: 1px solid var(--slate-200);
+    border-radius: 0.5rem;
+    flex-shrink: 0;
+}
 
 /* Timeline body */
 .tl-body {
@@ -131,6 +163,21 @@
     border: 1px dashed #f59e0b;
 }
 
+/* Project Gantt styles */
+.vis-item.vis-range.gantt-plan {
+    background: #cbd5e1;
+    color: #475569;
+}
+.vis-item.vis-range.gantt-activo {
+    background: #86efac;
+    color: #166534;
+    border-left: 3px solid #22c55e;
+}
+.vis-item.vis-range.gantt-fin {
+    background: #93c5fd;
+    color: #1e40af;
+}
+
 .vis-item .vis-item-content {
     padding: 1px 6px !important;
     font-size: 0.6rem !important;
@@ -154,8 +201,6 @@
     background: #ef4444 !important;
     width: 2px !important;
 }
-
-
 
 .vis-panel.vis-center,
 .vis-panel.vis-left {

@@ -22,6 +22,7 @@
     <div class="row g-2 mb-3">
         <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#f59e0b;">{{ tareas_pend }}</div><small class="text-muted" style="font-size:0.6rem;">Pendientes</small></div></div></div>
         <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#0ea5e9;">{{ tareas_curso }}</div><small class="text-muted" style="font-size:0.6rem;">En Curso</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#8b5cf6;">{{ tareas_rev }}</div><small class="text-muted" style="font-size:0.6rem;">Revision</small></div></div></div>
         <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#16a34a;">{{ tareas_fin }}</div><small class="text-muted" style="font-size:0.6rem;">Finalizadas</small></div></div></div>
         <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#dc2626;">{{ inc_abiertas }}</div><small class="text-muted" style="font-size:0.6rem;">Inc. Abiertas</small></div></div></div>
         <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#8b5cf6;">{{ velocidad_prom }}</div><small class="text-muted" style="font-size:0.6rem;">Velocidad Prom</small></div></div></div>
@@ -33,24 +34,49 @@
     <div class="card-body p-2" style="font-size:0.72rem;">{% for a in avances %}<div class="border-bottom py-1"><small class="text-muted">{{ a.fecha|date:"d/m H:i" }}</small> <strong>{{ a.user.get_full_name|truncatechars:15 }}</strong>: {{ a.descripcion|truncatechars:80 }}</div>{% endfor %}</div></div>
     {% endif %}
 
-    <div class="card shadow-sm mb-3"><div class="card-header py-1 px-2"><small class="fw-semibold">CFD · Cumulative Flow</small></div>
-    <div class="card-body p-3"><canvas id="cfdChart" style="max-height:200px;"></canvas></div></div>
+    <div class="row g-3 mb-3">
+        <div class="col-lg-8">
+            <div class="card shadow-sm"><div class="card-header py-1 px-2"><small class="fw-semibold">Distribucion de Tareas</small></div>
+            <div class="card-body p-3"><canvas id="cfdChart" style="max-height:200px;"></canvas></div></div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card shadow-sm"><div class="card-header py-1 px-2"><small class="fw-semibold">Velocidad por Sprint</small></div>
+            <div class="card-body p-3"><canvas id="velChart" style="max-height:200px;"></canvas></div></div>
+        </div>
+    </div>
 
 <script>
-var ctx = document.getElementById('cfdChart');
-if (ctx) {
-    new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: ['Backlog', 'En Progreso', 'Revision', 'Done'],
-            datasets: [{
-                label: 'Tareas', data: [{{ cfd_backlog }}, {{ cfd_progreso }}, {{ cfd_revision }}, {{ cfd_done }}],
-                backgroundColor: ['#94a3b8','#f59e0b','#8b5cf6','#16a34a']
-            }]
-        },
-        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
-    });
-}
+document.addEventListener('DOMContentLoaded', function() {
+    var cfd = document.getElementById('cfdChart');
+    if (cfd) {
+        new Chart(cfd, {
+            type: 'bar',
+            data: {
+                labels: {{ cfd_labels|safe }},
+                datasets: [{
+                    label: 'Tareas', data: {{ cfd_data|safe }},
+                    backgroundColor: ['#f59e0b','#0ea5e9','#8b5cf6','#16a34a'],
+                    borderRadius: 4
+                }]
+            },
+            options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+        });
+    }
+    var vel = document.getElementById('velChart');
+    if (vel) {
+        new Chart(vel, {
+            type: 'bar',
+            data: {
+                labels: {{ vel_labels|safe }},
+                datasets: [
+                    { label: 'Comprometido', data: {{ vel_comp|safe }}, backgroundColor: '#e2e8f0', borderRadius: 4 },
+                    { label: 'Completado', data: {{ vel_data|safe }}, backgroundColor: '#16a34a', borderRadius: 4 }
+                ]
+            },
+            options: { responsive: true, plugins: { legend: { labels: { font: { size: 10 } } } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 5 } } } }
+        });
+    }
+});
 </script>
 
     <div class="d-flex gap-2 mb-3 flex-wrap">
@@ -58,8 +84,9 @@ if (ctx) {
         <a href="{% url 'proyectos:sprint_list' proyecto.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem;">Sprints</a>
         <a href="{% url 'proyectos:tarea_list' proyecto.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem;">Tareas</a>
         <a href="{% url 'proyectos:incidencia_list' proyecto.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem;">Incidencias</a>
-        {% if request.membresia|puede_administrar %}<a href="{% url 'proyectos:proyecto_equipo' proyecto.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem;">Equipo</a>{% endif %}
         <a href="{% url 'proyectos:proyecto_gantt' proyecto.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem;">Gantt</a>
+        <a href="{% url 'proyectos:proyecto_estructura' proyecto.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem;">Estructura</a>
+        {% if request.membresia|puede_administrar %}<a href="{% url 'proyectos:proyecto_workflow' proyecto.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem;">Configuraci&oacute;n</a>{% endif %}
     </div>
 
     {% if proyecto.descripcion %}

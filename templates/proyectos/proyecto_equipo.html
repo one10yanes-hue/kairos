@@ -29,6 +29,7 @@
                     <select name="user_id" id="userSelect" class="form-select form-select-sm mb-2">
                         <option value="">Seleccionar usuario...</option>
                         {% for u in usuarios %}<option value="{{ u.pk }}" data-busqueda="{{ u.get_full_name }} {{ u.cedula }}">{{ u.get_full_name }}</option>{% endfor %}
+                    </select>
                     <select name="rol" class="form-select form-select-sm mb-2">
                         <option value="ejecutor">Ejecutor</option><option value="lider">Lider</option><option value="responsable">Responsable</option><option value="revisor">Revisor / QA</option><option value="aprobador">Aprobador</option><option value="observador">Observador</option>
                     </select>

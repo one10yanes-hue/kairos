@@ -1,14 +1,13 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from ..models import Proyecto, HistoriaUsuario
-from ..decorators import miembro_requerido, ROLES_EDICION, ROLES_ADMIN
+from django.db.models import Q, Count, Sum
+from ..models import Proyecto, HistoriaUsuario, Tarea, Incidencia, Sprint
+from ..decorators import miembro_requerido, ROLES_EDICION, ROLES_REVISION
 import json
 
 
-@miembro_requerido(ROLES_ADMIN)
+@miembro_requerido(ROLES_REVISION)
 def historia_aprobar(request, pk, hid):
     proyecto = request.proyecto
     historia = get_object_or_404(HistoriaUsuario, pk=hid, proyecto=proyecto, activo=True)
@@ -16,10 +15,13 @@ def historia_aprobar(request, pk, hid):
         historia.estado = "done"
         historia.save()
         messages.success(request, f"Historia {historia.codigo} aprobada como Done.")
+    referer = request.META.get("HTTP_REFERER", "")
+    if referer and "/usuario/tablero" in referer:
+        return redirect("gestion:tablero")
     return redirect("proyectos:backlog", pk=proyecto.pk)
 
 
-@miembro_requerido(ROLES_ADMIN)
+@miembro_requerido(ROLES_REVISION)
 def historia_rechazar(request, pk, hid):
     proyecto = request.proyecto
     historia = get_object_or_404(HistoriaUsuario, pk=hid, proyecto=proyecto, activo=True)
@@ -32,31 +34,82 @@ def historia_rechazar(request, pk, hid):
             historia.estado = "en_progreso"
             historia.save()
             messages.warning(request, f"Historia {historia.codigo} rechazada: {motivo}")
+        referer = request.META.get("HTTP_REFERER", "")
+        if referer and "/usuario/tablero" in referer:
+            return redirect("gestion:tablero")
         return redirect("proyectos:backlog", pk=proyecto.pk)
+    return redirect("proyectos:backlog", pk=proyecto.pk)
 
 
 @miembro_requerido()
 def backlog_view(request, pk):
     proyecto = get_object_or_404(Proyecto, pk=pk, activo=True)
-    historias = proyecto.historias.filter(activo=True)
-    return render(request, "proyectos/backlog.html", {"proyecto": proyecto, "historias": historias})
+
+    # Filtros
+    q = request.GET.get("q", "").strip()
+    filtro_tipo = request.GET.get("tipo", "")
+    filtro_estado = request.GET.get("estado", "")
+    filtro_prioridad = request.GET.get("prioridad", "")
+
+    # Historias (todas, con sprint opcional)
+    historias = proyecto.historias.filter(activo=True).prefetch_related("tareas", "creador", "sprint").order_by("orden")
+    # Tareas sueltas (sin historia, puede tener sprint o no)
+    tareas_sueltas = proyecto.tareas.filter(activo=True, historia__isnull=True).select_related("asignado_a", "creador", "sprint").order_by("-fecha_creacion")
+    # Incidencias (todas las activas)
+    incidencias = proyecto.incidencias.filter(activo=True).select_related("reportado_por", "asignado_a").order_by("-fecha_creacion")
+
+    if q:
+        historias = historias.filter(Q(titulo__icontains=q) | Q(codigo__icontains=q))
+        tareas_sueltas = tareas_sueltas.filter(Q(titulo__icontains=q) | Q(codigo__icontains=q))
+        incidencias = incidencias.filter(Q(titulo__icontains=q) | Q(codigo__icontains=q))
+    if filtro_prioridad:
+        historias = historias.filter(prioridad=filtro_prioridad)
+        tareas_sueltas = tareas_sueltas.filter(prioridad=filtro_prioridad)
+
+    # KPIs
+    total_h = proyecto.historias.filter(activo=True).count()
+    total_t = proyecto.tareas.filter(activo=True).count()
+    total_i = proyecto.incidencias.filter(activo=True).count()
+    must_count = proyecto.historias.filter(activo=True, prioridad="must").count()
+    puntos_total = proyecto.historias.filter(activo=True).aggregate(s=Sum("puntos_historia"))["s"] or 0
+    sprints_activos = proyecto.sprints.filter(activo=True).order_by("numero")
+    sprint_count = sprints_activos.count()
+
+    return render(request, "proyectos/backlog.html", {
+        "proyecto": proyecto,
+        "historias": historias,
+        "tareas_sueltas": tareas_sueltas,
+        "incidencias": incidencias,
+        "total_h": total_h, "total_t": total_t, "total_i": total_i,
+        "must_count": must_count, "puntos_total": puntos_total,
+        "sprints_activos": sprints_activos, "sprint_count": sprint_count,
+        "q": q, "filtro_tipo": filtro_tipo, "filtro_estado": filtro_estado,
+        "filtro_prioridad": filtro_prioridad,
+    })
 
 
 @miembro_requerido(ROLES_EDICION)
 def backlog_reordenar(request, pk):
     if request.method == "POST":
         try:
-            data = json.loads(request.body)
-            for item in data.get("ordenes", []):
-                HistoriaUsuario.objects.filter(pk=item["id"], proyecto_id=pk).update(orden=item["orden"])
-        except Exception:
-            pass
-    return JsonResponse({"ok": True})
+            raw = request.POST.get("ordenes_json", "")
+            if not raw:
+                return redirect("proyectos:backlog", pk=pk)
+            data = json.loads(raw)
+            items = data.get("ordenes", [])
+            for item in items:
+                HistoriaUsuario.objects.filter(
+                    pk=item["id"], proyecto_id=pk
+                ).update(orden=item["orden"])
+            messages.success(request, "Orden del backlog actualizado.")
+        except Exception as e:
+            messages.error(request, f"Error al reordenar: {e}")
+    return redirect("proyectos:backlog", pk=pk)
 
 
-@login_required
+@miembro_requerido(ROLES_EDICION)
 def historia_create(request, pk):
-    proyecto = get_object_or_404(Proyecto, pk=pk, activo=True)
+    proyecto = request.proyecto
     if request.method == "POST":
         titulo = request.POST.get("titulo", "").strip()
         if not titulo:
@@ -78,9 +131,9 @@ def historia_create(request, pk):
     return render(request, "proyectos/historia_form.html", {"proyecto": proyecto})
 
 
-@login_required
+@miembro_requerido(ROLES_EDICION)
 def historia_edit(request, pk, hid):
-    proyecto = get_object_or_404(Proyecto, pk=pk, activo=True)
+    proyecto = request.proyecto
     historia = get_object_or_404(HistoriaUsuario, pk=hid, proyecto=proyecto, activo=True)
     if request.method == "POST":
         historia.titulo = request.POST.get("titulo", historia.titulo)

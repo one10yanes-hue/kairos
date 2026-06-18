@@ -1,34 +1,236 @@
-{% extends "base.html" %}{% block content %}
+{% extends "base.html" %}{% load static %}
+{% block content %}
+<style>.col-hide { display: none; }</style>
 <div class="container-fluid mt-3">
-    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
         <h5 class="fw-bold mb-0"><i class="bi bi-kanban" style="color:var(--accent);font-size:1.2rem;"></i> Proyectos</h5>
-        <a href="{% url 'proyectos:proyecto_create' %}" class="btn btn-primary btn-sm" style="font-size:0.78rem;"><i class="bi bi-plus-lg"></i> Nuevo Proyecto</a>
+        <div class="d-flex gap-1">
+            {% if user.rol.nombre == 'Master' or user.rol.nombre == 'Admin' %}
+            <a href="{% url 'proyectos:proyecto_create' %}" class="btn btn-primary btn-sm" style="font-size:0.72rem;"><i class="bi bi-plus-lg"></i> Nuevo Proyecto</a>
+            {% endif %}
+        </div>
     </div>
 
-    <div class="row g-3">
-        {% for p in proyectos %}
-        <div class="col-md-6 col-lg-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <span class="badge bg-light text-muted" style="font-size:0.6rem;">{{ p.codigo }}</span>
-                        <span class="badge {% if p.estado == 'activo' %}bg-success{% elif p.estado == 'pausado' %}bg-warning text-dark{% else %}bg-secondary{% endif %}" style="font-size:0.6rem;">{{ p.get_estado_display }}</span>
-                    </div>
-                    <h6 class="fw-bold mb-1" style="font-size:0.85rem;"><a href="{% url 'proyectos:proyecto_detail' p.pk %}" class="text-decoration-none">{{ p.nombre }}</a></h6>
-                    <small class="text-muted d-block" style="font-size:0.7rem;">{% for s in p.subareas.all %}{{ s.area.nombre }} > {{ s.nombre }}{% if not forloop.last %}, {% endif %}{% empty %}Global{% endfor %}</small>
-                    <small class="text-muted d-block" style="font-size:0.7rem;">Manager: {{ p.manager.get_full_name }}</small>
-                    <div class="mt-2">
-                        <div class="progress" style="height:6px;">
-                            <div class="progress-bar" style="width:{{ p.avance }}%;"></div>
-                        </div>
-                        <small class="text-muted" style="font-size:0.6rem;">{{ p.avance }}% completado</small>
-                    </div>
-                </div>
+    <!-- Filtros -->
+    <form method="GET">
+        <div class="d-flex gap-1 flex-wrap align-items-center mb-3">
+            <input type="text" name="q" class="form-control" style="width:160px;font-size:0.72rem;" placeholder="Buscar proyecto..." value="{{ q }}">
+            <select name="empresa_id" class="form-control" style="width:150px;font-size:0.72rem;" onchange="this.form.submit()">
+                <option value="">Todas las empresas</option>
+                {% for e in empresas_filtro %}<option value="{{ e.pk }}"{% if empresa_filtro == e.pk %} selected{% endif %}>{{ e.nombre }}</option>{% endfor %}
+            </select>
+            <select name="area_id" class="form-control dynamic-select" data-model="area" data-placeholder="Area..." data-autosubmit="1" style="width:140px;font-size:0.72rem;" id="ds-area">
+                <option value="">Todas</option>
+                {% for a in areas_disponibles %}<option value="{{ a.pk }}"{% if area_filtro == a.pk %} selected{% endif %} data-label="{{ a.nombre }}">{{ a.nombre }}</option>{% endfor %}
+            </select>
+            <select name="subarea_id" class="form-control dynamic-select" data-model="subarea" data-placeholder="Subarea..." data-filters="{% if area_filtro %}area_id={{ area_filtro }}{% endif %}" data-autosubmit="1" style="width:160px;font-size:0.72rem;" id="ds-subarea">
+                <option value="">Todas</option>
+                {% for s in subareas_disponibles %}<option value="{{ s.pk }}"{% if subarea_filtro == s.pk %} selected{% endif %} data-label="{{ s.nombre }}">{{ s.nombre }}</option>{% endfor %}
+            </select>
+            <select name="estado" class="form-control" style="width:130px;font-size:0.72rem;" onchange="this.form.submit()">
+                <option value="">Todos los estados</option>
+                <option value="activo"{% if estado_filtro == 'activo' %} selected{% endif %}>Activo</option>
+                <option value="pausado"{% if estado_filtro == 'pausado' %} selected{% endif %}>Pausado</option>
+                <option value="finalizado"{% if estado_filtro == 'finalizado' %} selected{% endif %}>Finalizado</option>
+                <option value="cancelado"{% if estado_filtro == 'cancelado' %} selected{% endif %}>Cancelado</option>
+            </select>
+            <button type="submit" class="btn btn-outline-secondary btn-sm" style="font-size:0.72rem;padding:0.2rem 0.4rem;"><i class="bi bi-funnel"></i></button>
+            {% if q or empresa_filtro or area_filtro or subarea_filtro or estado_filtro %}<a href="{% url 'proyectos:proyecto_list' %}" class="btn btn-outline-danger btn-sm" style="font-size:0.7rem;padding:0.2rem 0.4rem;">Limpiar</a>{% endif %}
+        </div>
+    </form>
+
+    <!-- KPIs Row 1: Estado de Proyectos -->
+    <div class="mb-2">
+        <small class="fw-semibold text-uppercase" style="color:var(--slate-500);font-size:0.68rem;">Estado de Proyectos</small>
+        <div class="row row-cols-4 row-cols-md-7 g-1 mt-1">
+            <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:var(--slate-700);">{{ total_proyectos }}</div><small class="text-muted" style="font-size:0.6rem;">Total</small></div></div></div>
+            <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#16a34a;">{{ activos }}</div><small class="text-muted" style="font-size:0.6rem;">Activos</small></div></div></div>
+            <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#ca8a04;">{{ pausados }}</div><small class="text-muted" style="font-size:0.6rem;">Pausados</small></div></div></div>
+            <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#0ea5e9;">{{ finalizados }}</div><small class="text-muted" style="font-size:0.6rem;">Finalizados</small></div></div></div>
+            <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#8b5cf6;">{{ cancelados }}</div><small class="text-muted" style="font-size:0.6rem;">Cancelados</small></div></div></div>
+            <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#3b82f6;">{{ total_tareas }}</div><small class="text-muted" style="font-size:0.6rem;">Tareas</small></div></div></div>
+            <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#ef4444;">{{ inc_abiertas }}</div><small class="text-muted" style="font-size:0.6rem;">Incidencias</small></div></div></div>
+        </div>
+    </div>
+
+    <!-- KPIs Row 2: Estado de Tareas -->
+    <div class="mb-2">
+        <small class="fw-semibold text-uppercase" style="color:var(--slate-500);font-size:0.68rem;">Estado de Tareas</small>
+        <div class="row row-cols-3 row-cols-md-6 g-1 mt-1">
+            <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#64748b;">{{ tareas_pendientes }}</div><small class="text-muted" style="font-size:0.6rem;">Pendientes</small></div></div></div>
+            <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#ca8a04;">{{ tareas_curso }}</div><small class="text-muted" style="font-size:0.6rem;">En Curso</small></div></div></div>
+            <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#f59e0b;">{{ tareas_rev }}</div><small class="text-muted" style="font-size:0.6rem;">En Revision</small></div></div></div>
+            <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#16a34a;">{{ tareas_fin }}</div><small class="text-muted" style="font-size:0.6rem;">Finalizadas</small></div></div></div>
+            <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:var(--slate-700);">{{ total_sprints }}</div><small class="text-muted" style="font-size:0.6rem;">Sprints</small></div></div></div>
+            <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#0ea5e9;">{{ sprints_activos_count }}</div><small class="text-muted" style="font-size:0.6rem;">Spr. Activos</small></div></div></div>
+        </div>
+    </div>
+
+    <!-- KPIs Row 3: Rendimiento -->
+    <div class="mb-2">
+        <small class="fw-semibold text-uppercase" style="color:var(--slate-500);font-size:0.68rem;">Rendimiento</small>
+        <div class="row row-cols-3 row-cols-md-6 g-1 mt-1">
+            <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:var(--slate-700);">{{ avance_prom }}%</div><small class="text-muted" style="font-size:0.6rem;">Avance Promedio</small></div></div></div>
+            <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#8b5cf6;">{{ velocidad_prom }}</div><small class="text-muted" style="font-size:0.6rem;">Velocidad Prom.</small></div></div></div>
+            <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:var(--accent);">{{ miembros_total }}</div><small class="text-muted" style="font-size:0.6rem;">Miembros</small></div></div></div>
+            <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#22c55e;">{{ finalizados }}</div><small class="text-muted" style="font-size:0.6rem;">Proy. Finalizados</small></div></div></div>
+            <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#3b82f6;">{{ total_tareas }}</div><small class="text-muted" style="font-size:0.6rem;">Total Tareas</small></div></div></div>
+            <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#ef4444;">{{ total_sprints }}</div><small class="text-muted" style="font-size:0.6rem;">Total Sprints</small></div></div></div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="row g-2 mb-2">
+        <div class="col-md-5">
+            <div class="card shadow-sm"><div class="card-header py-1 px-2"><small class="fw-semibold"><i class="bi bi-pie-chart"></i> Proyectos por Estado</small></div><div class="card-body p-2"><canvas id="chartDistProyectos" height="180"></canvas></div></div>
+        </div>
+        <div class="col-md-7">
+            <div class="card shadow-sm"><div class="card-header py-1 px-2"><small class="fw-semibold"><i class="bi bi-bar-chart"></i> Tareas por Estado</small></div><div class="card-body p-2"><canvas id="chartTareas" height="180"></canvas></div></div>
+        </div>
+    </div>
+
+    <!-- Equipo -->
+    {% if equipo_data %}
+    <div class="card shadow-sm mb-2">
+        <div class="card-header py-1 px-2 d-flex justify-content-between align-items-center">
+            <small class="fw-semibold"><i class="bi bi-people-fill"></i> Equipo</small>
+            <small class="text-muted" style="font-size:0.6rem;">{{ equipo_data|length }} personas · {{ total_proyectos }} proyecto(s)</small>
+        </div>
+        <div class="card-body p-0" style="overflow-x:auto;">
+            <table class="table table-hover mb-0" style="font-size:0.6rem;min-width:700px;">
+                <thead class="table-light">
+                    <tr>
+                        <th style="font-size:0.5rem;">Persona</th>
+                        <th style="font-size:0.5rem;">Proyectos</th>
+                        <th style="font-size:0.5rem;">Roles</th>
+                        <th style="font-size:0.5rem;">Total</th>
+                        <th style="font-size:0.5rem;">Pend</th>
+                        <th style="font-size:0.5rem;">Curso</th>
+                        <th style="font-size:0.5rem;">Rev</th>
+                        <th style="font-size:0.5rem;">Fin</th>
+                        <th style="font-size:0.5rem;">Avance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for e in equipo_data %}
+                    <tr>
+                        <td class="fw-semibold" style="font-size:0.65rem;">{{ e.nombre }}</td>
+                        <td>{{ e.proyectos }}</td>
+                        <td><span class="text-muted" style="font-size:0.55rem;">{{ e.roles }}</span></td>
+                        <td>{{ e.tareas_total }}</td>
+                        <td>{{ e.tareas_pend }}</td>
+                        <td>{% if e.tareas_curso %}<span class="fw-bold" style="color:#ca8a04;">{{ e.tareas_curso }}</span>{% else %}0{% endif %}</td>
+                        <td>{% if e.tareas_rev %}<span class="fw-bold" style="color:#f59e0b;">{{ e.tareas_rev }}</span>{% else %}0{% endif %}</td>
+                        <td>{% if e.tareas_fin %}<span class="fw-bold" style="color:#16a34a;">{{ e.tareas_fin }}</span>{% else %}0{% endif %}</td>
+                        <td>
+                            {% if e.tareas_total > 0 %}
+                            <div class="d-flex align-items-center gap-1">
+                                <div class="progress" style="width:40px;height:4px;"><div class="progress-bar bg-success" style="width:{% widthratio e.tareas_fin e.tareas_total 100 %}%;"></div></div>
+                                <small>{% widthratio e.tareas_fin e.tareas_total 100 %}%</small>
+                            </div>
+                            {% else %}-{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Tabla de Proyectos -->
+    <div class="card shadow-sm">
+        <div class="card-header py-1 px-2 d-flex justify-content-between align-items-center">
+            <small class="fw-semibold">Listado de Proyectos</small>
+            <div class="d-flex gap-1">
+                <button class="btn btn-sm py-0 px-1 btn-outline-secondary" style="font-size:0.55rem;" onclick="toggleCol('col-estado')">Estado</button>
+                <button class="btn btn-sm py-0 px-1 btn-outline-secondary" style="font-size:0.55rem;" onclick="toggleCol('col-areas')">Areas</button>
+                <button class="btn btn-sm py-0 px-1 btn-outline-secondary" style="font-size:0.55rem;" onclick="toggleCol('col-empresa')">Empresa</button>
+                <button class="btn btn-sm py-0 px-1 btn-outline-secondary" style="font-size:0.55rem;" onclick="toggleCol('col-manager')">Manager</button>
+                <button class="btn btn-sm py-0 px-1 btn-outline-secondary" style="font-size:0.55rem;" onclick="toggleCol('col-fechas')">Fechas</button>
             </div>
         </div>
-        {% empty %}
-        <div class="col-12"><p class="text-muted text-center py-4">No hay proyectos. <a href="{% url 'proyectos:proyecto_create' %}">Crear uno</a></p></div>
-        {% endfor %}
+        <div class="card-body p-0" style="overflow-x:auto;">
+            <table class="table table-hover mb-0" style="font-size:0.72rem;">
+                <thead class="table-light">
+                    <tr><th style="width:20px;"></th><th>Codigo</th><th>Proyecto</th><th class="col-estado">Estado</th><th class="col-areas">Areas</th><th class="col-empresa">Empresa</th><th class="col-manager">Manager</th><th class="col-fechas">Inicio &rarr; Fin</th><th>Tareas</th><th>Avance</th><th style="width:50px;"></th></tr>
+                </thead>
+                <tbody>
+                    {% for p in proyectos %}
+                    <tr class="align-middle main-row" data-pk="{{ p.pk }}" style="cursor:pointer;">
+                        <td><span class="toggle-icon" id="icon-{{ p.pk }}" style="cursor:pointer;font-size:0.6rem;color:var(--slate-400);" onclick="event.stopPropagation();togglePrj(this, {{ p.pk }})">&#9654;</span></td>
+                        <td><span class="badge bg-light text-muted" style="font-size:0.55rem;">{{ p.codigo }}</span></td>
+                        <td><a href="{% url 'proyectos:proyecto_detail' p.pk %}" onclick="event.stopPropagation();" class="fw-semibold text-decoration-none" style="color:inherit;">{{ p.nombre }}</a></td>
+                        <td class="col-estado"><span class="badge rounded-pill {% if p.estado == 'activo' %}bg-success{% elif p.estado == 'pausado' %}bg-warning text-dark{% else %}bg-secondary{% endif %}" style="font-size:0.5rem;">{{ p.get_estado_display }}</span></td>
+                        <td class="col-areas" style="font-size:0.6rem;color:var(--slate-500);">{% for s in p.subareas.all %}{{ s.nombre }}{% if not forloop.last %}, {% endif %}{% empty %}-{% endfor %}</td>
+                        <td class="col-empresa" style="font-size:0.6rem;">{% if p.empresa %}{{ p.empresa.nombre }}{% else %}-{% endif %}</td>
+                        <td class="col-manager" style="font-size:0.6rem;">{{ p.manager.get_full_name }}</td>
+                        <td class="col-fechas" style="font-size:0.55rem;white-space:nowrap;">{{ p.fecha_inicio|date:"d/m/Y"|default:"?" }} &rarr; {{ p.fecha_fin_estimada|date:"d/m/Y"|default:"?" }}</td>
+                        <td style="font-size:0.6rem;">{{ p.tareas.count }}</td>
+                        <td style="min-width:60px;"><div class="progress d-inline-block" style="width:50px;height:5px;"><div class="progress-bar {% if p.avance >= 80 %}bg-success{% elif p.avance >= 40 %}bg-warning{% else %}bg-secondary{% endif %}" style="width:{{ p.avance }}%;"></div></div> <small style="font-size:0.55rem;">{{ p.avance }}%</small></td>
+                        <td onclick="event.stopPropagation();" style="white-space:nowrap;">
+                            <a href="{% url 'proyectos:proyecto_edit' p.pk %}" class="btn btn-sm py-0 px-1 btn-outline-secondary" style="font-size:0.5rem;"><i class="bi bi-pencil"></i></a>
+                            <form method="POST" action="{% url 'proyectos:proyecto_toggle_activo' p.pk %}" class="d-inline" onsubmit="return confirm('{% if p.activo %}Desactivar{% else %}Activar{% endif %} {{ p.codigo }}?')">{% csrf_token %}<button class="btn btn-sm py-0 px-1 {% if p.activo %}btn-outline-danger{% else %}btn-outline-success{% endif %}" style="font-size:0.5rem;"><i class="bi bi-{% if p.activo %}toggle-off{% else %}toggle-on{% endif %}"></i></button></form>
+                        </td>
+                    </tr>
+                    {% empty %}<tr><td colspan="11" class="text-center text-muted py-4">No hay proyectos con los filtros actuales.</td></tr>{% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
+
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="d-flex justify-content-between align-items-center mt-2">
+        <small class="text-muted" style="font-size:0.65rem;">Pag. {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</small>
+        <div class="btn-group btn-group-sm">
+            {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}{% if q %}&amp;q={{ q }}{% endif %}{% if empresa_filtro %}&amp;empresa_id={{ empresa_filtro }}{% endif %}{% if area_filtro %}&amp;area_id={{ area_filtro }}{% endif %}{% if subarea_filtro %}&amp;subarea_id={{ subarea_filtro }}{% endif %}{% if estado_filtro %}&amp;estado={{ estado_filtro }}{% endif %}" class="btn btn-outline-secondary" style="font-size:0.65rem;">&lsaquo;</a>{% endif %}
+            {% for n in page_obj.paginator.page_range %}<a href="?page={{ n }}{% if q %}&amp;q={{ q }}{% endif %}{% if empresa_filtro %}&amp;empresa_id={{ empresa_filtro }}{% endif %}{% if area_filtro %}&amp;area_id={{ area_filtro }}{% endif %}{% if subarea_filtro %}&amp;subarea_id={{ subarea_filtro }}{% endif %}{% if estado_filtro %}&amp;estado={{ estado_filtro }}{% endif %}" class="btn {% if n == page_obj.number %}btn-primary{% else %}btn-outline-secondary{% endif %}" style="font-size:0.65rem;">{{ n }}</a>{% endfor %}
+            {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}{% if q %}&amp;q={{ q }}{% endif %}{% if empresa_filtro %}&amp;empresa_id={{ empresa_filtro }}{% endif %}{% if area_filtro %}&amp;area_id={{ area_filtro }}{% endif %}{% if subarea_filtro %}&amp;subarea_id={{ subarea_filtro }}{% endif %}{% if estado_filtro %}&amp;estado={{ estado_filtro }}{% endif %}" class="btn btn-outline-secondary" style="font-size:0.65rem;">&rsaquo;</a>{% endif %}
+        </div>
+    </div>
+    {% endif %}
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function togglePrj(el, pk) {
+    var icon = document.getElementById('icon-' + pk);
+    if (icon) icon.textContent = icon.textContent.charCodeAt(0) === 9654 ? String.fromCharCode(9660) : String.fromCharCode(9654);
+}
+function toggleCol(cls) { document.querySelectorAll('.' + cls).forEach(function(el){ el.classList.toggle('col-hide'); }); }
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-submit cuando se selecciona una opcion en dynamic-select de area/subarea
+    document.addEventListener('click', function(e) {
+        if (e.target.matches('.dynamic-select-option')) {
+            var wrapper = e.target.closest('.dynamic-select-wrapper');
+            var hidden = wrapper.querySelector('input[type="hidden"]');
+            if (hidden && (hidden.name === 'area_id' || hidden.name === 'subarea_id')) {
+                setTimeout(function() { wrapper.closest('form').submit(); }, 50);
+            }
+        }
+    });
+
+    var total = {{ total_proyectos }};
+    if (total > 0) {
+        new Chart(document.getElementById('chartDistProyectos'), {
+            type: 'doughnut',
+            data: { labels: ['Activos','Pausados','Finalizados','Cancelados'], datasets: [{ data: [{{ activos }},{{ pausados }},{{ finalizados }},{{ cancelados }}], backgroundColor: ['#22c55e','#f59e0b','#0ea5e9','#94a3b8'], borderWidth:0, hoverOffset:8 }] },
+            options: { responsive:true, maintainAspectRatio:false, cutout:'70%',
+                plugins: { legend:{ position:'bottom', labels:{ boxWidth:12, padding:8, font:{ size:10 }, usePointStyle:true } } } }
+        });
+    }
+    var taTotal = {{ total_tareas }};
+    if (taTotal > 0) {
+        new Chart(document.getElementById('chartTareas'), {
+            type: 'bar',
+            data: { labels: ['Pendientes','En Curso','Revision','Finalizadas'], datasets: [{ data: [{{ tareas_pendientes }},{{ tareas_curso }},{{ tareas_rev }},{{ tareas_fin }}], backgroundColor: ['#94a3b8','#f59e0b','#8b5cf6','#22c55e'], borderRadius:4 }] },
+            options: { responsive:true, maintainAspectRatio:false,
+                scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1, font:{ size:9 } } }, x:{ ticks:{ font:{ size:8 } }, grid:{ display:false } } },
+                plugins:{ legend:{ display:false } } }
+        });
+    }
+});
+</script>
 {% endblock %}
