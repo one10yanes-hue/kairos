@@ -31,6 +31,15 @@
                         <input type="text" name="nombre" class="form-control" placeholder="Ej: Sprint 1, Planificacion semanal..." required style="font-size:0.85rem;" value="{{ nombre_value|escape }}">
                     </div>
                     <div class="col-md-5">
+                        <label class="form-label fw-semibold" style="font-size:0.85rem;">Proyecto (opcional)</label>
+                        <select name="proyecto" class="form-select" style="font-size:0.85rem;">
+                            <option value="">Sin proyecto</option>
+                            {% for p in proyectos %}<option value="{{ p.pk }}">{{ p.codigo }} - {{ p.nombre }}</option>{% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="row g-3 mb-4">
+                    <div class="col-md-12">
                         <label class="form-label fw-semibold" style="font-size:0.85rem;">Descripcion</label>
                         <input type="text" name="descripcion" class="form-control" placeholder="Opcional" style="font-size:0.85rem;" value="{{ descripcion_value|escape }}">
                     </div>
@@ -176,7 +185,7 @@ function cargarDatosSubarea(id, A, U) {
     document.getElementById('filtroTipo').value = '';
     document.getElementById('actividadesContainer').innerHTML = '<p class="text-muted text-center py-4 mb-0">Cargando...</p>';
     document.getElementById('usuariosContainer').innerHTML = '<p class="text-muted text-center py-4 mb-0">Cargando...</p>';
-    fetch(A + '?subarea_id=' + id + '&limite=4&_=' + Date.now(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+    fetch(A + '?subarea_id=' + id + '&limite=100&_=' + Date.now(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
         .then(function(r){ return r.json(); })
         .then(function(d){
             if (!tiposCargados) {
@@ -189,7 +198,7 @@ function cargarDatosSubarea(id, A, U) {
             }
             renderActividades(d);
         });
-    fetch(U + '?subarea_id=' + id + '&limite=4&_=' + Date.now(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+    fetch(U + '?subarea_id=' + id + '&limite=100&_=' + Date.now(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
         .then(function(r){ return r.json(); })
         .then(function(d){ renderUsuarios(d); });
 }
@@ -197,12 +206,26 @@ function cargarDatosSubarea(id, A, U) {
 function renderActividades(d) {
     var c = document.getElementById('actividadesContainer');
     if (!d.length) { c.innerHTML = '<p class="text-muted text-center py-4 mb-0">No hay actividades en esta subarea</p>'; return; }
+    var current = new Set();
+    document.querySelectorAll('#actividadesContainer input[name="actividades"]:checked').forEach(function(cb){ current.add(cb.value); });
+    checkedActividades.forEach(function(v){ current.add(v); });
+    checkedActividades = Array.from(current);
     var h = '';
-    d.forEach(function(a){ h += '<label class="d-flex align-items-center gap-2 px-3 py-2 actividad-item" style="cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:0.85rem;"><input type="checkbox" name="actividades" value="'+a.id+'" class="form-check-input mt-0 actividad-check" data-requiere-fecha="'+a.requiere_fecha_limite+'" onchange="toggleFechaProgramada();actualizarVolumen()"><span>'+a.text+'</span></label>'; });
+    d.forEach(function(a){
+        var checked = current.has(String(a.id)) ? 'checked' : '';
+        h += '<label class="d-flex align-items-center gap-2 px-3 py-2 actividad-item" style="cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:0.85rem;"><input type="checkbox" name="actividades" value="'+a.id+'" class="form-check-input mt-0 actividad-check" data-requiere-fecha="'+a.requiere_fecha_limite+'" '+checked+' onchange="actividadCheck(this);toggleFechaProgramada();actualizarVolumen()"><span>'+a.text+'</span></label>';
+    });
     c.innerHTML = h; actualizarVolumen();
 }
 
+function actividadCheck(cb) {
+    if (cb.checked) { checkedActividades.push(cb.value); }
+    else { checkedActividades = checkedActividades.filter(function(v){ return v !== cb.value; }); }
+    actualizarVolumen();
+}
+
 var checkedUsers = [];
+var checkedActividades = [];
 
 function renderUsuarios(d) {
     var c = document.getElementById('usuariosContainer');
