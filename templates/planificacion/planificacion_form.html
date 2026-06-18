@@ -182,22 +182,20 @@ var tiposCargados = false;
 function cargarDatosSubarea(id, A, U) {
     currentSubareaId = id;
     tiposCargados = false;
-    document.getElementById('filtroTipo').value = '';
+    document.getElementById('filtroTipo').innerHTML = '<option value="">Todos</option>';
     document.getElementById('actividadesContainer').innerHTML = '<p class="text-muted text-center py-4 mb-0">Cargando...</p>';
     document.getElementById('usuariosContainer').innerHTML = '<p class="text-muted text-center py-4 mb-0">Cargando...</p>';
-    fetch(A + '?subarea_id=' + id + '&limite=100&_=' + Date.now(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+    // Cargar tipos de la subarea (independiente de actividades)
+    fetch('/master/api/buscar/tipo_actividad/?subarea_id=' + id + '&_=' + Date.now(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
         .then(function(r){ return r.json(); })
         .then(function(d){
-            if (!tiposCargados) {
-                var tipos = new Set();
-                d.forEach(function(a){ tipos.add(a.tipo_nombre); });
-                var sel = document.getElementById('filtroTipo');
-                sel.innerHTML = '<option value="">Todos</option>';
-                tipos.forEach(function(t){ sel.innerHTML += '<option value="'+t+'">'+t+'</option>'; });
-                tiposCargados = true;
-            }
-            renderActividades(d);
+            var sel = document.getElementById('filtroTipo');
+            sel.innerHTML = '<option value="">Todos</option>';
+            d.forEach(function(t){ sel.innerHTML += '<option value="'+t.label+'">'+t.label+'</option>'; });
         });
+    fetch(A + '?subarea_id=' + id + '&limite=100&_=' + Date.now(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(function(r){ return r.json(); })
+        .then(function(d){ renderActividades(d); });
     fetch(U + '?subarea_id=' + id + '&limite=100&_=' + Date.now(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
         .then(function(r){ return r.json(); })
         .then(function(d){ renderUsuarios(d); });
