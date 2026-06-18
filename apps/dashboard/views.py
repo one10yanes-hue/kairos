@@ -392,7 +392,10 @@ def linea_tiempo(request):
         activo=True, is_active=True
     ).filter(
         Q(rol__nombre="Usuario") | Q(roles_adicionales__nombre="Usuario")
-    ).order_by("nombre")
+    )
+    if subarea_filter:
+        usuarios_disponibles = usuarios_disponibles.filter(subareas__subarea_id=subarea_filter, subareas__activo=True)
+    usuarios_disponibles = usuarios_disponibles.order_by("nombre")
 
     subareas_disponibles = subareas.select_related("area")
 

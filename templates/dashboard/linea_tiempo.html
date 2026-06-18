@@ -38,7 +38,7 @@
           </div>
           <div class="btn-group btn-group-sm" role="group">
             <a href="?fecha={{ ayer.isoformat }}{% if user_filter %}&amp;user_id={{ user_filter }}{% endif %}{% if subarea_filter %}&amp;subarea_id={{ subarea_filter }}{% endif %}{% if proyecto_filter %}&amp;proyecto_id={{ proyecto_filter }}{% endif %}" class="btn btn-outline-secondary">&lsaquo; Ayer</a>
-            <a href="?fecha={{ maniana.isoformat }}{% if user_filter %}&amp;user_id={{ user_filter }}{% endif %}{% if subarea_filter %}&amp;subarea_id={{ subarea_filter }}{% endif %}{% if proyecto_filter %}&amp;proyecto_id={{ proyecto_filter }}{% endif %}" class="btn btn-outline-secondary">Manana &rsaquo;</a>
+             <a href="?fecha={{ maniana.isoformat }}{% if user_filter %}&amp;user_id={{ user_filter }}{% endif %}{% if subarea_filter %}&amp;subarea_id={{ subarea_filter }}{% endif %}{% if proyecto_filter %}&amp;proyecto_id={{ proyecto_filter }}{% endif %}" class="btn btn-outline-secondary">Ma&ntilde;ana &rsaquo;</a>
           </div>
           <form method="GET" class="tl-date-form">
             <input type="date" name="fecha" value="{{ fecha_str }}" class="form-control form-control-sm tl-date-input" onchange="this.form.submit()">
