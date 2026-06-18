@@ -623,90 +623,94 @@ def linea_tiempo(request):
     maniana = dia + timedelta(days=1)
 
     # ============= PROYECTOS — GANTT =============
-    from apps.proyectos.models import Proyecto
+    try:
+        from apps.proyectos.models import Proyecto
+        _has_proyectos = True
+    except ImportError:
+        _has_proyectos = False
 
-    proyecto_filter = request.GET.get("proyecto_id")
-    if proyecto_filter:
-        try:
-            proyecto_filter = int(proyecto_filter)
-        except (ValueError, TypeError):
-            proyecto_filter = None
-
-    if request.user.rol.nombre == "Master":
-        proyectos_qs = Proyecto.objects.filter(activo=True)
-        if subarea_filter:
-            proyectos_qs = proyectos_qs.filter(subareas__id=subarea_filter)
-    elif request.user.rol.nombre == "Admin" and request.user.maneja_proyectos:
-        proyectos_qs = Proyecto.objects.filter(activo=True)
-        if subarea_filter:
-            proyectos_qs = proyectos_qs.filter(subareas__id=subarea_filter)
-    elif request.user.maneja_proyectos:
-        proyectos_qs = Proyecto.objects.filter(
-            activo=True,
-            membresias__user=request.user,
-            membresias__activo=True,
-        )
-    else:
-        proyectos_qs = Proyecto.objects.none()
-
-    if proyecto_filter:
-        proyectos_qs = proyectos_qs.filter(pk=proyecto_filter)
-
-    proyectos_disponibles = proyectos_qs.distinct()
-
+    proyecto_filter = None
+    proyectos_disponibles = []
     proyecto_groups = []
     proyecto_items = []
     gantt_tips = {}
-    gantt_dates = []
+    gantt_window = {"min": (hoy - timedelta(days=7)).isoformat(), "max": (hoy + timedelta(days=30)).isoformat()}
 
-    color_class = {
-        "planificado": "gantt-plan",
-        "activo": "gantt-activo",
-        "finalizado": "gantt-fin",
-    }
+    if _has_proyectos:
+        proyecto_filter = request.GET.get("proyecto_id")
+        if proyecto_filter:
+            try:
+                proyecto_filter = int(proyecto_filter)
+            except (ValueError, TypeError):
+                proyecto_filter = None
 
-    for p in proyectos_disponibles:
-        sprints_qs = p.sprints.filter(activo=True).order_by("numero")
-        if not sprints_qs.exists():
-            continue
-        total_tareas = p.tareas.filter(activo=True).count()
-        done_tareas = p.tareas.filter(activo=True, estado="finalizada").count()
-        proyecto_groups.append({
-            "id": f"prj-{p.pk}",
-            "content": f"{p.codigo} {p.nombre[:30]}  ({total_tareas - done_tareas}/{total_tareas} pend)",
-        })
-        for sp in sprints_qs:
-            if not sp.fecha_inicio or not sp.fecha_fin:
+        if request.user.rol.nombre == "Master":
+            proyectos_qs = Proyecto.objects.filter(activo=True)
+            if subarea_filter:
+                proyectos_qs = proyectos_qs.filter(subareas__id=subarea_filter)
+        elif request.user.rol.nombre == "Admin" and request.user.maneja_proyectos:
+            proyectos_qs = Proyecto.objects.filter(activo=True)
+            if subarea_filter:
+                proyectos_qs = proyectos_qs.filter(subareas__id=subarea_filter)
+        elif request.user.maneja_proyectos:
+            proyectos_qs = Proyecto.objects.filter(
+                activo=True,
+                membresias__user=request.user,
+                membresias__activo=True,
+            )
+        else:
+            proyectos_qs = Proyecto.objects.none()
+
+        if proyecto_filter:
+            proyectos_qs = proyectos_qs.filter(pk=proyecto_filter)
+
+        proyectos_disponibles = proyectos_qs.distinct()
+
+        color_class = {
+            "planificado": "gantt-plan",
+            "activo": "gantt-activo",
+            "finalizado": "gantt-fin",
+        }
+
+        gantt_dates = []
+        for p in proyectos_disponibles:
+            sprints_qs = p.sprints.filter(activo=True).order_by("numero")
+            if not sprints_qs.exists():
                 continue
-            gantt_dates.extend([sp.fecha_inicio, sp.fecha_fin])
-            t_total = sp.tareas.filter(activo=True).count()
-            t_done = sp.tareas.filter(activo=True, estado="finalizada").count()
-            pct = int(t_done / t_total * 100) if t_total else 0
-            cls = color_class.get(sp.estado, "gantt-plan")
-            label = f"S{sp.numero}: {sp.nombre[:25]}{' ✓' if pct == 100 else ''}"
-            item_id = f"sp-{sp.pk}"
-            proyecto_items.append({
-                "id": item_id,
-                "group": f"prj-{p.pk}",
-                "content": label,
-                "start": sp.fecha_inicio.isoformat(),
-                "end": sp.fecha_fin.isoformat(),
-                "className": cls,
-                "title": f"{sp.nombre}|Estado: {sp.get_estado_display()}|Tareas: {t_done}/{t_total} ({pct}%)|{sp.fecha_inicio.strftime('%d/%m/%Y')} → {sp.fecha_fin.strftime('%d/%m/%Y')}",
+            total_tareas = p.tareas.filter(activo=True).count()
+            done_tareas = p.tareas.filter(activo=True, estado="finalizada").count()
+            proyecto_groups.append({
+                "id": f"prj-{p.pk}",
+                "content": f"{p.codigo} {p.nombre[:30]}  ({total_tareas - done_tareas}/{total_tareas} pend)",
             })
-            gantt_tips[item_id] = f"{sp.nombre}|{sp.get_estado_display()}|{t_done}/{t_total} tareas ({pct}%)"
+            for sp in sprints_qs:
+                if not sp.fecha_inicio or not sp.fecha_fin:
+                    continue
+                gantt_dates.extend([sp.fecha_inicio, sp.fecha_fin])
+                t_total = sp.tareas.filter(activo=True).count()
+                t_done = sp.tareas.filter(activo=True, estado="finalizada").count()
+                pct = int(t_done / t_total * 100) if t_total else 0
+                cls = color_class.get(sp.estado, "gantt-plan")
+                label = f"S{sp.numero}: {sp.nombre[:25]}{' ✓' if pct == 100 else ''}"
+                item_id = f"sp-{sp.pk}"
+                proyecto_items.append({
+                    "id": item_id,
+                    "group": f"prj-{p.pk}",
+                    "content": label,
+                    "start": sp.fecha_inicio.isoformat(),
+                    "end": sp.fecha_fin.isoformat(),
+                    "className": cls,
+                    "title": f"{sp.nombre}|Estado: {sp.get_estado_display()}|Tareas: {t_done}/{t_total} ({pct}%)|{sp.fecha_inicio.strftime('%d/%m/%Y')} → {sp.fecha_fin.strftime('%d/%m/%Y')}",
+                })
+                gantt_tips[item_id] = f"{sp.nombre}|{sp.get_estado_display()}|{t_done}/{t_total} tareas ({pct}%)"
 
-    if gantt_dates:
-        gantt_min = min(gantt_dates) - timedelta(days=3)
-        gantt_max = max(max(gantt_dates), hoy) + timedelta(days=3)
-    else:
-        gantt_min = hoy - timedelta(days=7)
-        gantt_max = hoy + timedelta(days=30)
-
-    gantt_window = {
-        "min": gantt_min.isoformat(),
-        "max": gantt_max.isoformat(),
-    }
+        if gantt_dates:
+            gantt_min = min(gantt_dates) - timedelta(days=3)
+            gantt_max = max(max(gantt_dates), hoy) + timedelta(days=3)
+            gantt_window = {
+                "min": gantt_min.isoformat(),
+                "max": gantt_max.isoformat(),
+            }
 
     return render(request, "dashboard/linea_tiempo.html", {
         "timeline_groups": timeline_groups,
