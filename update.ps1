@@ -6,13 +6,31 @@ if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 
 Set-Location C:\inetpub\kairos
 
+# --- Crear .env SOLO si no existe (NUNCA sobrescribir uno existente) ---
+if (-not (Test-Path .env)) {
+    Write-Host "Creando .env por primera vez..." -ForegroundColor Yellow
+    $envContent = @"
+SECRET_KEY=Kairos2026SuperSeguroClaveAleatoriaLarga50chars!!
+DEBUG=False
+ALLOWED_HOSTS=localhost,127.0.0.1,192.168.200.93,kairos.viva1a.com.co
+DB_ENGINE=mysql
+DB_NAME=kairos
+DB_USER=root
+DB_PASSWORD=Viva2026
+DB_HOST=localhost
+DB_PORT=3306
+"@
+    Set-Content -Path .env -Value $envContent -Encoding ASCII
+    Write-Host ".env creado. Revisalo y ajusta si es necesario." -ForegroundColor Green
+}
+
 # Limpiar procesos, locks y packs corruptos de Git
 taskkill /F /IM git.exe 2>$null
 Remove-Item -Force .git\index.lock -ErrorAction SilentlyContinue
 Get-ChildItem .git\objects\pack\*.idx -ErrorAction SilentlyContinue | Remove-Item -Force
 Get-ChildItem .git\objects\pack\*.pack -ErrorAction SilentlyContinue | Remove-Item -Force
 
-# Recuperar del remoto (fresh fetch)
+# Recuperar del remoto
 git fetch origin
 
 Write-Host "========================================" -ForegroundColor Cyan
@@ -25,6 +43,12 @@ $currentBranch = git branch --show-current
 Write-Host "Rama actual: $currentBranch" -ForegroundColor Yellow
 Write-Host ""
 
+# Si la rama local no existe en remoto, usar main
+if (-not (git branch -r | Select-String "origin/$currentBranch")) {
+    $currentBranch = "main"
+    Write-Host "Rama local no tiene remoto. Usando: $currentBranch" -ForegroundColor Yellow
+}
+
 # Mostrar ramas disponibles
 Write-Host "Ramas disponibles:" -ForegroundColor Cyan
 git branch -r | ForEach-Object { Write-Host "  $_" }
@@ -36,28 +60,13 @@ if ([string]::IsNullOrWhiteSpace($rama)) {
     $rama = $currentBranch
 }
 
-# Si la rama es local, usarla directo. Si es remota, usar origin/
-if ($rama -notmatch "^origin/") {
-    $remoteCheck = git branch -r | Select-String "origin/$rama"
-    if ($remoteCheck) {
-        $pullRef = "origin/$rama"
-    } else {
-        $pullRef = $rama
-    }
-} else {
-    $pullRef = $rama
-}
-
 Write-Host ""
-Write-Host "Actualizando desde $pullRef..." -ForegroundColor Cyan
-$env:GIT_ASK_YESNO = "false"
-echo n | git pull origin $rama
-Remove-Item Env:\GIT_ASK_YESNO -ErrorAction SilentlyContinue
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "ERROR: git pull fallo. Revisa la conexion o el nombre de la rama." -ForegroundColor Red
-    pause
-    exit
-}
+Write-Host "Actualizando desde origin/$rama..." -ForegroundColor Cyan
+
+# Resetear al estado exacto del remoto (evita conflictos de merge)
+git fetch origin $rama
+git checkout $rama 2>$null
+git reset --hard "origin/$rama"
 
 Write-Host "Instalando dependencias..." -ForegroundColor Cyan
 .\venv\Scripts\python.exe -m pip install -r requirements.txt
@@ -71,7 +80,7 @@ taskkill /F /IM python.exe 2>$null
 taskkill /F /IM git.exe 2>$null
 Start-Sleep -Seconds 2
 
-# Limpiar locks y compactar git
+# Limpiar locks
 Remove-Item -Force .git\index.lock -ErrorAction SilentlyContinue
 git gc --auto 2>$null
 

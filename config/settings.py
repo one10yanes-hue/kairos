@@ -80,6 +80,8 @@ db_name = env("DB_NAME", default="db.sqlite3")
 
 if db_engine in ["mssql", "sql_server"]:
     db_engine = "mssql"
+if db_engine in ["mariadb", "mysql"]:
+    db_engine = "django.db.backends.mysql"
 
 DATABASES = {
     "default": {
@@ -99,6 +101,16 @@ if db_engine == "mssql":
                 "driver": env("DB_OPTIONS_DRIVER", default="ODBC Driver 17 for SQL Server"),
                 "extra_params": env("DB_OPTIONS_EXTRA_PARAMS", default=""),
             },
+        }
+    )
+
+if db_engine == "django.db.backends.mysql":
+    DATABASES["default"].update(
+        {
+            "HOST": env("DB_HOST", default="localhost"),
+            "PORT": env("DB_PORT", default="3306"),
+            "USER": env("DB_USER", default="root"),
+            "PASSWORD": env("DB_PASSWORD", default=""),
         }
     )
 
