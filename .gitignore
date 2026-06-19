@@ -33,3 +33,7 @@ Thumbs.db
 *.egg-info/
 dist/
 build/
+
+# Local stray files
+logo KAIROS.png
+static/img/1.png
