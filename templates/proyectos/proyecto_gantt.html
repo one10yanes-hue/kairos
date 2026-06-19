@@ -1,80 +1,63 @@
-{% extends "base.html" %}{% block content %}
-<style>
-.vis-timeline { border:none; font-family:'Inter','Segoe UI',system-ui,sans-serif; }
-.vis-item { border-radius:6px; font-size:0.7rem; }
-.vis-item.gantt-plan { background:#e2e8f0; border-color:#cbd5e1; color:#475569; }
-.vis-item.gantt-activo { background:#dbeafe; border-color:#93c5fd; color:#1d4ed8; }
-.vis-item.gantt-fin { background:#dcfce7; border-color:#86efac; color:#166534; }
-.vis-item.vis-background { background:#f8fafc; }
-.vis-time-axis .vis-text { color:#94a3b8; font-size:0.65rem; }
-.vis-labelset .vis-label { color:#475569; font-size:0.7rem; }
-.vis-current-time { background:#ef4444; }
-.vis-panel.vis-center { border-color:var(--slate-200); }
-.vis-panel.vis-left { border-color:var(--slate-200); }
-.vis-group { border-color:#f1f5f9; }
-</style>
-<div class="container-fluid mt-3">
-    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-        <h5 class="fw-bold mb-0">
-            <a href="{% url 'proyectos:proyecto_detail' proyecto.pk %}" class="text-decoration-none">{{ proyecto.codigo }}</a>
-            <small class="text-muted ms-1">| Gantt</small>
-        </h5>
-        <div class="d-flex gap-1">
-            <button class="btn btn-sm btn-outline-secondary" style="font-size:0.68rem;" onclick="timeline.fit({animation:{duration:300}})"><i class="bi bi-arrows-angle-expand"></i> Ajustar</button>
-            <button class="btn btn-sm btn-outline-secondary" style="font-size:0.68rem;" onclick="timeline.zoomIn(0.5)"><i class="bi bi-zoom-in"></i></button>
-            <button class="btn btn-sm btn-outline-secondary" style="font-size:0.68rem;" onclick="timeline.zoomOut(0.5)"><i class="bi bi-zoom-out"></i></button>
-            <a href="{% url 'proyectos:proyecto_detail' proyecto.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.68rem;">Dashboard</a>
+{% extends "base.html" %}{% load static %}
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/vis-timeline@7.7.3/styles/vis-timeline-graph2d.min.css" rel="stylesheet">
+<link href="{% static 'css/linea_tiempo.css' %}" rel="stylesheet">
+{% endblock %}
+{% block content %}
+<div class="container-fluid mt-3 tl-wrap">
+  <div class="tl-toolbar card">
+    <div class="card-body">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div class="d-flex align-items-center gap-2">
+          <div class="tl-title-icon">
+            <i class="bi bi-bar-chart-steps"></i>
+          </div>
+          <div>
+            <h5 class="mb-0 fw-bold">{{ proyecto.codigo }} &middot; Gantt</h5>
+            <div class="tl-subtitle">{{ proyecto.nombre }}</div>
+          </div>
         </div>
-    </div>
-
-    <div class="row g-1 mb-2">
-        <small class="fw-semibold text-uppercase" style="color:var(--slate-500);font-size:0.68rem;">Estado del Cronograma</small>
-    </div>
-    <div class="row row-cols-4 row-cols-md-6 g-1 mb-2">
-        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:var(--accent);">{{ grupos|length }}</div><small class="text-muted" style="font-size:0.6rem;">Sprints</small></div></div></div>
-        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#22c55e;">{{ tareas_total }}</div><small class="text-muted" style="font-size:0.6rem;">Tareas</small></div></div></div>
-        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#f59e0b;">{{ proyecto.avance }}%</div><small class="text-muted" style="font-size:0.6rem;">Avance</small></div></div></div>
-        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#8b5cf6;">{{ items|length }}</div><small class="text-muted" style="font-size:0.6rem;">Barras</small></div></div></div>
-    </div>
-
-    <div class="d-flex gap-2 mb-2 align-items-center">
-        <span class="badge" style="background:#e2e8f0;color:#475569;font-size:0.55rem;">Planificado</span>
-        <span class="badge" style="background:#dbeafe;color:#1d4ed8;font-size:0.55rem;">En Curso</span>
-        <span class="badge" style="background:#dcfce7;color:#166534;font-size:0.55rem;">Finalizado</span>
-    </div>
-
-    <div class="card shadow-sm">
-        <div class="card-body p-2">
-            <div id="gantt" style="height:520px;"></div>
+        <div class="tl-controls d-flex flex-wrap align-items-center gap-1">
+          <button class="btn btn-sm btn-outline-secondary" style="font-size:0.68rem;" onclick="timeline.fit({animation:{duration:300}})"><i class="bi bi-arrows-angle-expand"></i></button>
+          <button class="btn btn-sm btn-outline-secondary" style="font-size:0.68rem;" onclick="timeline.zoomIn(0.5)"><i class="bi bi-zoom-in"></i></button>
+          <button class="btn btn-sm btn-outline-secondary" style="font-size:0.68rem;" onclick="timeline.zoomOut(0.5)"><i class="bi bi-zoom-out"></i></button>
+          <a href="{% url 'proyectos:proyecto_detail' proyecto.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.68rem;">Dashboard</a>
         </div>
+      </div>
+      <div class="tl-legend">
+        <div class="tl-legend-item">
+          <div class="tl-legend-box gantt-plan"></div>
+          <span>Planificado</span>
+        </div>
+        <div class="tl-legend-item">
+          <div class="tl-legend-box gantt-activo"></div>
+          <span>En Curso</span>
+        </div>
+        <div class="tl-legend-item">
+          <div class="tl-legend-box gantt-fin"></div>
+          <span>Finalizado</span>
+        </div>
+        <div class="tl-legend-item ms-auto">
+          <small class="text-muted" style="font-size:0.6rem;">{{ grupos|length }} sprints &middot; {{ tareas_total }} tareas &middot; {{ proyecto.avance }}% avance</small>
+        </div>
+      </div>
     </div>
+  </div>
+  <div class="tl-body">
+    <div id="gantt" class="tl-vis"></div>
+  </div>
 </div>
 
-<link href="https://cdn.jsdelivr.net/npm/vis-timeline@7.7.3/styles/vis-timeline-graph2d.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/vis-timeline@7.7.3/standalone/umd/vis-timeline-graph2d.min.js"></script>
 <script>
 var container = document.getElementById('gantt');
 var groups = new vis.DataSet({{ grupos|safe }});
 var items = new vis.DataSet({{ items|safe }});
 var options = {
-    editable: false,
-    stack: true,
-    showCurrentTime: true,
-    locale: 'es',
-    zoomMin: 86400000,
-    zoomMax: 315360000000,
-    verticalScroll: true,
-    orientation: { axis: 'both', item: 'top' },
-    margin: { item: 10, axis: 0 },
+    editable: false, stack: true, showCurrentTime: true, locale: 'es',
+    zoomMin: 86400000, zoomMax: 315360000000, verticalScroll: true,
+    margin: { item: 8, axis: 0 },
     tooltip: { followMouse: true, overflowMethod: 'cap' },
-    template: function(item, element, data) {
-        var pct = '';
-        if (data && data.title) {
-            var parts = data.title.split('|');
-            return '<div style="padding:2px 6px;font-size:0.62rem;white-space:nowrap;">' + parts[0] + '</div>';
-        }
-        return '<div style="padding:2px 6px;font-size:0.62rem;">' + data.content + '</div>';
-    }
 };
 var timeline = new vis.Timeline(container, items, groups, options);
 setTimeout(function () { timeline.fit({ animation: { duration: 300 } }); }, 300);
