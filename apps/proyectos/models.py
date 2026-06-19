@@ -257,6 +257,13 @@ class Tarea(models.Model):
     def __str__(self):
         return f"{self.codigo}: {self.titulo}"
 
+    @property
+    def tiempo_trabajado(self):
+        asig = self.asignacion
+        if asig:
+            return asig.tiempo_formateado()
+        return ""
+
     def clean(self):
         from django.core.exceptions import ValidationError
         transiciones = _get_transiciones(self.proyecto, "tarea")

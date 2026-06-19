@@ -57,7 +57,7 @@ def backlog_view(request, pk):
 
     # Historias (todas, con sprint opcional)
     historias = proyecto.historias.filter(activo=True).prefetch_related(
-        "tareas__incidencias", "creador", "sprint"
+        "tareas__incidencias", "tareas__asignacion__registros", "tareas__asignado_a", "creador", "sprint"
     ).order_by("orden")
     # Tareas sueltas (sin historia, puede tener sprint o no)
     tareas_sueltas = proyecto.tareas.filter(activo=True, historia__isnull=True).select_related("asignado_a", "creador", "sprint").order_by("-fecha_creacion")
