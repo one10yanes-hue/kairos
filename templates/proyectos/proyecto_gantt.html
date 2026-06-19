@@ -18,28 +18,23 @@
           </div>
         </div>
         <div class="tl-controls d-flex flex-wrap align-items-center gap-1">
+          <button class="btn btn-sm btn-outline-secondary" style="font-size:0.65rem;" onclick="irAFecha('{{ hoy }}')">Hoy</button>
+          <button class="btn btn-sm btn-outline-secondary" style="font-size:0.65rem;" onclick="irARango('{{ semana_inicio }}','{{ semana_fin }}')">Semana</button>
+          <button class="btn btn-sm btn-outline-secondary" style="font-size:0.65rem;" onclick="irARango('{{ mes_inicio }}','{{ mes_fin|date:'Y-m-d' }}')">Mes</button>
+          <span class="text-muted" style="font-size:0.6rem;">|</span>
           <button class="btn btn-sm btn-outline-secondary" style="font-size:0.68rem;" onclick="timeline.fit({animation:{duration:300}})"><i class="bi bi-arrows-angle-expand"></i></button>
           <button class="btn btn-sm btn-outline-secondary" style="font-size:0.68rem;" onclick="timeline.zoomIn(0.5)"><i class="bi bi-zoom-in"></i></button>
           <button class="btn btn-sm btn-outline-secondary" style="font-size:0.68rem;" onclick="timeline.zoomOut(0.5)"><i class="bi bi-zoom-out"></i></button>
-          <a href="{% url 'proyectos:proyecto_detail' proyecto.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.68rem;">Dashboard</a>
+          <span class="text-muted" style="font-size:0.6rem;">|</span>
+          <button class="btn btn-sm btn-outline-secondary" style="font-size:0.65rem;" onclick="exportarPNG()"><i class="bi bi-download"></i> PNG</button>
+          <a href="{% url 'proyectos:proyecto_detail' proyecto.pk %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.65rem;">Dashboard</a>
         </div>
       </div>
       <div class="tl-legend">
-        <div class="tl-legend-item">
-          <div class="tl-legend-box gantt-plan"></div>
-          <span>Planificado</span>
-        </div>
-        <div class="tl-legend-item">
-          <div class="tl-legend-box gantt-activo"></div>
-          <span>En Curso</span>
-        </div>
-        <div class="tl-legend-item">
-          <div class="tl-legend-box gantt-fin"></div>
-          <span>Finalizado</span>
-        </div>
-        <div class="tl-legend-item ms-auto">
-          <small class="text-muted" style="font-size:0.6rem;">{{ grupos|length }} sprints &middot; {{ tareas_total }} tareas &middot; {{ proyecto.avance }}% avance</small>
-        </div>
+        <div class="tl-legend-item"><div class="tl-legend-box gantt-plan"></div><span>Planificado</span></div>
+        <div class="tl-legend-item"><div class="tl-legend-box gantt-activo"></div><span>En Curso</span></div>
+        <div class="tl-legend-item"><div class="tl-legend-box gantt-fin"></div><span>Finalizado</span></div>
+        <div class="tl-legend-item ms-auto"><small class="text-muted" style="font-size:0.6rem;">{{ grupos|length }} grupos &middot; {{ items|length }} barras &middot; {{ tareas_total }} tareas</small></div>
       </div>
     </div>
   </div>
@@ -49,6 +44,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/vis-timeline@7.7.3/standalone/umd/vis-timeline-graph2d.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script>
 var container = document.getElementById('gantt');
 var groups = new vis.DataSet({{ grupos|safe }});
@@ -57,9 +53,42 @@ var options = {
     editable: false, stack: true, showCurrentTime: true, locale: 'es',
     zoomMin: 86400000, zoomMax: 315360000000, verticalScroll: true,
     margin: { item: 8, axis: 0 },
-    tooltip: { followMouse: true, overflowMethod: 'cap' },
+    tooltip: {
+        followMouse: true,
+        overflowMethod: 'cap',
+        template: function(item) {
+            if (!item || !item.title) return '';
+            var parts = item.title.split('|');
+            var html = '<div style="background:#1e293b;color:#fff;padding:8px 12px;border-radius:6px;font-size:0.7rem;min-width:180px;">';
+            html += '<div style="font-weight:600;font-size:0.75rem;margin-bottom:4px;">' + parts[0] + '</div>';
+            if (parts[1]) html += '<div style="color:#94a3b8;font-size:0.65rem;">' + parts[1] + '</div>';
+            if (parts[2]) html += '<div style="color:#e2e8f0;font-size:0.65rem;margin-top:2px;">' + parts[2] + '</div>';
+            if (parts[3]) html += '<div style="color:#94a3b8;font-size:0.62rem;margin-top:2px;">' + parts[3] + '</div>';
+            if (parts[4]) html += '<div style="color:#cbd5e1;font-size:0.62rem;">' + parts[4] + '</div>';
+            html += '</div>';
+            return html;
+        }
+    },
+    template: function(item, element, data) {
+        if (!data || !data.content) return '';
+        return '<div style="padding:1px 6px;font-size:0.6rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + data.content + '</div>';
+    }
 };
 var timeline = new vis.Timeline(container, items, groups, options);
 setTimeout(function () { timeline.fit({ animation: { duration: 300 } }); }, 300);
+
+function irAFecha(f) { timeline.setWindow(new Date(f), new Date(f + 'T23:59:59'), {animation:{duration:300}}); }
+function irARango(ini, fin) { timeline.setWindow(new Date(ini), new Date(fin + 'T23:59:59'), {animation:{duration:300}}); }
+
+function exportarPNG() {
+    if (typeof html2canvas === 'undefined') { alert('Cargando libreria de exportacion...'); return; }
+    var el = document.querySelector('.tl-body');
+    html2canvas(el, { backgroundColor: '#ffffff', scale: 2 }).then(function(canvas) {
+        var link = document.createElement('a');
+        link.download = 'gantt-{{ proyecto.codigo }}.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    });
+}
 </script>
 {% endblock %}

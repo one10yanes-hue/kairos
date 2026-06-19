@@ -405,68 +405,90 @@ def proyecto_equipo(request, pk):
 
 @miembro_requerido()
 def proyecto_gantt(request, pk):
+    from datetime import timedelta
+    from django.utils import timezone
     proyecto = request.proyecto
     sprints = proyecto.sprints.filter(activo=True).order_by("numero")
     grupos = []
     items = []
-
-    historias_sin_sprint = proyecto.historias.filter(activo=True, sprint__isnull=True)
-    if historias_sin_sprint.exists():
-        grupos.append({
-            "id": "backlog",
-            "content": "Backlog (sin sprint)",
-        })
+    hoy = timezone.now().date()
 
     for sp in sprints:
         gid = f"sprint-{sp.pk}"
+        tareas_sp = sp.tareas.filter(activo=True).count()
+        done_sp = sp.tareas.filter(activo=True, estado="finalizada").count()
+        pct_sp = int(done_sp / tareas_sp * 100) if tareas_sp else 0
+        clase_sp = "gantt-activo" if sp.estado == "activo" else ("gantt-fin" if sp.estado == "finalizado" else "gantt-plan")
+        sp_start = (sp.fecha_inicio.isoformat() if sp.fecha_inicio else None)
+        sp_end = (sp.fecha_fin.isoformat() if sp.fecha_fin else None)
+
         grupos.append({
             "id": gid,
             "content": f"Sprint {sp.numero}: {sp.nombre}",
         })
 
-        # Tareas del sprint agrupadas por historia
-        historias_sp = sp.historias.filter(activo=True)
-        if not historias_sp.exists():
-            if sp.fecha_inicio and sp.fecha_fin:
-                tareas_sp = sp.tareas.filter(activo=True).count()
-                items.append({
-                    "id": f"sprint-{sp.pk}-bar",
-                    "group": gid,
-                    "content": f"{tareas_sp} tareas",
-                    "start": sp.fecha_inicio.isoformat(),
-                    "end": sp.fecha_fin.isoformat(),
-                    "className": "gantt-plan",
-                })
+        # Barra del sprint
+        if sp_start and sp_end:
+            items.append({
+                "id": f"sprint-{sp.pk}-bar",
+                "group": gid,
+                "content": f"S{sp.numero} ({pct_sp}%)",
+                "start": sp_start,
+                "end": sp_end,
+                "className": clase_sp,
+                "title": f"Sprint {sp.numero}: {sp.nombre}|{sp_start} → {sp_end}|{done_sp}/{tareas_sp} tareas ({pct_sp}%)|Estado: {sp.get_estado_display()}",
+            })
 
-        for h in historias_sp:
-            # Crear sub-grupo por historia dentro del sprint
+        # Historias del sprint como sub-grupos
+        for h in sp.historias.filter(activo=True).prefetch_related("tareas__asignado_a"):
             hgid = f"historia-{h.pk}"
+            tareas_h = [t for t in h.tareas.all() if t.activo]
+            done_h = sum(1 for t in tareas_h if t.estado == "finalizada")
+            total_h = len(tareas_h)
+            pct_h = int(done_h / total_h * 100) if total_h else 0
+            clase_h = "gantt-fin" if h.estado == "done" else ("gantt-activo" if h.estado == "en_progreso" else "gantt-plan")
+            h_start = sp_start or h.fecha_creacion.date().isoformat()
+            # Responsable = primer asignado de cualquier tarea
+            responsable = next((t.asignado_a.get_full_name() for t in tareas_h if t.asignado_a), "Sin asignar")
+
             grupos.append({
                 "id": hgid,
-                "content": f"  {h.codigo}: {h.titulo[:35]}",
+                "content": f"  {h.codigo} {h.titulo[:25]}",
             })
-            tareas_h = h.tareas.filter(activo=True)
-            done = tareas_h.filter(estado="finalizada").count()
-            total = tareas_h.count()
-            clase = "gantt-activo"
-            if h.estado == "done":
-                clase = "gantt-fin"
-            elif h.estado == "backlog":
-                clase = "gantt-plan"
             items.append({
                 "id": f"historia-{h.pk}-bar",
                 "group": hgid,
-                "content": f"{h.titulo[:40]} ({done}/{total})",
-                "start": (sp.fecha_inicio.isoformat() if sp.fecha_inicio else h.fecha_creacion.date().isoformat()),
-                "end": (sp.fecha_fin.isoformat() if sp.fecha_fin else None),
-                "className": clase,
+                "content": f"{h.codigo} ({done_h}/{total_h} - {pct_h}%)",
+                "start": h_start,
+                "end": sp_end,
+                "className": clase_h,
+                "title": f"{h.codigo}: {h.titulo}|{h_start} → {sp_end or '?'}|{done_h}/{total_h} tareas ({pct_h}%)|Prioridad: {h.get_prioridad_display()}|Responsable: {responsable}",
             })
+
+    # Fechas para navegacion rapida
+    if sp_start:
+        gantt_min = min(
+            sp.fecha_inicio for sp in sprints if sp.fecha_inicio
+        ) - timedelta(days=1)
+        gantt_max = max(
+            sp.fecha_fin for sp in sprints if sp.fecha_fin
+        ) + timedelta(days=1)
+    else:
+        gantt_min = hoy - timedelta(days=7)
+        gantt_max = hoy + timedelta(days=30)
 
     return render(request, "proyectos/proyecto_gantt.html", {
         "proyecto": proyecto,
         "grupos": grupos,
         "items": items,
         "tareas_total": proyecto.tareas.filter(activo=True).count(),
+        "gantt_min": gantt_min.isoformat(),
+        "gantt_max": gantt_max.isoformat(),
+        "hoy": hoy.isoformat(),
+        "semana_inicio": (hoy - timedelta(days=hoy.weekday())).isoformat(),
+        "semana_fin": (hoy + timedelta(days=6 - hoy.weekday())).isoformat(),
+        "mes_inicio": hoy.replace(day=1).isoformat(),
+        "mes_fin": (hoy.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1),
     })
 
 
