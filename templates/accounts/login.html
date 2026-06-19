@@ -2,17 +2,17 @@
 {% load static %}
 
 {% block content_auth %}
-<div class="min-vh-100 d-flex align-items-center justify-content-center bg-white">
+<div class="min-vh-100 d-flex align-items-center justify-content-center" style="background:linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 50%, #f8fafc 100%);">
     <div class="container">
         <div class="row justify-content-center">
             <div class="col-md-5 col-lg-4">
-                <div class="card shadow-sm rounded-4">
-                    <div class="card-body p-5">
-                        <div class="text-center mb-4">
-                            <i class="bi bi-graph-up-arrow" style="font-size: 2.5rem; color: var(--accent);"></i>
-                            <h3 class="fw-bold mt-2" style="font-family:'Nunito',sans-serif;font-weight:900;letter-spacing:1px;color:var(--slate-800);">KAIROS</h3>
-                            <p class="text-muted small">Sistema de Productividad</p>
-                        </div>
+                <div class="text-center mb-4">
+                    <img src="{% static 'img/kairos_logo.png' %}" alt="KAIROS" style="width:80px;height:80px;border-radius:1rem;box-shadow:0 4px 16px rgba(59,130,246,0.15);">
+                    <h3 class="fw-bold mt-3 mb-0" style="font-family:'Nunito',sans-serif;font-weight:900;letter-spacing:1px;color:var(--slate-800);">KAIROS</h3>
+                    <p class="text-muted" style="font-size:0.8rem;">Sistema de Gestion de Productividad</p>
+                </div>
+                <div class="card shadow-sm" style="border-radius:1rem;border:1px solid var(--slate-200);">
+                    <div class="card-body p-4">
                         {% if messages %}
                         <div class="mb-3">
                             {% for m in messages %}
@@ -25,19 +25,26 @@
                         <form method="POST" novalidate>
                             {% csrf_token %}
                             <div class="mb-3">
-                                <label class="form-label small fw-semibold">Cedula</label>
-                                {{ form.cedula }}
+                                <label class="form-label small fw-semibold" style="font-size:0.75rem;color:var(--slate-600);">Cedula</label>
+                                <div class="input-group">
+                                    <span class="input-group-text" style="background:var(--slate-50);border-right:none;"><i class="bi bi-person" style="color:var(--slate-400);"></i></span>
+                                    {{ form.cedula }}
+                                </div>
                             </div>
                             <div class="mb-4">
-                                <label class="form-label small fw-semibold">Fecha de Expedicion</label>
-                                {{ form.fecha_expedicion }}
+                                <label class="form-label small fw-semibold" style="font-size:0.75rem;color:var(--slate-600);">Fecha de Expedicion</label>
+                                <div class="input-group">
+                                    <span class="input-group-text" style="background:var(--slate-50);border-right:none;"><i class="bi bi-calendar3" style="color:var(--slate-400);"></i></span>
+                                    {{ form.fecha_expedicion }}
+                                </div>
                             </div>
-                            <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">
+                            <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold" style="border-radius:0.5rem;font-size:0.85rem;">
                                 <i class="bi bi-box-arrow-in-right"></i> Ingresar
                             </button>
                         </form>
                     </div>
                 </div>
+                <p class="text-center text-muted mt-3" style="font-size:0.7rem;">Kairos v{% if 'mejoras' in request.get_host or 'proyectos' in request.path %}5.1.1{% else %}4.2.4{% endif %}</p>
             </div>
         </div>
     </div>
