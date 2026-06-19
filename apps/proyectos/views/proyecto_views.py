@@ -450,7 +450,10 @@ def proyecto_gantt(request, pk):
             clase_h = "gantt-fin" if h.estado == "done" else ("gantt-activo" if h.estado == "en_progreso" else "gantt-plan")
             h_start = sp_start or h.fecha_creacion.date().isoformat()
             # Responsable = primer asignado de cualquier tarea
-            responsable = next((t.asignado_a.get_full_name() for t in tareas_h if t.asignado_a), "Sin asignar")
+            responsables = sorted(set(
+                t.asignado_a.get_full_name() for t in tareas_h if t.asignado_a
+            ))
+            responsable = ", ".join(responsables) if responsables else "Sin asignar"
 
             grupos.append({
                 "id": hgid,
