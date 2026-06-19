@@ -53,22 +53,7 @@ var options = {
     editable: false, stack: true, showCurrentTime: true, locale: 'es',
     zoomMin: 86400000, zoomMax: 315360000000, verticalScroll: true,
     margin: { item: 8, axis: 0 },
-    tooltip: {
-        followMouse: true,
-        overflowMethod: 'cap',
-        template: function(item) {
-            if (!item || !item.title) return '';
-            var parts = item.title.split('|');
-            var html = '<div style="background:#1e293b;color:#fff;padding:8px 12px;border-radius:6px;font-size:0.7rem;min-width:180px;">';
-            html += '<div style="font-weight:600;font-size:0.75rem;margin-bottom:4px;">' + parts[0] + '</div>';
-            if (parts[1]) html += '<div style="color:#94a3b8;font-size:0.65rem;">' + parts[1] + '</div>';
-            if (parts[2]) html += '<div style="color:#e2e8f0;font-size:0.65rem;margin-top:2px;">' + parts[2] + '</div>';
-            if (parts[3]) html += '<div style="color:#94a3b8;font-size:0.62rem;margin-top:2px;">' + parts[3] + '</div>';
-            if (parts[4]) html += '<div style="color:#cbd5e1;font-size:0.62rem;">' + parts[4] + '</div>';
-            html += '</div>';
-            return html;
-        }
-    },
+    tooltip: { followMouse: true, overflowMethod: 'cap' },
     template: function(item, element, data) {
         if (!data || !data.content) return '';
         return '<div style="padding:1px 6px;font-size:0.6rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + data.content + '</div>';
@@ -76,6 +61,25 @@ var options = {
 };
 var timeline = new vis.Timeline(container, items, groups, options);
 setTimeout(function () { timeline.fit({ animation: { duration: 300 } }); }, 300);
+
+// Tooltip personalizado oscuro (mismo patron que linea_tiempo.js)
+var ganttTip = document.createElement('div');
+ganttTip.style.cssText = 'position:fixed;display:none;background:#1e293b;color:#fff;padding:8px 12px;border-radius:6px;font-size:0.72rem;z-index:9999;pointer-events:none;max-width:320px;line-height:1.4;box-shadow:0 4px 16px rgba(0,0,0,0.18);';
+document.body.appendChild(ganttTip);
+
+timeline.on('itemover', function(props) {
+    var item = items.get(props.item);
+    if (!item || !item.title) { ganttTip.style.display = 'none'; return; }
+    var parts = item.title.split('|');
+    if (parts.length < 2) { ganttTip.style.display = 'none'; return; }
+    ganttTip.innerHTML = '<div style="font-weight:600;font-size:0.78rem;margin-bottom:4px;color:#f1f5f9;">' + parts[0] + '</div>' +
+        parts.slice(1).map(function(p){ return '<div style="font-size:0.65rem;opacity:0.85;margin-top:1px;">' + p + '</div>'; }).join('');
+    ganttTip.style.display = 'block';
+    ganttTip.style.left = (props.event.clientX + 14) + 'px';
+    ganttTip.style.top = (props.event.clientY - 8) + 'px';
+});
+timeline.on('itemout', function(){ ganttTip.style.display = 'none'; });
+timeline.on('show', function(){ ganttTip.style.display = 'none'; });
 
 function irAFecha(f) { timeline.setWindow(new Date(f), new Date(f + 'T23:59:59'), {animation:{duration:300}}); }
 function irARango(ini, fin) { timeline.setWindow(new Date(ini), new Date(fin + 'T23:59:59'), {animation:{duration:300}}); }
