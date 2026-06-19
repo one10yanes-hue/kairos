@@ -131,8 +131,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (cfd) {
         new Chart(cfd, {
             type: 'bar',
-            data: { labels: {{ cfd_labels|safe }}, datasets: [{ label: 'Tareas', data: {{ cfd_data|safe }}, backgroundColor: ['#f59e0b','#0ea5e9','#8b5cf6','#16a34a'], borderRadius:4 }] },
-            options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1, font:{ size:8 } } }, x:{ ticks:{ font:{ size:8 } } } } }
+            data: { labels: {{ cfd_labels|safe }}, datasets: [{ label: 'Tareas', data: {{ cfd_data|safe }}, backgroundColor: ['#f59e0b','#0ea5e9','#8b5cf6','#16a34a'], borderRadius:6, borderSkipped:false, barPercentage:0.6 }] },
+            options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } },
+                scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1, font:{ size:9 }, color:'#94a3b8' }, grid:{ display:false } }, x:{ ticks:{ font:{ size:9 }, color:'#64748b' }, grid:{ display:false } } } }
         });
     }
     var vel = document.getElementById('velChart');
@@ -140,10 +141,12 @@ document.addEventListener('DOMContentLoaded', function() {
         new Chart(vel, {
             type: 'bar',
             data: { labels: {{ vel_labels|safe }}, datasets: [
-                { label: 'Comprometido', data: {{ vel_comp|safe }}, backgroundColor:'#e2e8f0', borderRadius:4 },
-                { label: 'Completado', data: {{ vel_data|safe }}, backgroundColor:'#16a34a', borderRadius:4 }
+                { label: 'Comprometido', data: {{ vel_comp|safe }}, backgroundColor:'#e2e8f0', borderRadius:6, borderSkipped:false, barPercentage:0.6 },
+                { label: 'Completado', data: {{ vel_data|safe }}, backgroundColor:'#16a34a', borderRadius:6, borderSkipped:false, barPercentage:0.6 }
             ]},
-            options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{ font:{ size:9 }, boxWidth:10 } } }, scales:{ y:{ beginAtZero:true, ticks:{ stepSize:5, font:{ size:8 } } }, x:{ ticks:{ font:{ size:8 } } } } }
+            options: { responsive:true, maintainAspectRatio:false,
+                plugins:{ legend:{ labels:{ font:{ size:9 }, boxWidth:10, usePointStyle:true }, position:'bottom' } },
+                scales:{ y:{ beginAtZero:true, ticks:{ stepSize:5, font:{ size:9 }, color:'#94a3b8' }, grid:{ display:false } }, x:{ ticks:{ font:{ size:9 }, color:'#64748b' }, grid:{ display:false } } } }
         });
     }
 });
