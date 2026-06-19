@@ -201,18 +201,18 @@ document.addEventListener('DOMContentLoaded', function() {
     if (total > 0) {
         new Chart(document.getElementById('chartDistProyectos'), {
             type: 'doughnut',
-            data: { labels: ['Activos','Pausados','Finalizados','Cancelados'], datasets: [{ data: [{{ activos }},{{ pausados }},{{ finalizados }},{{ cancelados }}], backgroundColor: ['#22c55e','#f59e0b','#0ea5e9','#94a3b8'], borderWidth:0, hoverOffset:8 }] },
-            options: { responsive:true, maintainAspectRatio:false, cutout:'70%',
-                plugins: { legend:{ position:'bottom', labels:{ boxWidth:12, padding:8, font:{ size:10 }, usePointStyle:true } } } }
+            data: { labels: ['Activos','Pausados','Finalizados','Cancelados'], datasets: [{ data: [{{ activos }},{{ pausados }},{{ finalizados }},{{ cancelados }}], backgroundColor: ['#22c55e','#f59e0b','#0ea5e9','#94a3b8'], borderWidth:3, borderColor:'#fff', hoverBorderColor:'#fff', hoverOffset:6, spacing:3 }] },
+            options: { responsive:true, maintainAspectRatio:false, cutout:'72%',
+                plugins: { legend:{ position:'bottom', labels:{ boxWidth:10, padding:12, font:{ size:9 }, usePointStyle:true, color:'#64748b' } } } }
         });
     }
     var taTotal = {{ total_tareas }};
     if (taTotal > 0) {
         new Chart(document.getElementById('chartTareas'), {
             type: 'bar',
-            data: { labels: ['Pendientes','En Curso','Revision','Finalizadas'], datasets: [{ data: [{{ tareas_pendientes }},{{ tareas_curso }},{{ tareas_rev }},{{ tareas_fin }}], backgroundColor: ['#94a3b8','#f59e0b','#8b5cf6','#22c55e'], borderRadius:4 }] },
+            data: { labels: ['Pendientes','En Curso','Revision','Finalizadas'], datasets: [{ data: [{{ tareas_pendientes }},{{ tareas_curso }},{{ tareas_rev }},{{ tareas_fin }}], backgroundColor: ['#94a3b8','#f59e0b','#8b5cf6','#22c55e'], borderRadius:6, borderSkipped:false, barPercentage:0.6 }] },
             options: { responsive:true, maintainAspectRatio:false,
-                scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1, font:{ size:9 } } }, x:{ ticks:{ font:{ size:8 } }, grid:{ display:false } } },
+                scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1, font:{ size:9 }, color:'#94a3b8' }, grid:{ display:false } }, x:{ ticks:{ font:{ size:9 }, color:'#64748b' }, grid:{ display:false } } },
                 plugins:{ legend:{ display:false } } }
         });
     }
