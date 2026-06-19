@@ -109,11 +109,13 @@
                                         <td><span class="badge bg-primary" style="font-size:0.45rem;">{{ t.estimacion_horas|default:"-" }}</span></td>
                                     </tr>
                                     {% for inc in t.incidencias.all %}
+                                    {% if inc.estado not in 'cerrada,resuelta,duplicada' %}
                                     <tr style="background:#fef2f2;">
                                         <td><span class="type-badge incidencia" style="font-size:0.42rem;">IN</span> <span class="badge bg-light text-muted" style="font-size:0.42rem;">{{ inc.codigo }}</span></td>
                                         <td colspan="2"><span style="font-size:0.48rem;"><i class="bi bi-bug"></i> {{ inc.titulo|truncatechars:35 }}</span></td>
-                                        <td><span class="badge {% if inc.estado == 'abierta' %}bg-danger{% elif inc.estado == 'resuelta' or inc.estado == 'cerrada' %}bg-success{% else %}bg-warning text-dark{% endif %}" style="font-size:0.4rem;">{{ inc.get_estado_display }}</span></td>
+                                        <td><span class="badge {% if inc.estado == 'abierta' %}bg-danger{% elif inc.estado == 'triaged' %}bg-info{% elif inc.estado == 'en_progreso' %}bg-warning text-dark{% else %}bg-secondary{% endif %}" style="font-size:0.4rem;">{{ inc.get_estado_display }}</span></td>
                                     </tr>
+                                    {% endif %}
                                     {% endfor %}
                                     {% empty %}
                                     <tr><td colspan="4" class="text-muted" style="font-size:0.5rem;">Sin tareas. <a href="{% url 'proyectos:tarea_create' proyecto.pk %}?historia={{ h.pk }}">Crear primera tarea</a></td></tr>
