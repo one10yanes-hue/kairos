@@ -55,11 +55,11 @@ def backlog_view(request, pk):
     filtro_prioridad = request.GET.get("prioridad", "")
 
     # Historias (todas, con sprint opcional)
-    historias = proyecto.historias.filter(activo=True).prefetch_related("tareas", "creador", "sprint").order_by("orden")
+    historias = proyecto.historias.filter(activo=True).prefetch_related("tareas__incidencias", "creador", "sprint").order_by("orden")
     # Tareas sueltas (sin historia, puede tener sprint o no)
     tareas_sueltas = proyecto.tareas.filter(activo=True, historia__isnull=True).select_related("asignado_a", "creador", "sprint").order_by("-fecha_creacion")
-    # Incidencias (todas las activas)
-    incidencias = proyecto.incidencias.filter(activo=True).select_related("reportado_por", "asignado_a").order_by("-fecha_creacion")
+    # Incidencias sueltas (sin tarea asociada, o con tarea sin historia)
+    incidencias = proyecto.incidencias.filter(activo=True, tarea__isnull=True).select_related("reportado_por", "asignado_a").order_by("-fecha_creacion")
 
     if q:
         historias = historias.filter(Q(titulo__icontains=q) | Q(codigo__icontains=q))

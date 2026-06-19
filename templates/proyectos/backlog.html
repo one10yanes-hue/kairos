@@ -111,6 +111,16 @@
                                     {% empty %}
                                     <tr><td colspan="4" class="text-muted" style="font-size:0.5rem;">Sin tareas. <a href="{% url 'proyectos:tarea_create' proyecto.pk %}?historia={{ h.pk }}">Crear primera tarea</a></td></tr>
                                     {% endfor %}
+                                    {% for t in h.tareas.all %}
+                                    {% for inc in t.incidencias.all %}
+                                    <tr>
+                                        <td><span class="type-badge incidencia" style="font-size:0.45rem;">IN</span> <span class="badge bg-light text-muted" style="font-size:0.45rem;">{{ inc.codigo }}</span></td>
+                                        <td><span style="font-size:0.5rem;"><i class="bi bi-bug"></i> {{ inc.titulo|truncatechars:30 }}</span></td>
+                                        <td><span class="badge {% if inc.estado == 'abierta' %}bg-danger{% elif inc.estado == 'resuelta' or inc.estado == 'cerrada' %}bg-success{% else %}bg-warning text-dark{% endif %}" style="font-size:0.45rem;">{{ inc.get_estado_display }}</span></td>
+                                        <td><span class="badge bg-warning text-dark" style="font-size:0.45rem;">{{ inc.get_severidad_display }}</span></td>
+                                    </tr>
+                                    {% endfor %}
+                                    {% endfor %}
                                 </tbody>
                             </table>
                         </td>
