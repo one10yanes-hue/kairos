@@ -96,7 +96,7 @@
                             {% endif %}
                         </td>
                     </tr>
-                    <tr class="subtareas" id="child-{{ h.pk }}">
+                    <tr class="subtareas" id="child-{{ h.pk }}" style="display:none;">
                         <td colspan="10" style="padding:0.3rem 0.6rem;background:#fafbfc;">
                             <table class="table table-sm table-borderless mb-0" style="font-size:0.55rem;margin:0;">
                                 <thead><tr style="color:var(--slate-400);"><th style="width:120px;">Tarea</th><th>Estado</th><th style="width:80px;">Asignado</th><th style="width:50px;">Hrs</th></tr></thead>
@@ -108,18 +108,15 @@
                                         <td style="font-size:0.5rem;">{{ t.asignado_a.get_full_name|default:"-" }}</td>
                                         <td><span class="badge bg-primary" style="font-size:0.45rem;">{{ t.estimacion_horas|default:"-" }}</span></td>
                                     </tr>
-                                    {% empty %}
-                                    <tr><td colspan="4" class="text-muted" style="font-size:0.5rem;">Sin tareas. <a href="{% url 'proyectos:tarea_create' proyecto.pk %}?historia={{ h.pk }}">Crear primera tarea</a></td></tr>
-                                    {% endfor %}
-                                    {% for t in h.tareas.all %}
                                     {% for inc in t.incidencias.all %}
-                                    <tr>
-                                        <td><span class="type-badge incidencia" style="font-size:0.45rem;">IN</span> <span class="badge bg-light text-muted" style="font-size:0.45rem;">{{ inc.codigo }}</span></td>
-                                        <td><span style="font-size:0.5rem;"><i class="bi bi-bug"></i> {{ inc.titulo|truncatechars:30 }}</span></td>
-                                        <td><span class="badge {% if inc.estado == 'abierta' %}bg-danger{% elif inc.estado == 'resuelta' or inc.estado == 'cerrada' %}bg-success{% else %}bg-warning text-dark{% endif %}" style="font-size:0.45rem;">{{ inc.get_estado_display }}</span></td>
-                                        <td><span class="badge bg-warning text-dark" style="font-size:0.45rem;">{{ inc.get_severidad_display }}</span></td>
+                                    <tr style="background:#fef2f2;">
+                                        <td><span class="type-badge incidencia" style="font-size:0.42rem;">IN</span> <span class="badge bg-light text-muted" style="font-size:0.42rem;">{{ inc.codigo }}</span></td>
+                                        <td colspan="2"><span style="font-size:0.48rem;"><i class="bi bi-bug"></i> {{ inc.titulo|truncatechars:35 }}</span></td>
+                                        <td><span class="badge {% if inc.estado == 'abierta' %}bg-danger{% elif inc.estado == 'resuelta' or inc.estado == 'cerrada' %}bg-success{% else %}bg-warning text-dark{% endif %}" style="font-size:0.4rem;">{{ inc.get_estado_display }}</span></td>
                                     </tr>
                                     {% endfor %}
+                                    {% empty %}
+                                    <tr><td colspan="4" class="text-muted" style="font-size:0.5rem;">Sin tareas. <a href="{% url 'proyectos:tarea_create' proyecto.pk %}?historia={{ h.pk }}">Crear primera tarea</a></td></tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
