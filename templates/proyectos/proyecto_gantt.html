@@ -53,10 +53,13 @@ var options = {
     editable: false, stack: true, showCurrentTime: true, locale: 'es',
     zoomMin: 86400000, zoomMax: 315360000000, verticalScroll: true,
     margin: { item: 8, axis: 0 },
+    shaded: { orientation: 'bottom' },
     tooltip: { followMouse: true, overflowMethod: 'cap' },
     template: function(item, element, data) {
         if (!data || !data.content) return '';
-        return '<div style="padding:1px 6px;font-size:0.6rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + data.content + '</div>';
+        var pct = data.pct || 0;
+        var pctBar = pct > 0 ? '<div style="position:absolute;left:0;top:0;bottom:0;width:'+pct+'%;background:rgba(34,197,94,0.25);border-radius:4px;z-index:0;"></div>' : '';
+        return pctBar + '<div style="position:relative;z-index:1;padding:1px 6px;font-size:0.6rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + data.content + ' ' + pct + '%</div>';
     }
 };
 var timeline = new vis.Timeline(container, items, groups, options);

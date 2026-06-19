@@ -432,11 +432,12 @@ def proyecto_gantt(request, pk):
             items.append({
                 "id": f"sprint-{sp.pk}-bar",
                 "group": gid,
-                "content": f"S{sp.numero} ({pct_sp}%)",
+                "content": f"S{sp.numero} {sp.nombre[:20]}",
                 "start": sp_start,
                 "end": sp_end,
                 "className": clase_sp,
                 "title": "",
+                "pct": pct_sp,
                 "tooltip": f"Sprint {sp.numero}: {sp.nombre}|{sp_start} → {sp_end}|{done_sp}/{tareas_sp} tareas ({pct_sp}%)|Estado: {sp.get_estado_display()}",
             })
 
@@ -462,11 +463,12 @@ def proyecto_gantt(request, pk):
             items.append({
                 "id": f"historia-{h.pk}-bar",
                 "group": hgid,
-                "content": f"{h.codigo} ({done_h}/{total_h} - {pct_h}%)",
+                "content": f"{h.codigo} {h.titulo[:22]}",
                 "start": h_start,
                 "end": sp_end,
                 "className": clase_h,
                 "title": "",
+                "pct": pct_h,
                 "tooltip": f"{h.codigo}: {h.titulo}|{h_start} → {sp_end or '?'}|{done_h}/{total_h} tareas ({pct_h}%)|Prioridad: {h.get_prioridad_display()}|Responsable: {responsable}",
             })
 
