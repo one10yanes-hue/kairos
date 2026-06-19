@@ -16,6 +16,7 @@ urlpatterns = [
     path("<int:pk>/historias/<int:hid>/editar/", backlog_views.historia_edit, name="historia_edit"),
     path("<int:pk>/historias/<int:hid>/aprobar/", backlog_views.historia_aprobar, name="historia_aprobar"),
     path("<int:pk>/historias/<int:hid>/rechazar/", backlog_views.historia_rechazar, name="historia_rechazar"),
+    path("<int:pk>/historias/<int:hid>/comentarios/", backlog_views.historia_comentarios, name="historia_comentarios"),
     # Sprints
     path("<int:pk>/sprints/", sprint_views.sprint_list, name="sprint_list"),
     path("<int:pk>/sprints/crear/", sprint_views.sprint_create, name="sprint_create"),

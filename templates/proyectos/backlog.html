@@ -3,6 +3,7 @@
 .backlog-row { cursor:default; transition:background 0.1s; }
 .backlog-row[data-id] { cursor:grab; }
 .backlog-row:hover { background:var(--slate-50); }
+.backlog-row.sel { background:#eff6ff; }
 .backlog-row .expand-icon { display:inline-block; width:16px; font-size:0.55rem; color:var(--slate-400); transition:transform 0.15s; }
 .backlog-row.expanded .expand-icon { transform:rotate(90deg); }
 .type-badge { font-size:0.48rem; padding:1px 5px; border-radius:2px; font-weight:500; }
@@ -13,12 +14,20 @@
 .tarea-minibar-fill { height:100%; background:#22c55e; border-radius:1px; }
 .subtareas { display:none; }
 .backlog-row.expanded + tr.subtareas { display:table-row; }
+/* Panel detalle */
+.detail-panel { position:fixed; top:0; right:0; width:420px; height:100vh; background:#fff; z-index:1050; box-shadow:-4px 0 24px rgba(0,0,0,0.08); transform:translateX(100%); transition:transform 0.25s ease; overflow-y:auto; }
+.detail-panel.open { transform:translateX(0); }
+.detail-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.2); z-index:1049; display:none; }
+.detail-overlay.show { display:block; }
+.detail-header { padding:1rem 1.25rem; border-bottom:1px solid var(--slate-100); display:flex; justify-content:space-between; align-items:flex-start; position:sticky; top:0; background:#fff; z-index:1; }
+.detail-section { padding:0.75rem 1.25rem; border-bottom:1px solid var(--slate-100); }
+.detail-section:last-child { border-bottom:none; }
 </style>
 
 <div class="container-fluid mt-3">
     <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
         <div>
-            <h5 class="fw-bold mb-0" style="font-size:0.95rem;">
+            <h5 class="fw-bold mb-0">
                 <a href="{% url 'proyectos:proyecto_detail' proyecto.pk %}" class="text-decoration-none">{{ proyecto.codigo }}</a>
                 <small class="text-muted ms-1">| Backlog</small>
             </h5>
@@ -49,36 +58,47 @@
     <form method="GET">
         <div class="d-flex gap-1 flex-wrap align-items-center mb-2">
             <input type="text" name="q" class="form-control form-control-sm" value="{{ q }}" placeholder="Buscar..." style="width:170px;font-size:0.7rem;">
-            <select name="prioridad" class="form-select form-select-sm" style="width:115px;font-size:0.7rem;" onchange="this.form.submit()">
+            <select name="prioridad" class="form-select form-select-sm" style="width:100px;font-size:0.7rem;" onchange="this.form.submit()">
                 <option value="">Prioridad</option>
                 <option value="must" {% if filtro_prioridad == 'must' %}selected{% endif %}>Must</option>
                 <option value="should" {% if filtro_prioridad == 'should' %}selected{% endif %}>Should</option>
                 <option value="could" {% if filtro_prioridad == 'could' %}selected{% endif %}>Could</option>
                 <option value="wont" {% if filtro_prioridad == 'wont' %}selected{% endif %}>Won't</option>
             </select>
+            <select name="estado" class="form-select form-select-sm" style="width:115px;font-size:0.7rem;" onchange="this.form.submit()">
+                <option value="">Todo estado</option>
+                <option value="backlog" {% if filtro_estado == 'backlog' %}selected{% endif %}>Backlog</option>
+                <option value="sprint_backlog" {% if filtro_estado == 'sprint_backlog' %}selected{% endif %}>Sprint Backlog</option>
+                <option value="en_progreso" {% if filtro_estado == 'en_progreso' %}selected{% endif %}>En Progreso</option>
+                <option value="revision" {% if filtro_estado == 'revision' %}selected{% endif %}>En Revision</option>
+                <option value="done" {% if filtro_estado == 'done' %}selected{% endif %}>Done</option>
+            </select>
             <button type="submit" class="btn btn-outline-secondary btn-sm" style="font-size:0.7rem;padding:0.2rem 0.4rem;"><i class="bi bi-funnel"></i></button>
-            {% if q or filtro_prioridad %}<a href="?" class="btn btn-outline-danger btn-sm" style="font-size:0.65rem;padding:0.2rem 0.4rem;">Limpiar</a>{% endif %}
+            {% if q or filtro_prioridad or filtro_estado %}<a href="?" class="btn btn-outline-danger btn-sm" style="font-size:0.65rem;padding:0.2rem 0.4rem;">Limpiar</a>{% endif %}
         </div>
     </form>
 
     <div class="card shadow-sm">
         <div class="card-header py-1 px-2 d-flex justify-content-between align-items-center">
-            <small class="fw-semibold" style="font-size:0.68rem;">Items en Backlog <span class="text-muted">({{ historias.count|add:tareas_sueltas.count|add:incidencias.count }})</span></small>
-            <small class="text-muted" style="font-size:0.55rem;">Arrastra historias para reordenar</small>
+            <small class="fw-semibold" style="font-size:0.68rem;">Items <span class="text-muted">({{ historias.count|add:tareas_sueltas.count|add:incidencias.count }})</span></small>
+            <div class="d-flex gap-1 align-items-center">
+                <small class="text-muted" style="font-size:0.5rem;">Arrastra para reordenar</small>
+                <button class="btn btn-sm btn-outline-secondary py-0 px-1" style="font-size:0.5rem;" onclick="toggleAll()" title="Expandir/colapsar todo">&#8645;</button>
+            </div>
         </div>
         <div class="card-body p-0">
             <table class="table table-hover mb-0" style="font-size:0.7rem;">
                 <thead class="table-light">
-                    <tr><th style="width:24px;"></th><th style="width:28px;"></th><th style="width:100px;">Codigo</th><th>Titulo / Descripcion</th><th style="width:70px;">Prioridad</th><th style="width:50px;">Pts</th><th style="width:80px;">Tareas</th><th style="width:85px;">Estado</th><th style="width:80px;">Sprint</th><th style="width:70px;"></th></tr>
+                    <tr><th style="width:24px;"></th><th style="width:28px;"></th><th style="width:100px;">Codigo</th><th>Titulo / Descripcion</th><th style="width:70px;">Prioridad</th><th style="width:50px;">Pts</th><th style="width:80px;">Tareas</th><th style="width:85px;">Estado</th><th style="width:80px;">Sprint</th><th style="width:90px;"></th></tr>
                 </thead>
                 <tbody id="backlogTable">
                     {% for h in historias %}
-                    <tr data-id="{{ h.pk }}" data-orden="{{ h.orden }}" class="backlog-row" onclick="toggleExpand(this, {{ h.pk }})">
+                    <tr data-id="{{ h.pk }}" data-orden="{{ h.orden }}" class="backlog-row" onclick="toggleExpand(this, {{ h.pk }})" data-url="{% url 'proyectos:historia_edit' proyecto.pk h.pk %}">
                         <td class="text-muted drag-handle" style="font-size:0.5rem;cursor:grab;"><i class="bi bi-grip-vertical"></i></td>
                         <td>{% if h.tareas.exists %}<span class="expand-icon">&#9654;</span>{% endif %}</td>
                         <td><span class="type-badge historia">US</span> <span class="badge bg-light text-muted" style="font-size:0.52rem;">{{ h.codigo }}</span></td>
                         <td>
-                            <span class="fw-semibold" style="font-size:0.7rem;">{{ h.titulo }}</span>
+                            <span class="fw-semibold" style="font-size:0.7rem;cursor:pointer;" onclick="event.stopPropagation();abrirDetalle({{ h.pk }},'{{ h.titulo|escapejs }}','{{ h.descripcion|escapejs }}','{{ h.criterios_aceptacion|escapejs }}','{{ h.prioridad }}',{{ h.puntos_historia }},'{{ h.estado }}')">{{ h.titulo }}</span>
                             {% if h.descripcion %}<small class="d-block text-muted" style="font-size:0.52rem;">{{ h.descripcion|truncatechars:70 }}</small>{% endif %}
                         </td>
                         <td><span class="badge {% if h.prioridad == 'must' %}bg-danger{% elif h.prioridad == 'should' %}bg-warning{% elif h.prioridad == 'could' %}bg-info{% else %}bg-light text-muted{% endif %}" style="font-size:0.5rem;">{{ h.get_prioridad_display }}</span></td>
@@ -87,13 +107,20 @@
                         <td><span class="badge {% if h.estado == 'done' %}bg-success{% elif h.estado == 'backlog' %}bg-secondary{% elif h.estado == 'revision' %}bg-info{% else %}bg-warning{% endif %}" style="font-size:0.5rem;">{{ h.get_estado_display }}</span></td>
                         <td style="font-size:0.52rem;">{% if h.sprint %}<span class="badge bg-light text-dark border" style="font-size:0.48rem;">{{ h.sprint.nombre }}</span>{% else %}<span class="text-muted" style="font-size:0.48rem;">-</span>{% endif %}</td>
                         <td>
-                            {% if h.estado == 'revision' and request.membresia|es_aprobador %}
-                            <form method="POST" action="{% url 'proyectos:historia_aprobar' proyecto.pk h.pk %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-success py-0 px-1" style="font-size:0.5rem;" title="Aprobar">&#10003;</button></form>
-                            {% endif %}
-                            {% if request.membresia|puede_editar %}
-                            <a href="#" onclick="event.stopPropagation();editarHistoria({{ h.pk }},'{{ h.titulo|escapejs }}','{{ h.descripcion|escapejs }}','{{ h.criterios_aceptacion|escapejs }}','{{ h.prioridad }}',{{ h.puntos_historia }},'{{ h.estado }}')" class="btn btn-sm btn-outline-secondary py-0 px-1" style="font-size:0.5rem;" title="Editar"><i class="bi bi-pencil"></i></a>
-                            <a href="{% url 'proyectos:tarea_create' proyecto.pk %}?historia={{ h.pk }}" class="btn btn-sm btn-outline-primary py-0 px-1" style="font-size:0.5rem;" title="+ Tarea"><i class="bi bi-plus-lg"></i></a>
-                            {% endif %}
+                            <div class="d-flex gap-1 align-items-center">
+                                {% if h.estado == 'revision' and request.membresia|es_aprobador %}
+                                <form method="POST" action="{% url 'proyectos:historia_aprobar' proyecto.pk h.pk %}" class="d-inline" onclick="event.stopPropagation()">{% csrf_token %}<button class="btn btn-sm btn-success py-0 px-1" style="font-size:0.5rem;" title="Aprobar">&#10003;</button></form>
+                                <button type="button" class="btn btn-sm btn-outline-danger py-0 px-1" style="font-size:0.5rem;" title="Rechazar" onclick="event.stopPropagation();rechazarHistoria({{ h.pk }})">&#10007;</button>
+                                {% endif %}
+                                {% if request.membresia|puede_editar %}
+                                <a href="#" onclick="event.stopPropagation();editarHistoria({{ h.pk }},'{{ h.titulo|escapejs }}','{{ h.descripcion|escapejs }}','{{ h.criterios_aceptacion|escapejs }}','{{ h.prioridad }}',{{ h.puntos_historia }},'{{ h.estado }}')" class="btn btn-sm btn-outline-secondary py-0 px-1" style="font-size:0.5rem;" title="Editar"><i class="bi bi-pencil"></i></a>
+                                <a href="{% url 'proyectos:tarea_create' proyecto.pk %}?historia={{ h.pk }}" class="btn btn-sm btn-outline-primary py-0 px-1" style="font-size:0.5rem;" title="+ Tarea"><i class="bi bi-plus-lg"></i></a>
+                                <select class="form-select form-select-sm py-0" style="font-size:0.48rem;width:80px;height:20px;padding:0 2px;" onchange="event.stopPropagation();quickSprint(this,{{ h.pk }})">
+                                    <option value="">Sprint</option>
+                                    {% for sp in sprints %}<option value="{{ sp.pk }}">{{ sp.nombre|truncatechars:10 }}</option>{% endfor %}
+                                </select>
+                                {% endif %}
+                            </div>
                         </td>
                     </tr>
                     <tr class="subtareas" id="child-{{ h.pk }}" style="display:none;">
@@ -171,44 +198,79 @@
 
 <!-- Modal Historia -->
 <div id="historiaModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:9999;align-items:center;justify-content:center;">
-    <div style="background:#fff;border-radius:0.75rem;max-width:520px;width:95%;padding:1.5rem;box-shadow:0 8px 32px rgba(0,0,0,0.12);max-height:90vh;overflow-y:auto;">
+    <div style="background:#fff;border-radius:0.75rem;max-width:550px;width:95%;padding:1.5rem;box-shadow:0 8px 32px rgba(0,0,0,0.12);max-height:90vh;overflow-y:auto;">
         <div class="d-flex justify-content-between align-items-center mb-3"><h6 class="fw-bold mb-0" id="historiaModalTitle">Nueva Historia</h6><button type="button" class="btn-close" onclick="document.getElementById('historiaModal').style.display='none'"></button></div>
         <form method="POST" id="historiaForm" action="{% url 'proyectos:historia_create' proyecto.pk %}">{% csrf_token %}
             <input type="hidden" name="historia_id" id="historiaId">
-            <div class="mb-2"><label class="form-label small fw-semibold" style="font-size:0.68rem;">Titulo <span class="text-danger">*</span></label><input type="text" name="titulo" id="historiaTitulo" class="form-control form-control-sm" required style="font-size:0.75rem;" placeholder="Como [rol], quiero [funcionalidad] para [beneficio]"></div>
-            <div class="mb-2"><label class="form-label small fw-semibold" style="font-size:0.68rem;">Descripcion</label><textarea name="descripcion" id="historiaDesc" class="form-control form-control-sm" rows="2" style="font-size:0.75rem;"></textarea></div>
-            <div class="mb-2"><label class="form-label small fw-semibold" style="font-size:0.68rem;">Criterios de aceptacion</label><textarea name="criterios" id="historiaCrit" class="form-control form-control-sm" rows="2" style="font-size:0.75rem;"></textarea></div>
+            <div class="mb-2"><label class="form-label small fw-semibold" style="font-size:0.7rem;">Titulo <span class="text-danger">*</span></label><input type="text" name="titulo" id="historiaTitulo" class="form-control form-control-sm" required style="font-size:0.8rem;" placeholder="Como [rol], quiero [funcionalidad] para [beneficio]"></div>
+            <div class="mb-2"><label class="form-label small fw-semibold" style="font-size:0.7rem;">Descripcion</label><textarea name="descripcion" id="historiaDesc" class="form-control form-control-sm" rows="2" style="font-size:0.78rem;"></textarea></div>
+            <div class="mb-2"><label class="form-label small fw-semibold" style="font-size:0.7rem;">Criterios de aceptacion</label><textarea name="criterios" id="historiaCrit" class="form-control form-control-sm" rows="2" style="font-size:0.78rem;"></textarea></div>
             <div class="row g-2 mb-2">
-                <div class="col-6"><label class="form-label small fw-semibold" style="font-size:0.68rem;">Prioridad</label><select name="prioridad" id="historiaPrioridad" class="form-select form-select-sm" style="font-size:0.75rem;"><option value="must">Must Have</option><option value="should" selected>Should Have</option><option value="could">Could Have</option><option value="wont">Won't Have</option></select></div>
-                <div class="col-6"><label class="form-label small fw-semibold" style="font-size:0.68rem;">Story Points</label><select name="puntos" id="historiaPuntos" class="form-select form-select-sm" style="font-size:0.75rem;"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="5">5</option><option value="8">8</option><option value="13">13</option><option value="21">21</option></select></div>
+                <div class="col-4"><label class="form-label small fw-semibold" style="font-size:0.7rem;">Prioridad</label><select name="prioridad" id="historiaPrioridad" class="form-select form-select-sm" style="font-size:0.78rem;"><option value="must">Must Have</option><option value="should" selected>Should Have</option><option value="could">Could Have</option><option value="wont">Won't Have</option></select></div>
+                <div class="col-4"><label class="form-label small fw-semibold" style="font-size:0.7rem;">Story Points</label><select name="puntos" id="historiaPuntos" class="form-select form-select-sm" style="font-size:0.78rem;"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="5">5</option><option value="8">8</option><option value="13">13</option><option value="21">21</option></select></div>
+                <div class="col-4"><label class="form-label small fw-semibold" style="font-size:0.7rem;">Sprint</label><select name="sprint_id" id="historiaSprint" class="form-select form-select-sm" style="font-size:0.78rem;"><option value="">Sin sprint</option>{% for sp in sprints %}<option value="{{ sp.pk }}">{{ sp.nombre }}</option>{% endfor %}</select></div>
             </div>
-            <div class="mb-2" id="estadoField" style="display:none;"><label class="form-label small fw-semibold" style="font-size:0.68rem;">Estado</label><select name="estado" id="historiaEstado" class="form-select form-select-sm" style="font-size:0.75rem;"><option value="backlog">Backlog</option><option value="sprint_backlog">Sprint Backlog</option><option value="en_progreso">En Progreso</option><option value="revision">En Revision</option><option value="done">Done</option></select></div>
-            <div class="d-flex justify-content-end gap-2"><button type="button" class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('historiaModal').style.display='none'" style="font-size:0.7rem;">Cancelar</button><button type="submit" class="btn btn-sm btn-primary" style="font-size:0.7rem;">Guardar</button></div>
+            <div class="mb-2" id="estadoField" style="display:none;"><label class="form-label small fw-semibold" style="font-size:0.7rem;">Estado</label><select name="estado" id="historiaEstado" class="form-select form-select-sm" style="font-size:0.78rem;"><option value="backlog">Backlog</option><option value="sprint_backlog">Sprint Backlog</option><option value="en_progreso">En Progreso</option><option value="revision">En Revision</option><option value="done">Done</option></select></div>
+            <div class="d-flex justify-content-end gap-2"><button type="button" class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('historiaModal').style.display='none'" style="font-size:0.72rem;">Cancelar</button><button type="submit" class="btn btn-sm btn-primary" style="font-size:0.72rem;">Guardar</button></div>
+        </form>
+    </div>
+</div>
+
+<!-- Panel Detalle lateral -->
+<div class="detail-overlay" id="detailOverlay" onclick="cerrarDetalle()"></div>
+<div class="detail-panel" id="detailPanel">
+    <div class="detail-header">
+        <div><h6 class="fw-bold mb-1" id="detTitulo"></h6><span class="badge bg-light text-muted" style="font-size:0.6rem;" id="detCodigo"></span></div>
+        <button type="button" class="btn-close" onclick="cerrarDetalle()"></button>
+    </div>
+    <div class="detail-section"><small class="fw-semibold text-uppercase d-block mb-1" style="font-size:0.6rem;color:var(--slate-500);">Descripcion</small><p class="mb-0" style="font-size:0.7rem;" id="detDesc"></p></div>
+    <div class="detail-section"><small class="fw-semibold text-uppercase d-block mb-1" style="font-size:0.6rem;color:var(--slate-500);">Criterios de Aceptacion</small><p class="mb-0" style="font-size:0.7rem;" id="detCrit"></p></div>
+    <div class="detail-section"><small class="fw-semibold text-uppercase d-block mb-2" style="font-size:0.6rem;color:var(--slate-500);">Comentarios</small>
+        <div id="detComentarios" style="max-height:200px;overflow-y:auto;"></div>
+        <form method="POST" class="mt-2" onsubmit="return agregarComentario(event)" data-url="{% url 'proyectos:historia_comentario' proyecto.pk 0 %}" id="comentarioForm">
+            {% csrf_token %}
+            <div class="input-group input-group-sm"><input type="text" name="texto" id="comentarioTexto" class="form-control" placeholder="Agregar comentario..." required style="font-size:0.7rem;"><button class="btn btn-primary btn-sm" style="font-size:0.65rem;">Enviar</button></div>
         </form>
     </div>
 </div>
 
 <script>
+var _currentHid = 0;
+
 function toggleExpand(row, pk) {
     row.classList.toggle('expanded');
     var child = document.getElementById('child-' + pk);
-    if (child) child.style.display = child.style.display === 'none' ? 'table-row' : 'none';
+    if (child) child.style.display = child.style.display === 'none' ? '' : 'none';
 }
+
+function toggleAll() {
+    var rows = document.querySelectorAll('#backlogTable tr[data-id]');
+    var anyCollapsed = false;
+    rows.forEach(function(r){ if(!r.classList.contains('expanded')) anyCollapsed = true; });
+    rows.forEach(function(r,i){
+        var pk = r.dataset.id;
+        if(anyCollapsed){ r.classList.add('expanded'); var c=document.getElementById('child-'+pk); if(c)c.style.display=''; }
+        else { r.classList.remove('expanded'); var c=document.getElementById('child-'+pk); if(c)c.style.display='none'; }
+    });
+}
+
 function abrirModal() {
     document.getElementById('historiaModalTitle').textContent = 'Nueva Historia';
-    document.getElementById('historiaForm').action = '/proyectos/{{ proyecto.pk }}/historias/crear/';
+    document.getElementById('historiaForm').action = '{% url "proyectos:historia_create" proyecto.pk %}';
     document.getElementById('historiaId').value = '';
     document.getElementById('historiaTitulo').value = '';
     document.getElementById('historiaDesc').value = '';
     document.getElementById('historiaCrit').value = '';
     document.getElementById('historiaPrioridad').value = 'should';
     document.getElementById('historiaPuntos').value = '0';
+    document.getElementById('historiaSprint').value = '';
     document.getElementById('estadoField').style.display = 'none';
     document.getElementById('historiaModal').style.display = 'flex';
 }
+
 function editarHistoria(id, titulo, desc, crit, prioridad, puntos, estado) {
     document.getElementById('historiaModalTitle').textContent = 'Editar Historia';
-    document.getElementById('historiaForm').action = '/proyectos/{{ proyecto.pk }}/historias/' + id + '/editar/';
+    document.getElementById('historiaForm').action = '{% url "proyectos:historia_edit" proyecto.pk 0 %}'.replace('/0/', '/'+id+'/');
     document.getElementById('historiaId').value = id;
     document.getElementById('historiaTitulo').value = titulo;
     document.getElementById('historiaDesc').value = desc;
@@ -219,9 +281,87 @@ function editarHistoria(id, titulo, desc, crit, prioridad, puntos, estado) {
     document.getElementById('estadoField').style.display = '';
     document.getElementById('historiaModal').style.display = 'flex';
 }
+
+function rechazarHistoria(hid) {
+    var motivo = prompt('Motivo del rechazo (obligatorio):');
+    if (!motivo || !motivo.trim()) return;
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/proyectos/{{ proyecto.pk }}/historias/' + hid + '/rechazar/';
+    form.innerHTML = '{% csrf_token %}<input type="hidden" name="motivo" value="' + motivo.replace(/"/g,'&quot;') + '">';
+    document.body.appendChild(form);
+    form.submit();
+}
+
+// Panel detalle
+function abrirDetalle(pk, titulo, desc, crit, prioridad, puntos, estado) {
+    _currentHid = pk;
+    document.getElementById('detTitulo').textContent = titulo;
+    document.getElementById('detCodigo').textContent = 'Prioridad: ' + prioridad + ' | Puntos: ' + puntos + ' | Estado: ' + estado;
+    document.getElementById('detDesc').textContent = desc || 'Sin descripcion';
+    document.getElementById('detCrit').textContent = crit || 'Sin criterios definidos';
+    document.getElementById('detailOverlay').classList.add('show');
+    document.getElementById('detailPanel').classList.add('open');
+    // Cargar comentarios via fetch
+    fetch('/proyectos/{{ proyecto.pk }}/historias/' + pk + '/comentarios/', {headers:{'X-Requested-With':'XMLHttpRequest'}})
+        .then(function(r){return r.json();})
+        .then(function(d){
+            var html = '';
+            d.forEach(function(c){
+                html += '<div class="border-bottom pb-2 mb-2"><div class="d-flex justify-content-between"><strong style="font-size:0.68rem;">' + c.user + '</strong><small class="text-muted" style="font-size:0.58rem;">' + c.fecha + '</small></div><div style="font-size:0.68rem;margin-top:2px;">' + c.texto + '</div></div>';
+            });
+            document.getElementById('detComentarios').innerHTML = html || '<p class="text-muted small mb-0">Sin comentarios</p>';
+        });
+    document.getElementById('comentarioForm').setAttribute('data-url', '/proyectos/{{ proyecto.pk }}/historias/' + pk + '/comentarios/');
+}
+function cerrarDetalle() {
+    _currentHid = 0;
+    document.getElementById('detailOverlay').classList.remove('show');
+    document.getElementById('detailPanel').classList.remove('open');
+}
+function agregarComentario(e) {
+    e.preventDefault();
+    var texto = document.getElementById('comentarioTexto').value.trim();
+    if (!texto) return false;
+    var url = document.getElementById('comentarioForm').getAttribute('data-url');
+    var csrf = document.getElementById('comentarioForm').querySelector('[name=csrfmiddlewaretoken]').value;
+    var fd = new FormData();
+    fd.append('texto', texto);
+    fd.append('csrfmiddlewaretoken', csrf);
+    fetch(url, {method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}, body:fd})
+        .then(function(r){return r.json();})
+        .then(function(d){
+            if(d.ok){
+                document.getElementById('comentarioTexto').value = '';
+                abrirDetalle(d.historia_id, document.getElementById('detTitulo').textContent, document.getElementById('detDesc').textContent, document.getElementById('detCrit').textContent, '',0,'');
+            }
+        });
+    return false;
+}
+
+// Quick sprint assign
+function quickSprint(sel, pk) {
+    var sprintId = sel.value;
+    if (!sprintId) return;
+    var csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    var fd = new FormData();
+    fd.append('sprint_id', sprintId);
+    fd.append('csrfmiddlewaretoken', csrf);
+    fetch('/proyectos/{{ proyecto.pk }}/historias/' + pk + '/editar/', {method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}, body:fd})
+        .then(function(){ location.reload(); });
+}
+
+// Sortable
 document.addEventListener('DOMContentLoaded', function(){
     var tbody = document.getElementById('backlogTable');
     if (!tbody || typeof Sortable === 'undefined') return;
+
+    var reorderForm = document.createElement('form');
+    reorderForm.method = 'POST';
+    reorderForm.action = '{% url "proyectos:backlog_reordenar" proyecto.pk %}';
+    reorderForm.style.display = 'none';
+    reorderForm.innerHTML = '{% csrf_token %}<input type="hidden" name="ordenes_json" value="">';
+    document.body.appendChild(reorderForm);
 
     var sortable = new Sortable(tbody, {
         handle: '.drag-handle',
@@ -229,14 +369,11 @@ document.addEventListener('DOMContentLoaded', function(){
         filter: '.subtareas,.no-drag',
         onEnd: function(evt) {
             var ordenes = [];
-            tbody.querySelectorAll('tr[data-orden]').forEach(function(tr, i){
-                ordenes.push({id: tr.dataset.id, orden: i});
-            });
-            if (ordenes.length === 0) return;
-            // POST via form
-            var form = document.getElementById('reorderForm');
-            form.querySelector('[name=ordenes_json]').value = JSON.stringify({ordenes: ordenes});
-            form.submit();
+            tbody.querySelectorAll('tr[data-orden]').forEach(function(tr, i){ ordenes.push({id: tr.dataset.id, orden: i}); });
+            if (ordenes.length > 0) {
+                reorderForm.querySelector('[name=ordenes_json]').value = JSON.stringify({ordenes: ordenes});
+                reorderForm.submit();
+            }
         }
     });
 
@@ -245,7 +382,4 @@ document.addEventListener('DOMContentLoaded', function(){
     });
 });
 </script>
-<form id="reorderForm" method="POST" action="{% url 'proyectos:backlog_reordenar' proyecto.pk %}" style="display:none;">
-    {% csrf_token %}<input type="hidden" name="ordenes_json" value="">
-</form>
 {% endblock %}

@@ -433,3 +433,15 @@ class WorkflowConfig(models.Model):
     class Meta:
         db_table = "workflow_config"
         unique_together = ["proyecto", "entidad", "estado_origen", "estado_destino"]
+
+
+class ComentarioHistoria(models.Model):
+    historia = models.ForeignKey(HistoriaUsuario, on_delete=models.CASCADE, related_name="comentarios")
+    user = models.ForeignKey(User, on_delete=models.PROTECT, related_name="comentarios_historia")
+    texto = models.TextField()
+    activo = models.BooleanField(default=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "comentario_historia"
+        ordering = ["fecha_creacion"]

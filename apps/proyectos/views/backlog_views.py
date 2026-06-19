@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q, Count, Sum
+from django.http import JsonResponse
 from django.utils import timezone
 from ..models import Proyecto, HistoriaUsuario, Tarea, Incidencia, Sprint, RegistroAvance
 from ..decorators import miembro_requerido, ROLES_EDICION, ROLES_REVISION
@@ -65,9 +66,12 @@ def backlog_view(request, pk):
     incidencias = proyecto.incidencias.filter(activo=True, tarea__isnull=True).select_related("reportado_por", "asignado_a").order_by("-fecha_creacion")
 
     if q:
-        historias = historias.filter(Q(titulo__icontains=q) | Q(codigo__icontains=q))
+        historias = historias.filter(Q(titulo__icontains=q) | Q(codigo__icontains=q) | Q(descripcion__icontains=q) | Q(criterios_aceptacion__icontains=q))
         tareas_sueltas = tareas_sueltas.filter(Q(titulo__icontains=q) | Q(codigo__icontains=q))
         incidencias = incidencias.filter(Q(titulo__icontains=q) | Q(codigo__icontains=q))
+    if filtro_estado:
+        historias = historias.filter(estado=filtro_estado)
+        tareas_sueltas = tareas_sueltas.filter(estado=filtro_estado)
     if filtro_prioridad:
         historias = historias.filter(prioridad=filtro_prioridad)
         tareas_sueltas = tareas_sueltas.filter(prioridad=filtro_prioridad)
@@ -89,8 +93,8 @@ def backlog_view(request, pk):
         "total_h": total_h, "total_t": total_t, "total_i": total_i,
         "must_count": must_count, "puntos_total": puntos_total,
         "sprints_activos": sprints_activos, "sprint_count": sprint_count,
-        "q": q, "filtro_tipo": filtro_tipo, "filtro_estado": filtro_estado,
-        "filtro_prioridad": filtro_prioridad,
+        "sprints": sprints_activos,
+        "q": q, "filtro_estado": filtro_estado, "filtro_prioridad": filtro_prioridad,
         "today": timezone.now().date(),
     })
 
@@ -151,12 +155,35 @@ def historia_edit(request, pk, hid):
         historia.prioridad = request.POST.get("prioridad", historia.prioridad)
         historia.puntos_historia = int(request.POST.get("puntos", 0) or 0)
         historia.estado = request.POST.get("estado", historia.estado)
-        if request.POST.get("sprint_id"):
+        sprint_id = request.POST.get("sprint_id")
+        if sprint_id:
             from ..models import Sprint
-            historia.sprint = get_object_or_404(Sprint, pk=request.POST.get("sprint_id"), proyecto=proyecto)
+            historia.sprint = get_object_or_404(Sprint, pk=sprint_id, proyecto=proyecto)
+        else:
+            historia.sprint = None
+        historia.full_clean()
         historia.save()
         RegistroAvance.objects.create(proyecto=proyecto, tipo="comentario",
             descripcion=f"Historia {historia.codigo} editada por {request.user.get_full_name()}", user=request.user)
         messages.success(request, "Historia actualizada.")
         return redirect("proyectos:backlog", pk=proyecto.pk)
     return render(request, "proyectos/historia_form.html", {"proyecto": proyecto, "historia": historia, "editando": True})
+
+
+@miembro_requerido()
+def historia_comentarios(request, pk, hid):
+    proyecto = request.proyecto
+    historia = get_object_or_404(HistoriaUsuario, pk=hid, proyecto=proyecto, activo=True)
+    if request.method == "POST":
+        texto = request.POST.get("texto", "").strip()
+        if texto:
+            from ..models import ComentarioHistoria
+            c = ComentarioHistoria.objects.create(historia=historia, user=request.user, texto=texto)
+            return JsonResponse({"ok": True, "historia_id": historia.pk,
+                "user": request.user.get_full_name(), "texto": texto, "fecha": c.fecha_creacion.strftime("%d/%m %H:%M")})
+        return JsonResponse({"ok": False}, status=400)
+    comentarios = ComentarioHistoria.objects.filter(historia=historia, activo=True).order_by("fecha_creacion")
+    return JsonResponse([{
+        "user": c.user.get_full_name(), "texto": c.texto,
+        "fecha": c.fecha_creacion.strftime("%d/%m %H:%M")
+    } for c in comentarios], safe=False)
