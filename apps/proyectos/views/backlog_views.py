@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q, Count, Sum
+from django.utils import timezone
 from ..models import Proyecto, HistoriaUsuario, Tarea, Incidencia, Sprint, RegistroAvance
 from ..decorators import miembro_requerido, ROLES_EDICION, ROLES_REVISION
 import json
@@ -90,6 +91,7 @@ def backlog_view(request, pk):
         "sprints_activos": sprints_activos, "sprint_count": sprint_count,
         "q": q, "filtro_tipo": filtro_tipo, "filtro_estado": filtro_estado,
         "filtro_prioridad": filtro_prioridad,
+        "today": timezone.now().date(),
     })
 
 
