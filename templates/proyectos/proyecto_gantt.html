@@ -69,8 +69,8 @@ document.body.appendChild(ganttTip);
 
 timeline.on('itemover', function(props) {
     var item = items.get(props.item);
-    if (!item || !item.title) { ganttTip.style.display = 'none'; return; }
-    var parts = item.title.split('|');
+    if (!item || !item.tooltip) { ganttTip.style.display = 'none'; return; }
+    var parts = item.tooltip.split('|');
     if (parts.length < 2) { ganttTip.style.display = 'none'; return; }
     ganttTip.innerHTML = '<div style="font-weight:600;font-size:0.78rem;margin-bottom:4px;color:#f1f5f9;">' + parts[0] + '</div>' +
         parts.slice(1).map(function(p){ return '<div style="font-size:0.65rem;opacity:0.85;margin-top:1px;">' + p + '</div>'; }).join('');

@@ -436,7 +436,8 @@ def proyecto_gantt(request, pk):
                 "start": sp_start,
                 "end": sp_end,
                 "className": clase_sp,
-                "title": f"Sprint {sp.numero}: {sp.nombre}|{sp_start} → {sp_end}|{done_sp}/{tareas_sp} tareas ({pct_sp}%)|Estado: {sp.get_estado_display()}",
+                "title": "",
+                "tooltip": f"Sprint {sp.numero}: {sp.nombre}|{sp_start} → {sp_end}|{done_sp}/{tareas_sp} tareas ({pct_sp}%)|Estado: {sp.get_estado_display()}",
             })
 
         # Historias del sprint como sub-grupos
@@ -462,7 +463,8 @@ def proyecto_gantt(request, pk):
                 "start": h_start,
                 "end": sp_end,
                 "className": clase_h,
-                "title": f"{h.codigo}: {h.titulo}|{h_start} → {sp_end or '?'}|{done_h}/{total_h} tareas ({pct_h}%)|Prioridad: {h.get_prioridad_display()}|Responsable: {responsable}",
+                "title": "",
+                "tooltip": f"{h.codigo}: {h.titulo}|{h_start} → {sp_end or '?'}|{done_h}/{total_h} tareas ({pct_h}%)|Prioridad: {h.get_prioridad_display()}|Responsable: {responsable}",
             })
 
     # Fechas para navegacion rapida
