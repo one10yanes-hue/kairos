@@ -227,7 +227,7 @@
     <div class="detail-section"><small class="fw-semibold text-uppercase d-block mb-1" style="font-size:0.6rem;color:var(--slate-500);">Criterios de Aceptacion</small><p class="mb-0" style="font-size:0.7rem;" id="detCrit"></p></div>
     <div class="detail-section"><small class="fw-semibold text-uppercase d-block mb-2" style="font-size:0.6rem;color:var(--slate-500);">Comentarios</small>
         <div id="detComentarios" style="max-height:200px;overflow-y:auto;"></div>
-        <form method="POST" class="mt-2" onsubmit="return agregarComentario(event)" data-url="{% url 'proyectos:historia_comentario' proyecto.pk 0 %}" id="comentarioForm">
+        <form method="POST" class="mt-2" onsubmit="return agregarComentario(event)" data-url="{% url 'proyectos:historia_comentarios' proyecto.pk 0 %}" id="comentarioForm">
             {% csrf_token %}
             <div class="input-group input-group-sm"><input type="text" name="texto" id="comentarioTexto" class="form-control" placeholder="Agregar comentario..." required style="font-size:0.7rem;"><button class="btn btn-primary btn-sm" style="font-size:0.65rem;">Enviar</button></div>
         </form>
