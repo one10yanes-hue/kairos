@@ -99,7 +99,7 @@
                     <tr class="subtareas" id="child-{{ h.pk }}" style="display:none;">
                         <td colspan="10" style="padding:0.4rem 0.6rem;background:#f8fafc;">
                             <table class="table table-sm table-borderless mb-0" style="font-size:0.55rem;margin:0;">
-                                <thead><tr style="color:var(--slate-400);"><th style="width:130px;">Tarea</th><th style="width:55px;">Tipo</th><th style="width:30px;">Pr</th><th style="width:70px;">Estado</th><th style="width:75px;">Asignado</th><th style="width:55px;">Tiempo</th><th style="width:55px;">Vence</th></tr></thead>
+                                <thead><tr style="color:var(--slate-400);"><th style="width:130px;">Tarea</th><th style="width:55px;">Tipo</th><th style="width:30px;">Pr</th><th style="width:70px;">Estado</th><th style="width:75px;">Asignado</th><th style="width:60px;">Tiempo</th><th style="width:55px;">Vence</th></tr></thead>
                                 <tbody>
                                     {% for t in h.tareas.all %}
                                     <tr>
@@ -108,7 +108,7 @@
                                         <td><span class="badge {% if t.prioridad == 'must' %}bg-danger{% elif t.prioridad == 'should' %}bg-warning{% elif t.prioridad == 'could' %}bg-info{% else %}bg-light text-muted{% endif %}" style="font-size:0.4rem;padding:1px 3px;">{{ t.prioridad|slice:':1'|upper }}</span></td>
                                         <td><span class="badge {% if t.estado == 'finalizada' %}bg-success{% elif t.estado == 'en_curso' %}bg-warning text-dark{% elif t.estado == 'revision' %}bg-info{% elif t.estado == 'cancelada' %}bg-danger{% else %}bg-secondary{% endif %}" style="font-size:0.42rem;">{{ t.get_estado_display }}</span></td>
                                         <td style="font-size:0.48rem;">{{ t.asignado_a.get_full_name|truncatechars:14|default:"-" }}</td>
-                                        <td style="font-size:0.48rem;text-align:center;">{{ t.tiempo_trabajado|default:"-" }}</td>
+                                        <td style="font-size:0.48rem;text-align:center;">{% if t.tiempo_trabajado and t.tiempo_trabajado != '00:00:00' %}{{ t.tiempo_trabajado }}{% else %}-{% endif %}</td>
                                         <td style="font-size:0.48rem;">{% if t.fecha_limite %}<span class="badge {% if t.fecha_limite < today %}bg-danger{% else %}bg-light text-muted{% endif %}" style="font-size:0.4rem;">{{ t.fecha_limite|date:"d/m" }}</span>{% else %}-{% endif %}</td>
                                     </tr>
                                     {% for inc in t.incidencias.all %}
