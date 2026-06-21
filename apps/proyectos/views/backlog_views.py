@@ -15,6 +15,7 @@ def historia_aprobar(request, pk, hid):
     historia = get_object_or_404(HistoriaUsuario, pk=hid, proyecto=proyecto, activo=True)
     if historia.estado == "revision":
         historia.estado = "done"
+        historia.full_clean()
         historia.save()
         RegistroAvance.objects.create(proyecto=proyecto, tipo="historia_completada",
             descripcion=f"Historia {historia.codigo} aprobada como Done por {request.user.get_full_name()}", user=request.user)
@@ -35,6 +36,7 @@ def historia_rechazar(request, pk, hid):
             return redirect("proyectos:backlog", pk=proyecto.pk)
         if historia.estado == "revision":
             historia.estado = "en_progreso"
+            historia.full_clean()
             historia.save()
             RegistroAvance.objects.create(proyecto=proyecto, tipo="comentario",
                 descripcion=f"Historia {historia.codigo} rechazada por {request.user.get_full_name()}: {motivo}", user=request.user)
@@ -136,6 +138,7 @@ def historia_create(request, pk):
             creador=request.user,
         )
         historia.codigo = f"{proyecto.codigo}-US-{historia.pk:03d}"
+        historia.full_clean()
         historia.save()
         RegistroAvance.objects.create(proyecto=proyecto, tipo="comentario",
             descripcion=f"Historia {historia.codigo} creada: {historia.titulo[:60]}", user=request.user)
@@ -159,8 +162,12 @@ def historia_edit(request, pk, hid):
         if sprint_id:
             from ..models import Sprint
             historia.sprint = get_object_or_404(Sprint, pk=sprint_id, proyecto=proyecto)
+            if historia.estado == "backlog":
+                historia.estado = "sprint_backlog"
         else:
             historia.sprint = None
+            if historia.estado == "sprint_backlog":
+                historia.estado = "backlog"
         historia.full_clean()
         historia.save()
         RegistroAvance.objects.create(proyecto=proyecto, tipo="comentario",

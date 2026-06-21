@@ -266,7 +266,7 @@ def proyecto_detail(request, pk):
     context = {
         "proyecto": proyecto,
         "tareas_pend": tareas.filter(estado="pendiente").count(),
-        "tareas_curso": tareas.filter(estado__in=["en_curso", "pausada"]).count(),
+        "tareas_curso": tareas.filter(estado__in=["en_curso", "pausada", "bloqueada"]).count(),
         "tareas_rev": tareas.filter(estado="revision").count(),
         "tareas_fin": tareas.filter(estado="finalizada").count(),
         "inc_abiertas": incidencias.filter(estado__in=["abierta", "triaged", "en_progreso"]).count(),
@@ -279,7 +279,7 @@ def proyecto_detail(request, pk):
         "cfd_labels": ["Pendientes", "En Curso", "Revision", "Finalizadas"],
         "cfd_data": [
             tareas.filter(estado="pendiente").count(),
-            tareas.filter(estado__in=["en_curso","pausada"]).count(),
+            tareas.filter(estado__in=["en_curso","pausada","bloqueada"]).count(),
             tareas.filter(estado="revision").count(),
             tareas.filter(estado="finalizada").count(),
         ],
@@ -320,7 +320,12 @@ def proyecto_edit(request, pk):
             return redirect("proyectos:proyecto_edit", pk=proyecto.pk)
 
         # Validar: no quitar subareas asignadas originalmente
-        posted_subarea_ids = set(int(x) for x in request.POST.getlist("subareas"))
+        posted_subarea_ids = set()
+        try:
+            posted_subarea_ids = set(int(x) for x in request.POST.getlist("subareas"))
+        except (ValueError, TypeError):
+            messages.error(request, "Datos invalidos en la seleccion de subareas.")
+            return redirect("proyectos:proyecto_edit", pk=proyecto.pk)
         missing = original_subarea_ids - posted_subarea_ids
         if missing:
             nombres = SubArea.objects.filter(pk__in=missing).values_list("nombre", flat=True)

@@ -173,11 +173,12 @@ def sprint_finalizar(request, pk, spk):
     if request.method == "POST":
         from ..models import RegistroAvance
         sprint.estado = "finalizado"
+        sprint.full_clean()
         sprint.save()
+        tareas_no_fin = sprint.tareas.filter(activo=True).exclude(estado__in=["finalizada","cancelada"])
+        tareas_no_fin.update(estado="cancelada", activo=False)
         for h in sprint.historias.filter(activo=True):
-            if h.estado in ["revision", "done"]:
-                h.estado = "done"
-                h.save()
+            if h.estado == "done":
                 RegistroAvance.objects.create(proyecto=proyecto, tipo="historia_completada",
                     descripcion=f"Historia {h.codigo} completada en Sprint {sprint.numero}", user=request.user, referencia_id=h.pk)
             else:

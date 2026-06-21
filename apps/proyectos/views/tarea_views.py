@@ -278,8 +278,9 @@ def tarea_mover(request, pk, tid):
                                     "proyecto": proyecto.codigo,
                                 })
                 return JsonResponse({"ok": True})
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+            logging.getLogger("proyectos").error(f"tarea_mover error: {e}")
     return JsonResponse({"ok": False}, status=400)
 
 
@@ -287,8 +288,8 @@ def tarea_mover(request, pk, tid):
 def tarea_edit(request, pk, tid):
     proyecto = request.proyecto
     tarea = get_object_or_404(Tarea, pk=tid, proyecto=proyecto, activo=True)
-    if tarea.estado in ["finalizada", "cancelada", "pausada"]:
-        messages.error(request, "No se puede editar una tarea finalizada, cancelada o pausada.")
+    if tarea.estado in ["finalizada", "cancelada", "pausada", "revision"]:
+        messages.error(request, "No se puede editar una tarea finalizada, cancelada, pausada o en revision.")
         return redirect("proyectos:tarea_detail", pk=proyecto.pk, tid=tarea.pk)
     if request.method == "POST":
         old_asignado = tarea.asignado_a_id
@@ -330,6 +331,12 @@ def tarea_edit(request, pk, tid):
 
         # Si se asigno un nuevo ejecutor, crear/actualizar AsignacionActividad
         if tarea.asignado_a_id and tarea.asignado_a_id != old_asignado:
+            # Desactivar asignacion anterior
+            if tarea.asignacion:
+                tarea.asignacion.activo = False
+                tarea.asignacion.save()
+                tarea.asignacion = None
+                tarea.save(update_fields=["asignacion"])
             from ..signals import crear_asignacion_desde_tarea
             crear_asignacion_desde_tarea(tarea)
 

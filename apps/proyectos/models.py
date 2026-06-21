@@ -40,7 +40,8 @@ class Proyecto(models.Model):
         total = self.tareas.filter(activo=True).count()
         if total == 0:
             return 0
-        return int(self.tareas.filter(activo=True, estado="finalizada").count() / total * 100)
+        completadas = self.tareas.filter(activo=True, estado__in=["finalizada", "cancelada"]).count()
+        return int(completadas / total * 100)
 
     def clean(self):
         from django.core.exceptions import ValidationError

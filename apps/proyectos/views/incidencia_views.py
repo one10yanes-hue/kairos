@@ -50,15 +50,20 @@ def incidencia_convertir(request, pk, iid):
             proyecto=proyecto,
             titulo=incidencia.titulo,
             descripcion=incidencia.descripcion,
-            tipo="bug",
+            tipo="bug" if incidencia.tipo == "bug" else "mejora",
             asignado_a=incidencia.asignado_a,
             creador=request.user,
         )
         tarea.codigo = f"{proyecto.codigo}-T-{tarea.pk:03d}"
+        tarea.full_clean()
         tarea.save()
         incidencia.tarea = tarea
         incidencia.estado = "en_progreso"
+        incidencia.full_clean()
         incidencia.save()
+        RegistroAvance.objects.create(proyecto=proyecto, tipo="comentario",
+            descripcion=f"Incidencia {incidencia.codigo} convertida a Tarea {tarea.codigo} por {request.user.get_full_name()}",
+            user=request.user, referencia_id=tarea.pk)
         if tarea.asignado_a:
             crear_asignacion_desde_tarea(tarea)
         messages.success(request, f"Incidencia {incidencia.codigo} convertida a Tarea {tarea.codigo}.")
