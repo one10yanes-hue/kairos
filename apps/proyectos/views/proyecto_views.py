@@ -263,6 +263,33 @@ def proyecto_detail(request, pk):
     limite_aging = ahora - timezone.timedelta(days=3)
     tareas_aging = tareas.filter(estado__in=["pendiente","en_curso","pausada"], fecha_creacion__lt=limite_aging).count()
 
+    # Lead time / Cycle time
+    from datetime import timedelta
+    tareas_fin_qs = proyecto.tareas.filter(activo=True, estado="finalizada")
+    lead_times = []
+    for t in tareas_fin_qs[:50]:
+        dias = (t.fecha_update.date() - t.fecha_creacion.date()).days
+        if dias >= 0:
+            lead_times.append(dias)
+    lead_time_prom = round(sum(lead_times) / len(lead_times), 1) if lead_times else 0
+
+    # Sprint velocity table
+    sprints_all = proyecto.sprints.filter(activo=True).order_by("numero")
+    sprint_table = []
+    for s in sprints_all:
+        t_total = s.tareas.filter(activo=True).count()
+        t_done = s.tareas.filter(activo=True, estado="finalizada").count()
+        sprint_table.append({
+            "numero": s.numero,
+            "nombre": s.nombre,
+            "estado": s.estado,
+            "comprometido": s.puntos_comprometidos,
+            "completado": s.velocidad,
+            "tareas": f"{t_done}/{t_total}",
+            "inicio": s.fecha_inicio,
+            "fin": s.fecha_fin,
+        })
+
     context = {
         "proyecto": proyecto,
         "tareas_pend": tareas.filter(estado="pendiente").count(),
@@ -287,6 +314,9 @@ def proyecto_detail(request, pk):
         "vel_labels": [f"S{s.numero}" for s in sprints_hist],
         "vel_data": velocidades,
         "vel_comp": [s.puntos_comprometidos for s in sprints_hist],
+        # Reportes
+        "lead_time_prom": lead_time_prom,
+        "sprint_table": sprint_table,
     }
     return render(request, "proyectos/proyecto_detail.html", context)
 
