@@ -15,6 +15,7 @@ def sync_tarea_from_asignacion(sender, instance, created, **kwargs):
     mapping = {
         "Pendiente": "pendiente", "EnCurso": "en_curso", "Pausada": "pausada",
         "Finalizada": "finalizada", "Cancelada": "cancelada", "Trasladada": "finalizada",
+        "Revision": "revision",
     }
     nuevo_estado = mapping.get(instance.estado, tarea.estado)
     if tarea.estado != nuevo_estado:

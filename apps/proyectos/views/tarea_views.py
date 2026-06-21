@@ -8,6 +8,17 @@ from ..decorators import miembro_requerido, ROLES_EDICION, ROLES_MOVER, ROLES_RE
 from apps.actividades.models import Actividad, TipoActividad
 
 
+def _tipo_to_tarea(tipo_nombre):
+    """Mapea nombre de TipoActividad a Tarea.TIPOS valido."""
+    n = tipo_nombre.lower()
+    if "bug" in n: return "bug"
+    if "mejora" in n: return "mejora"
+    if "document" in n: return "documentacion"
+    if "prueba" in n or "test" in n: return "prueba"
+    if "diseno" in n or "diseño" in n: return "diseno"
+    return "tarea"
+
+
 def _miembros_asignables(proyecto, request):
     """Solo Ejecutores pueden ser asignados a tareas."""
     qs = proyecto.membresias.filter(activo=True, rol="ejecutor").select_related("user")
@@ -52,7 +63,7 @@ def tarea_create(request, pk):
         if tipo_actividad_id:
             try:
                 tipo_act = TipoActividad.objects.get(pk=tipo_actividad_id, subarea__in=proyecto.subareas.all(), activo=True)
-                tipo_nombre = tipo_act.nombre.lower().replace(" ", "_")[:20]
+                tipo_nombre = _tipo_to_tarea(tipo_act.nombre)
                 if tipo_act.requiere_fecha_limite and not fl:
                     messages.error(request, f"El tipo '{tipo_act.nombre}' requiere fecha limite.")
                     return redirect("proyectos:tarea_list", pk=proyecto.pk)
@@ -152,18 +163,12 @@ def tarea_rechazar(request, pk, tid):
         if tarea.estado == "revision" or tarea.estado == "finalizada":
             tarea.estado = "pendiente"
             tarea.save()
-            # Si la tarea estaba finalizada y es rechazada, revertir AsignacionActividad
-            if tarea.asignacion and tarea.asignacion.estado == "Finalizada":
-                tarea.asignacion.estado = "Pendiente"
-                tarea.asignacion.estado_revision = "rechazado"
-                tarea.asignacion.revision_comentario = motivo
-                tarea.asignacion.save()
-            # Actualizar historia padre: si no todas estan finalizadas → en_progreso
+            # Actualizar historia padre
             if tarea.historia:
                 tarea.historia.actualizar_estado()
             from ..models import RegistroAvance
             RegistroAvance.objects.create(
-                proyecto=request.proyecto, tipo="comentario",
+                proyecto=request.proyecto, tipo="tarea_rechazada",
                 descripcion=f"Tarea {tarea.codigo} rechazada por {request.user.get_full_name()}: {motivo[:80]}",
                 user=request.user, referencia_id=tarea.pk
             )
@@ -218,6 +223,7 @@ def tarea_mover(request, pk, tid):
             nuevo = data.get("estado")
             if nuevo in dict(Tarea.ESTADOS):
                 tarea.estado = nuevo
+                tarea.full_clean()
                 tarea.save()
                 # Sincronizar AsignacionActividad del Ejecutor
                 mapping_reverse = {
@@ -300,7 +306,7 @@ def tarea_edit(request, pk, tid):
         if tid:
             try:
                 tp = TipoActividad.objects.get(pk=tid)
-                tarea.tipo = tp.nombre.lower().replace(" ", "_")[:20]
+                tarea.tipo = _tipo_to_tarea(tp.nombre)
                 if tp.requiere_fecha_limite and not tarea.fecha_limite:
                     messages.error(request, f"El tipo '{tp.nombre}' requiere fecha limite.")
                     return redirect("proyectos:tarea_edit", pk=proyecto.pk, tid=tarea.pk)

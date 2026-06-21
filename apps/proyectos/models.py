@@ -59,7 +59,7 @@ class MiembroProyecto(models.Model):
     ]
     proyecto = models.ForeignKey(Proyecto, on_delete=models.CASCADE, related_name="membresias")
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="proyectos_miembro")
-    rol = models.CharField(max_length=20, choices=ROLES, default="developer")
+    rol = models.CharField(max_length=20, choices=ROLES, default="ejecutor")
     activo = models.BooleanField(default=True)
     fecha_ingreso = models.DateTimeField(auto_now_add=True)
 
@@ -179,14 +179,19 @@ class HistoriaUsuario(models.Model):
         return int(self.tareas.filter(activo=True, estado="finalizada").count() / total * 100)
 
     def actualizar_estado(self):
-        tareas = self.tareas.filter(activo=True)
+        tareas = self.tareas.filter(activo=True).exclude(estado="cancelada")
         if not tareas.exists():
+            # Sin tareas o todas canceladas: segun sprint
+            self.estado = "sprint_backlog" if self.sprint else "backlog"
+            self.save(update_fields=["estado"])
             return
         estados = set(tareas.values_list("estado", flat=True))
         if estados == {"finalizada"}:
             self.estado = "revision"
         elif "en_curso" in estados or "pausada" in estados or "bloqueada" in estados:
             self.estado = "en_progreso"
+        elif "revision" in estados:
+            self.estado = "revision"
         elif "pendiente" in estados and "finalizada" in estados:
             self.estado = "en_progreso"
         elif estados == {"pendiente"}:
@@ -350,12 +355,27 @@ class ComentarioIncidencia(models.Model):
 class RegistroAvance(models.Model):
     TIPOS = [
         ("historia_completada", "Historia completada"),
+        ("historia_aprobada", "Historia aprobada"),
+        ("historia_rechazada", "Historia rechazada"),
+        ("historia_creada", "Historia creada"),
+        ("historia_editada", "Historia editada"),
         ("sprint_iniciado", "Sprint iniciado"),
         ("sprint_finalizado", "Sprint finalizado"),
+        ("sprint_creado", "Sprint creado"),
         ("incidencia_resuelta", "Incidencia resuelta"),
+        ("incidencia_creada", "Incidencia creada"),
         ("tarea_finalizada", "Tarea finalizada"),
+        ("tarea_creada", "Tarea creada"),
+        ("tarea_rechazada", "Tarea rechazada"),
         ("comentario", "Comentario"),
         ("bloqueo", "Bloqueo reportado"),
+        ("proyecto_creado", "Proyecto creado"),
+        ("proyecto_editado", "Proyecto editado"),
+        ("proyecto_cancelado", "Proyecto cancelado"),
+        ("proyecto_pausado", "Proyecto pausado"),
+        ("proyecto_reanudado", "Proyecto reanudado"),
+        ("miembro_agregado", "Miembro agregado"),
+        ("miembro_removido", "Miembro removido"),
     ]
     proyecto = models.ForeignKey(Proyecto, on_delete=models.CASCADE, related_name="avances")
     tipo = models.CharField(max_length=30, choices=TIPOS)

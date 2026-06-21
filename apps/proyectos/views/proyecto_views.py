@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.paginator import Paginator
@@ -220,7 +221,7 @@ def proyecto_create(request):
         if subarea_ids:
             proyecto.subareas.set(subarea_ids)
 
-        MiembroProyecto.objects.get_or_create(proyecto=proyecto, user=manager, defaults={"rol": "lider"})
+        MiembroProyecto.objects.update_or_create(proyecto=proyecto, user=manager, defaults={"rol": "lider", "activo": True})
         from ..models import RegistroAvance
         RegistroAvance.objects.create(proyecto=proyecto, tipo="comentario",
             descripcion=f"Proyecto creado por {request.user.get_full_name()}", user=request.user)
@@ -376,8 +377,25 @@ def proyecto_edit(request, pk):
                     user=request.user)
 
             elif nuevo_estado == "activo" and original_estado == "pausado":
-                RegistroAvance.objects.create(proyecto=proyecto, tipo="comentario",
+                RegistroAvance.objects.create(proyecto=proyecto, tipo="proyecto_reanudado",
                     descripcion=f"Proyecto reanudado por {request.user.get_full_name()}. Los sprints, tareas e incidencias anteriores mantienen su estado.",
+                    user=request.user)
+
+            elif nuevo_estado == "finalizado" and original_estado != "finalizado":
+                from django.utils import timezone
+                # Finalizar sprints activos/planificados
+                sids = list(proyecto.sprints.filter(activo=True).exclude(estado="finalizado").values_list("pk", flat=True))
+                Sprint.objects.filter(pk__in=sids).update(estado="finalizado")
+                # Finalizar tareas pendientes
+                tids = list(proyecto.tareas.filter(activo=True).exclude(estado__in=["finalizada","cancelada"]).values_list("pk", flat=True))
+                Tarea.objects.filter(pk__in=tids).update(estado="finalizada")
+                # Cerrar incidencias abiertas
+                iids = list(proyecto.incidencias.filter(activo=True).exclude(estado__in=["resuelta","cerrada","duplicada"]).values_list("pk", flat=True))
+                Incidencia.objects.filter(pk__in=iids).update(estado="cerrada")
+                proyecto.fecha_fin_real = timezone.now().date()
+                proyecto.save(update_fields=["fecha_fin_real"])
+                RegistroAvance.objects.create(proyecto=proyecto, tipo="comentario",
+                    descripcion=f"Proyecto finalizado por {request.user.get_full_name()}. {len(sids)} sprint(s), {len(tids)} tarea(s) y {len(iids)} incidencia(s) cerradas.",
                     user=request.user)
 
         messages.success(request, "Proyecto actualizado.")

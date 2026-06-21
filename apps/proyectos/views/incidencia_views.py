@@ -72,16 +72,20 @@ def incidencia_detail(request, pk, iid):
     membresia = request.membresia
     if request.method == "POST":
         nuevo_estado = request.POST.get("estado")
-        # Solo roles de edicion inician/resuelven. Cualquiera puede cerrar.
         if nuevo_estado in dict(Incidencia.ESTADOS):
-            if nuevo_estado in ["en_progreso", "resuelta"] and membresia and membresia.rol not in ["lider", "responsable", "ejecutor"]:
-                messages.error(request, "Solo Lider, Responsable o Ejecutor pueden cambiar a este estado.")
+            # Restricciones de rol
+            if membresia and membresia.rol == "observador":
+                messages.error(request, "Los observadores no pueden cambiar estados.")
             else:
                 incidencia.estado = nuevo_estado
-                if nuevo_estado == "cerrada":
+                if nuevo_estado in ["cerrada", "resuelta"]:
                     from django.utils import timezone
                     incidencia.fecha_resolucion = timezone.now()
+                incidencia.full_clean()
                 incidencia.save()
+                RegistroAvance.objects.create(proyecto=proyecto, tipo="incidencia_resuelta",
+                    descripcion=f"Incidencia {incidencia.codigo} cambiada a '{incidencia.get_estado_display()}' por {request.user.get_full_name()}",
+                    user=request.user, referencia_id=incidencia.pk)
                 messages.success(request, f"Incidencia {incidencia.codigo} actualizada.")
         return redirect("proyectos:incidencia_detail", pk=proyecto.pk, iid=incidencia.pk)
     miembros = proyecto.membresias.filter(activo=True).select_related("user")

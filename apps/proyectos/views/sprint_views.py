@@ -52,7 +52,7 @@ def sprint_create(request, pk):
         if historias_ids:
             proyecto.historias.filter(pk__in=historias_ids).update(sprint=sprint, estado="sprint_backlog")
         from ..models import RegistroAvance
-        RegistroAvance.objects.create(proyecto=proyecto, tipo="sprint_iniciado",
+        RegistroAvance.objects.create(proyecto=proyecto, tipo="sprint_creado",
             descripcion=f"Sprint {sprint.numero} creado por {request.user.get_full_name()}", user=request.user, referencia_id=sprint.pk)
         messages.success(request, f"Sprint {sprint.numero} creado.")
         return redirect("proyectos:sprint_list", pk=proyecto.pk)
@@ -139,10 +139,19 @@ def sprint_burndown(request, pk, spk):
         # Datos reales: puntos quemados por dia segun tareas finalizadas
         tareas_fin = sprint.tareas.filter(activo=True, estado="finalizada").select_related("historia")
         pts_por_dia = {}
+        historias_por_dia = {}
         for t in tareas_fin:
             dia = t.fecha_update.date()
-            pts_t = t.historia.puntos_historia if t.historia else 1
-            pts_por_dia[dia] = pts_por_dia.get(dia, 0) + pts_t
+            if t.historia:
+                if dia not in historias_por_dia:
+                    historias_por_dia[dia] = set()
+                # Solo contar una vez por historia por dia (evita sobre-conteo)
+                if t.historia_id not in historias_por_dia[dia]:
+                    historias_por_dia[dia].add(t.historia_id)
+                    pts_por_dia[dia] = pts_por_dia.get(dia, 0) + t.historia.puntos_historia
+            else:
+                # Tarea sin historia cuenta 1 punto
+                pts_por_dia[dia] = pts_por_dia.get(dia, 0) + 1
         acum = pts
         for d in [sprint.fecha_inicio + timedelta(days=i) for i in range(total_dias)]:
             if d in pts_por_dia:
@@ -214,6 +223,9 @@ def sprint_iniciar(request, pk, spk):
         msg = f"Sprint {sprint.numero} iniciado. {activadas} tareas activadas"
         if ya_activas: msg += f", {ya_activas} ya estaban activas"
         if sin_asignar: msg += f". {sin_asignar} tareas sin asignar no se activaron (asigna un ejecutor)"
+        from ..models import RegistroAvance
+        RegistroAvance.objects.create(proyecto=proyecto, tipo="sprint_iniciado",
+            descripcion=msg, user=request.user, referencia_id=sprint.pk)
         messages.success(request, msg)
         return redirect("proyectos:sprint_board", pk=proyecto.pk, spk=sprint.pk)
     return redirect("proyectos:sprint_board", pk=proyecto.pk, spk=sprint.pk)
