@@ -280,8 +280,60 @@ def finalizar_actividad(request, pk):
     # --- Revision de proyecto: aprobar o rechazar via el modal Finalizar ---
     accion_rev = request.POST.get("accion_revision")
     if accion_rev and asignacion.origen == "Revision":
-        # Formato: "[Revision] US-019: Recuperar contraseña"
-        historia_codigo = asignacion.nombre_actividad.split("] ")[1].split(":")[0].strip() if "] " in asignacion.nombre_actividad else ""
+        # Determinar si es revision de historia o de tarea
+        nombre = asignacion.nombre_actividad
+
+        # Formato tarea: "[Revisar] PRJ-0007-T-013: Crear formulario..."
+        if nombre.startswith("[Revisar] "):
+            from apps.proyectos.models import Tarea
+            tarea_codigo = nombre.split("] ")[1].split(":")[0].strip()
+            tarea = Tarea.objects.filter(codigo=tarea_codigo, activo=True).first()
+            if tarea:
+                if accion_rev == "aprobar":
+                    tarea.estado = "finalizada"
+                    tarea.save()
+                    if tarea.historia:
+                        tarea.historia.actualizar_estado()
+                    AsignacionActividad.objects.filter(
+                        nombre_actividad__startswith=f"[Revisar] {tarea.codigo}:",
+                        activo=True
+                    ).update(activo=False, estado="Finalizada")
+                    from apps.proyectos.models import RegistroAvance
+                    RegistroAvance.objects.create(
+                        proyecto=tarea.proyecto, tipo="tarea_finalizada",
+                        descripcion=f"Tarea {tarea.codigo} aprobada por {request.user.get_full_name()}",
+                        user=request.user, referencia_id=tarea.pk
+                    )
+                    messages.success(request, f"Tarea {tarea.codigo} aprobada.")
+                elif accion_rev == "rechazar":
+                    motivo = request.POST.get("motivo_rechazo", "").strip()
+                    if not motivo:
+                        messages.error(request, "Debes indicar el motivo del rechazo.")
+                        return redirect("gestion:tablero")
+                    tarea.estado = "pendiente"
+                    tarea.save()
+                    if tarea.asignacion:
+                        tarea.asignacion.estado = "Pendiente"
+                        tarea.asignacion.estado_revision = "rechazado"
+                        tarea.asignacion.revision_comentario = motivo
+                        tarea.asignacion.save()
+                    if tarea.historia:
+                        tarea.historia.actualizar_estado()
+                    AsignacionActividad.objects.filter(
+                        nombre_actividad__startswith=f"[Revisar] {tarea.codigo}:",
+                        activo=True
+                    ).update(activo=False, estado="Cancelada")
+                    from apps.proyectos.models import RegistroAvance
+                    RegistroAvance.objects.create(
+                        proyecto=tarea.proyecto, tipo="comentario",
+                        descripcion=f"Tarea {tarea.codigo} rechazada por {request.user.get_full_name()}: {motivo[:80]}",
+                        user=request.user, referencia_id=tarea.pk
+                    )
+                    messages.warning(request, f"Tarea {tarea.codigo} rechazada.")
+            return redirect("gestion:tablero")
+
+        # Formato historia: "[Revision] US-019: Recuperar contraseña"
+        historia_codigo = nombre.split("] ")[1].split(":")[0].strip() if "] " in nombre else ""
         from apps.proyectos.models import HistoriaUsuario
         historia = HistoriaUsuario.objects.filter(codigo=historia_codigo, activo=True).first()
         if historia:

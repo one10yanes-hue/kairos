@@ -416,16 +416,15 @@
                 <input type="file" name="entregable" class="form-control form-control-sm" style="font-size:0.78rem;">
             </div>
             <div class="mb-3" id="revisionSection" style="display:none;background:#fffbeb;padding:0.7rem;border-radius:0.4rem;border:1px solid #f59e0b;">
-                <label class="form-label small fw-semibold" style="color:#92400e;">Acci&oacute;n de revisi&oacute;n</label>
+                <label class="form-label small fw-semibold" style="color:#92400e;">Accion de revision</label>
                 <div class="d-flex gap-2 align-items-center">
-                    <button type="submit" name="accion_revision" value="aprobar" class="btn btn-sm btn-success">&#10003; Aprobar todas las tareas</button>
-                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="mostrarMotivoRechazo()">&#10007; Rechazar y devolver</button>
+                    <button type="submit" name="accion_revision" value="aprobar" class="btn btn-sm btn-success">Aprobar</button>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="mostrarMotivoRechazo()">Rechazar y devolver</button>
                 </div>
                 <div id="revisionMotivo" style="display:none;margin-top:0.5rem;">
                     <textarea name="motivo_rechazo" class="form-control form-control-sm" rows="2" placeholder="Motivo del rechazo..." required></textarea>
                     <button type="submit" name="accion_revision" value="rechazar" class="btn btn-sm btn-outline-danger mt-1" style="font-size:0.65rem;">Confirmar Rechazo</button>
                 </div>
-                <small class="text-muted d-block mt-2" style="font-size:0.58rem;">Las tareas individuales se rechazan desde la card de la historia en "Pendientes de Revisi&oacute;n"</small>
             </div>
             <hr class="my-2">
             <div class="mb-3">

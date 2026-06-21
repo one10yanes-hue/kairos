@@ -172,6 +172,12 @@ def tarea_rechazar(request, pk, tid):
                 tarea.asignacion.estado_revision = "rechazado"
                 tarea.asignacion.revision_comentario = motivo
                 tarea.asignacion.save()
+            # Cerrar todas las AsignacionActividad de revision para esta tarea
+            from apps.gestion.models import AsignacionActividad
+            AsignacionActividad.objects.filter(
+                nombre_actividad__startswith=f"[Revisar] {tarea.codigo}:",
+                activo=True
+            ).update(activo=False, estado="Cancelada")
             # Crear incidencia si se solicito
             if request.POST.get("crear_bug"):
                 from ..models import Incidencia
@@ -228,6 +234,43 @@ def tarea_mover(request, pk, tid):
                     evento_map = {"en_curso": "Inicio", "pausada": "Pausa", "finalizada": "Finalizacion"}
                     if nuevo in evento_map and old_ga != ga_estado:
                         RegistroTiempo.objects.create(asignacion=tarea.asignacion, evento=evento_map[nuevo], fecha_hora=timezone.now())
+                    # Cuando tarea entra en revision, crear AsignacionActividad para cada Revisor/Aprobador
+                    if nuevo == "revision":
+                        from ..models import MiembroProyecto
+                        from ..decorators import ROLES_REVISION
+                        from apps.actividades.models import Actividad, TipoActividad
+                        from apps.gestion.models import AsignacionActividad
+                        from apps.gestion.views import _notificar_usuario
+                        subarea = proyecto.subareas.first()
+                        if subarea:
+                            tipo_rev, _ = TipoActividad.objects.get_or_create(
+                                subarea=subarea, nombre="Revision de Proyecto",
+                                defaults={"requiere_fecha_limite": False, "requiere_entregable": False, "es_flash": False}
+                            )
+                            act_rev, _ = Actividad.objects.get_or_create(
+                                subarea=subarea, tipo_actividad=tipo_rev,
+                                defaults={"nombre": f"Revision de Proyecto - {proyecto.codigo}"}
+                            )
+                            revisores = MiembroProyecto.objects.filter(
+                                proyecto=proyecto, activo=True, rol__in=ROLES_REVISION
+                            )
+                            for m in revisores:
+                                AsignacionActividad.objects.get_or_create(
+                                    user=m.user,
+                                    nombre_actividad=f"[Revisar] {tarea.codigo}: {tarea.titulo[:80]}",
+                                    origen="Revision",
+                                    activo=True,
+                                    defaults={
+                                        "actividad": act_rev,
+                                        "estado": "Pendiente",
+                                        "origen_user": tarea.asignado_a or tarea.creador,
+                                        "nombre_tipo": "Revision de Tarea",
+                                    }
+                                )
+                                _notificar_usuario(m.user_id, "nueva_revision", {
+                                    "tarea": tarea.titulo, "codigo": tarea.codigo,
+                                    "proyecto": proyecto.codigo,
+                                })
                 return JsonResponse({"ok": True})
         except Exception:
             pass
