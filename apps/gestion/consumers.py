@@ -68,3 +68,27 @@ class TableroConsumer(AsyncWebsocketConsumer):
             "codigo": event["codigo"],
             "motivo": event["motivo"],
         }))
+
+    # Sprint iniciado
+    async def sprint_iniciado(self, event):
+        await self.send(text_data=json.dumps({
+            "tipo": "sprint_iniciado",
+            "sprint": event["sprint"],
+            "proyecto": event["proyecto"],
+        }))
+
+    # Sprint finalizado
+    async def sprint_finalizado(self, event):
+        await self.send(text_data=json.dumps({
+            "tipo": "sprint_finalizado",
+            "sprint": event["sprint"],
+            "velocidad": event.get("velocidad", 0),
+        }))
+
+    # Incidencia reportada
+    async def incidencia_reportada(self, event):
+        await self.send(text_data=json.dumps({
+            "tipo": "incidencia",
+            "codigo": event["codigo"],
+            "titulo": event["titulo"],
+        }))

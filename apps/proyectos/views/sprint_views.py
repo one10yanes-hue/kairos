@@ -227,6 +227,11 @@ def sprint_iniciar(request, pk, spk):
         from ..models import RegistroAvance
         RegistroAvance.objects.create(proyecto=proyecto, tipo="sprint_iniciado",
             descripcion=msg, user=request.user, referencia_id=sprint.pk)
+        # Notificar a todos los miembros del proyecto
+        for m in proyecto.membresias.filter(activo=True):
+            _notificar_usuario(m.user_id, "sprint_iniciado", {
+                "sprint": sprint.nombre, "proyecto": proyecto.codigo
+            })
         messages.success(request, msg)
         return redirect("proyectos:sprint_board", pk=proyecto.pk, spk=sprint.pk)
     return redirect("proyectos:sprint_board", pk=proyecto.pk, spk=sprint.pk)

@@ -31,8 +31,14 @@ def incidencia_create(request, pk):
         )
         inc.codigo = f"{proyecto.codigo}-INC-{inc.pk:03d}"
         inc.save()
-        RegistroAvance.objects.create(proyecto=proyecto, tipo="comentario",
+        RegistroAvance.objects.create(proyecto=proyecto, tipo="incidencia_creada",
             descripcion=f"Incidencia {inc.codigo} reportada: {inc.titulo[:60]}", user=request.user)
+        # Notificar a lider y responsable del proyecto
+        from apps.gestion.views import _notificar_usuario
+        for m in proyecto.membresias.filter(activo=True, rol__in=["lider","responsable"]):
+            _notificar_usuario(m.user_id, "incidencia_reportada", {
+                "codigo": inc.codigo, "titulo": inc.titulo
+            })
         messages.success(request, f"Incidencia {inc.codigo} reportada.")
         return redirect("proyectos:incidencia_list", pk=proyecto.pk)
     miembros = proyecto.membresias.filter(activo=True).select_related("user")
