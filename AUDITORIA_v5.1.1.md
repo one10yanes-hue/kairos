@@ -5,13 +5,13 @@
 
 ## CRITICOS (5) — Correccion inmediata
 
-### C1 — NameError en proyecto_workflow
+### C1 ✅ — NameError en proyecto_workflow
 **Archivo:** `apps/proyectos/views/proyecto_views.py:566`
 **Causa:** `reverse()` usado sin importar (`from django.urls import reverse`)
 **Fix:** Agregar `from django.urls import reverse` al inicio del archivo
 **Impacto:** Crash total al aplicar preset con roles sobrantes
 
-### C2 — sync_tarea_from_asignacion no mapea "Revision"
+### C2 ✅ — sync_tarea_from_asignacion no mapea "Revision"
 **Archivo:** `apps/proyectos/signals.py:15-18`
 **Causa:** El dict `mapping` no tiene `"Revision": "revision"`
 **Fix:** Agregar `"Revision": "revision"` al mapping
