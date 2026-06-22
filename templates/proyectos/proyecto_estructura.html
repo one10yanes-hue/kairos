@@ -72,7 +72,7 @@
                             <div class="estr-label">
                                 <div class="estr-card estr-sprint">
                                     <div class="estr-card-title">
-                                        <span class="icon" style="color:#22c55e;"><i class="bi bi-calendar-week"></i></span>
+                                        <span class="icon" style="color:var(--accent);"><i class="bi bi-calendar-week"></i></span>
                                         <span class="name">Sprint {{ sp.numero }}: {{ sp.nombre }}</span>
                                         <span class="estr-meta-badge {% if sp.estado == 'activo' %}bg-success text-white{% elif sp.estado == 'finalizado' %}bg-secondary text-white{% else %}bg-light text-muted{% endif %}">{{ sp.get_estado_display }}</span>
                                         {% with total=sp.historias.count %}<span class="text-muted" style="font-size:0.6rem;">{{ total }} historia{{ total|pluralize:'s' }}</span>{% endwith %}
@@ -89,11 +89,11 @@
                                     <div class="estr-label">
                                         <div class="estr-card estr-historia">
                                             <div class="estr-card-title">
-                                                <span class="icon" style="color:#8b5cf6;"><i class="bi bi-bookmark"></i></span>
+                                                <span class="icon" style="color:#8a1fcf;"><i class="bi bi-bookmark"></i></span>
                                                 <span class="estr-meta-badge bg-light text-muted" style="font-size:0.55rem;">{{ h.codigo }}</span>
                                                 <span class="name" style="font-size:0.82rem;">{{ h.titulo }}</span>
                                                 <span class="estr-meta-badge {% if h.prioridad == 'must' %}bg-danger text-white{% elif h.prioridad == 'should' %}bg-warning text-dark{% else %}bg-light text-muted{% endif %}">{{ h.get_prioridad_display }}</span>
-                                                <span class="estr-meta-badge bg-primary text-white">{{ h.puntos_historia }} pts</span>
+                                                <span class="estr-meta-badge" style="background:#05053c;color:#fff;">{{ h.puntos_historia }} pts</span>
                                                 <span class="text-muted" style="font-size:0.6rem;">{{ h.tareas.count }} tarea{{ h.tareas.count|pluralize:'s' }}</span>
                                             </div>
                                         </div>
@@ -107,7 +107,7 @@
                                             <div class="estr-label">
                                                 <div class="estr-card estr-tarea">
                                                     <div class="estr-card-title">
-                                                        <span class="icon" style="color:#3b82f6;"><i class="bi bi-check2-square"></i></span>
+                                                        <span class="icon" style="color:var(--accent);"><i class="bi bi-check2-square"></i></span>
                                                         <span class="estr-meta-badge bg-light text-muted" style="font-size:0.55rem;">{{ t.codigo }}</span>
                                                         <a href="{% url 'proyectos:tarea_detail' proyecto.pk t.pk %}" class="name text-decoration-none" style="font-size:0.78rem;">{{ t.titulo }}</a>
                                                         <span class="estr-meta-badge {% if t.estado == 'finalizada' %}bg-success text-white{% elif t.estado == 'en_curso' %}bg-warning text-dark{% elif t.estado == 'revision' %}bg-info text-white{% elif t.estado == 'pausada' %}bg-secondary text-white{% else %}bg-light text-muted{% endif %}">{{ t.get_estado_display }}</span>
@@ -159,7 +159,7 @@
                                     <div class="estr-label">
                                         <div class="estr-card estr-tarea">
                                             <div class="estr-card-title">
-                                                <span class="icon" style="color:#3b82f6;"><i class="bi bi-check2-square"></i></span>
+                                                <span class="icon" style="color:var(--accent);"><i class="bi bi-check2-square"></i></span>
                                                 <span class="estr-meta-badge bg-light text-muted" style="font-size:0.55rem;">{{ t.codigo }}</span>
                                                 <a href="{% url 'proyectos:tarea_detail' proyecto.pk t.pk %}" class="name text-decoration-none" style="font-size:0.78rem;">{{ t.titulo }}</a>
                                                 <span class="estr-meta-badge {% if t.estado == 'finalizada' %}bg-success text-white{% elif t.estado == 'en_curso' %}bg-warning text-dark{% elif t.estado == 'revision' %}bg-info text-white{% elif t.estado == 'pausada' %}bg-secondary text-white{% else %}bg-light text-muted{% endif %}">{{ t.get_estado_display }}</span>
