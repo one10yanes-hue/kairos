@@ -725,6 +725,14 @@ def buscar_usuarios_traslado(request):
         # Si es tarea de proyecto, filtrar solo Ejecutores del proyecto
         if proyecto_id:
             from apps.proyectos.models import MiembroProyecto
+            # Verificar que el Admin tiene acceso a las subareas del proyecto
+            if request.user.rol.nombre == "Admin":
+                from apps.estructura.utils import get_admin_subareas
+                admin_subareas = get_admin_subareas(request.user)
+                from apps.proyectos.models import Proyecto
+                proyecto = Proyecto.objects.filter(pk=proyecto_id, subareas__in=admin_subareas).first()
+                if not proyecto:
+                    return JsonResponse([], safe=False)
             miembros_ids = MiembroProyecto.objects.filter(
                 proyecto_id=proyecto_id, activo=True, rol="ejecutor"
             ).values_list("user_id", flat=True)
@@ -815,6 +823,13 @@ def detalle_actividad(request, pk):
     ).exists()
     if asignacion.user != request.user and request.user.rol.nombre not in ["Admin", "Master"] and not es_traslado_destino:
         return redirect("gestion:tablero")
+    # Admin: verificar que tiene acceso a la subarea de la actividad
+    if asignacion.user != request.user and request.user.rol.nombre == "Admin":
+        from apps.estructura.utils import get_admin_subareas
+        admin_subareas = get_admin_subareas(request.user)
+        if asignacion.actividad.subarea_id not in [s.pk for s in admin_subareas]:
+            messages.error(request, "No tienes acceso a la subarea de esta actividad.")
+            return redirect("gestion:tablero")
     registros = RegistroTiempo.objects.filter(asignacion=asignacion, activo=True).order_by("-fecha_hora")
     comentarios = Comentario.objects.filter(asignacion=asignacion, activo=True).order_by("-fecha_creacion")
     traslados = TrasladoActividad.objects.filter(asignacion_origen=asignacion, activo=True)

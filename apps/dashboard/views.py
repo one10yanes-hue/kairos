@@ -649,7 +649,9 @@ def linea_tiempo(request):
             if subarea_filter:
                 proyectos_qs = proyectos_qs.filter(subareas__id=subarea_filter)
         elif request.user.rol.nombre == "Admin" and request.user.maneja_proyectos:
-            proyectos_qs = Proyecto.objects.filter(activo=True)
+            from apps.estructura.utils import get_admin_subareas
+            admin_subareas = get_admin_subareas(request.user)
+            proyectos_qs = Proyecto.objects.filter(subareas__in=admin_subareas, activo=True).distinct()
             if subarea_filter:
                 proyectos_qs = proyectos_qs.filter(subareas__id=subarea_filter)
         elif request.user.maneja_proyectos:

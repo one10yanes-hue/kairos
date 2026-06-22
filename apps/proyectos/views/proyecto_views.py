@@ -196,6 +196,14 @@ def proyecto_create(request):
             messages.error(request, "Debes seleccionar al menos una subarea.")
             return redirect("proyectos:proyecto_create")
 
+        # Validar que las subareas pertenecen al scope del usuario
+        allowed_ids = set(subareas.values_list("pk", flat=True))
+        posted_ids = set(int(x) for x in subarea_ids)
+        invalid = posted_ids - allowed_ids
+        if invalid:
+            messages.error(request, "Has seleccionado subareas que no te corresponden.")
+            return redirect("proyectos:proyecto_create")
+
         if fecha_inicio and fecha_fin and fecha_inicio > fecha_fin:
             messages.error(request, "Fecha de inicio no puede ser posterior a la fecha fin.")
             return redirect("proyectos:proyecto_create")
@@ -365,6 +373,14 @@ def proyecto_edit(request, pk):
         if missing:
             nombres = SubArea.objects.filter(pk__in=missing).values_list("nombre", flat=True)
             messages.error(request, f"No puedes quitar las subareas asignadas inicialmente: {', '.join(nombres)}. Solo puedes a\u00f1adir nuevas.")
+            return redirect("proyectos:proyecto_edit", pk=proyecto.pk)
+
+        # Validar que las subareas nuevas pertenecen al scope del usuario
+        allowed_ids = set(subareas.values_list("pk", flat=True))
+        new_ids = posted_subarea_ids - original_subarea_ids
+        invalid = new_ids - allowed_ids
+        if invalid:
+            messages.error(request, "Has seleccionado subareas que no te corresponden.")
             return redirect("proyectos:proyecto_edit", pk=proyecto.pk)
 
         proyecto.full_clean()

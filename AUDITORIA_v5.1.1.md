@@ -118,3 +118,21 @@
 | **Sprint Fix 4 ? | Medios + Bajos | M1-M18 ? + L1-L16 ?
 
 **Total: COMPLETADO en 1 sesion (~10h)**
+
+---
+
+## SEGUNDA AUDITORIA — SubArea Scoping (10 issues) ? COMPLETADO
+
+| # | Severidad | Vulnerabilidad | Fix |
+|---|-----------|---------------|-----|
+| C1 ? | CRITICO | proyecto_create no valida subarea_ids | Validacion server-side |
+| C2 ? | CRITICO | proyecto_edit no valida subarea_ids | Validacion server-side |
+| C3 ? | CRITICO | 5 copias inconsistentes de get_admin_subareas | Extraido a apps/estructura/utils.py |
+| C4 ? | CRITICO | linea_tiempo Gantt muestra TODOS los proyectos | Scoped by get_admin_subareas() |
+| C5 ? | CRITICO | planificacion_detail sin verificacion de subarea | Check via get_admin_subareas() |
+| H1 ? | ALTO | detalle_actividad permite Admin ver cualquier usuario | Check subarea |
+| H2 ? | ALTO | buscar_usuarios_traslado sin filtro subarea en flujo proyecto | Verifica acceso via subareas |
+| H3 ? | ALTO | planificacion_create no valida subarea_id en dropdown | Validado |
+| M1 ? | MEDIO | planificacion asigna proyecto_id sin validar subarea | OK (proyecto ya scoped) |
+
+**Archivos:** estructura/utils.py (nuevo), proyecto_views.py, dashboard/views.py, planificacion/views.py, gestion/views.py

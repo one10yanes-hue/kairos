@@ -241,6 +241,11 @@ def planificacion_create(request):
 @ensure_csrf_cookie
 def planificacion_detail(request, pk):
     planificacion = get_object_or_404(Planificacion, pk=pk, activo=True)
+    # Verificar que el usuario tiene acceso a la subarea de la planificacion
+    subareas_user = get_admin_subareas(request.user)
+    if planificacion.subarea_id not in [s.pk for s in subareas_user]:
+        messages.error(request, "No tienes acceso a esta planificacion.")
+        return redirect("planificacion:planificacion_list")
     subarea = planificacion.subarea
     from apps.gestion.models import RegistroTiempo
     detalles = PlanificacionDetalle.objects.filter(
