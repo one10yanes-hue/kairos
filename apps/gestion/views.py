@@ -376,7 +376,8 @@ def finalizar_actividad(request, pk):
     form = RegistroTiempoForm(request.POST, request.FILES)
     if form.is_valid():
         requiere_ent = asignacion.actividad.tipo_actividad.requiere_entregable
-        if not requiere_ent and not form.cleaned_data.get("nro_actividad"):
+        nro = form.cleaned_data.get("nro_actividad")
+        if not requiere_ent and not nro:
             messages.error(request, "El numero de actividad (cantidad realizada) es obligatorio para finalizar.")
             return redirect("gestion:tablero")
         if requiere_ent and not entregable_file:
@@ -452,9 +453,11 @@ def finalizar_actividad(request, pk):
                 asignacion=reemplazo_asig, evento="Inicio", fecha_hora=timezone.now(),
                 comentario=f"Iniciada tras finalizar '{asignacion.actividad.nombre}'"
             )
-            messages.success(request, f"Actividad '{asignacion.actividad.nombre}' finalizada. Ahora estas trabajando en '{reemplazo_asig.actividad.nombre}'.")
+            messages.success(request, f"'{asignacion.actividad.nombre}' finalizada. Ahora estas en '{reemplazo_asig.actividad.nombre}'.")
+        elif reemplazo == "nada" or not reemplazo:
+            messages.success(request, f"'{asignacion.actividad.nombre}' finalizada.")
         else:
-            messages.success(request, f"Actividad '{asignacion.actividad.nombre}' finalizada.")
+            messages.success(request, f"'{asignacion.actividad.nombre}' finalizada.")
     else:
         messages.error(request, "El numero de actividad (cantidad realizada) es obligatorio para finalizar.")
     _gestionar_tiempo_inactividad(request.user)
