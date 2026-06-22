@@ -161,6 +161,13 @@
     </a>
     {% endif %}
 </div>
+{% elif not user.maneja_proyectos and user.proyectos_miembro.count > 0 %}
+<div class="nav-section collapsed">
+    <div class="nav-section-title">Proyectos <span class="section-arrow">&#9660;</span></div>
+    <a href="{% url 'proyectos:proyecto_list' %}" class="nav-item {% if '/proyectos' in request.path %}active{% endif %}">
+        <i class="bi bi-kanban"></i><span>Mis Proyectos</span>
+    </a>
+</div>
 {% endif %}
 {% elif user.rol.nombre == 'Usuario' %}
 <div class="nav-section collapsed">
