@@ -595,6 +595,7 @@ def trasladar_actividad(request, pk):
 
     request.audit_record_id = traslado.pk
     request.audit_modelo = "TrasladoActividad"
+    _log_proyecto(asignacion, f"Traslado de {request.user.get_full_name()} a {user_destino.get_full_name()}{' (' + motivo + ')' if motivo else ''}")
     _notificar_usuario(user_destino.pk, "nuevo_traslado", {
         "origen": request.user.get_full_name(),
         "actividad": asignacion.actividad.nombre,
@@ -697,6 +698,7 @@ def aceptar_traslado(request, pk):
                 comentario=f"Iniciada automaticamente tras trasladar '{asignacion.actividad.nombre}'"
             )
 
+    _log_proyecto(asignacion, f"Traslado aceptado: de {traslado.user_origen.get_full_name()} a {request.user.get_full_name()}")
     messages.success(request, f"Traslado aceptado. Actividad '{asignacion.actividad.nombre}' agregada a tu tablero.")
     _notificar_usuario(traslado.user_origen.pk, "traslado_respuesta", {
         "accion": "aceptado",
@@ -833,6 +835,7 @@ def agregar_comentario(request, pk):
         comentario.user = request.user
         comentario.detalle = asignacion.planificacion_detalle
         comentario.save()
+        _log_proyecto(asignacion, f"Comentario de {request.user.get_full_name()}: {comentario.texto[:60]}")
         messages.success(request, "Comentario agregado.")
     return redirect("gestion:detalle_actividad", pk=pk)
 
