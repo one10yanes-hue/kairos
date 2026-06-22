@@ -25,6 +25,7 @@ urlpatterns = [
     path("<int:pk>/sprints/<int:spk>/burndown/", sprint_views.sprint_burndown, name="sprint_burndown"),
     path("<int:pk>/sprints/<int:spk>/finalizar/", sprint_views.sprint_finalizar, name="sprint_finalizar"),
     path("<int:pk>/sprints/<int:spk>/iniciar/", sprint_views.sprint_iniciar, name="sprint_iniciar"),
+    path("<int:pk>/sprints/<int:spk>/cancelar/", sprint_views.sprint_cancelar, name="sprint_cancelar"),
     # Tareas
     path("<int:pk>/tareas/", tarea_views.tarea_list, name="tarea_list"),
     path("<int:pk>/tareas/crear/", tarea_views.tarea_create, name="tarea_create"),

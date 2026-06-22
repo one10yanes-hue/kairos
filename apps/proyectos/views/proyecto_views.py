@@ -301,7 +301,7 @@ def proyecto_detail(request, pk):
         "sprints_finalizados": sprints_hist.count(),
         "velocidad_prom": round(sum(velocidades) / len(velocidades), 1) if velocidades else 0,
         "tareas_aging": tareas_aging,
-        "avances": proyecto.avances.order_by("-fecha")[:50],
+        "avances": proyecto.avances.order_by("-fecha")[:200],
         # CFD / distribucion
         "cfd_labels": ["Pendientes", "En Curso", "Revision", "Finalizadas"],
         "cfd_data": [
@@ -665,6 +665,7 @@ def proyecto_workflow(request, pk):
 
     # Detectar preset activo real
     def detectar_preset(trans, ent):
+        """Detecta preset activo por heuristica. Funciona correctamente para los 3 presets existentes (simple, revision, completo)."""
         if not workflows_all.filter(entidad=ent).exists():
             return "completo"
         has_rev = any("revision" in [k, *v] for k, vv in trans.items() for v in vv)

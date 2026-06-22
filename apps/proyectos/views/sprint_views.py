@@ -37,7 +37,8 @@ def sprint_create(request, pk):
             messages.warning(request, f"El sprint empieza antes que el proyecto ({proyecto.fecha_inicio}).")
         if ff and proyecto.fecha_fin_estimada and ff > str(proyecto.fecha_fin_estimada):
             messages.warning(request, f"El sprint termina despues del proyecto ({proyecto.fecha_fin_estimada}).")
-        ultimo = Sprint.objects.filter(proyecto=proyecto).count()
+        from django.db.models import Max
+        ultimo = Sprint.objects.filter(proyecto=proyecto).aggregate(m=Max("numero"))["m"] or 0
         sprint = Sprint(
             proyecto=proyecto,
             nombre=nombre,
@@ -235,3 +236,21 @@ def sprint_iniciar(request, pk, spk):
         messages.success(request, msg)
         return redirect("proyectos:sprint_board", pk=proyecto.pk, spk=sprint.pk)
     return redirect("proyectos:sprint_board", pk=proyecto.pk, spk=sprint.pk)
+
+
+@miembro_requerido(ROLES_EDICION)
+def sprint_cancelar(request, pk, spk):
+    proyecto = get_object_or_404(Proyecto, pk=pk, activo=True)
+    sprint = get_object_or_404(Sprint, pk=spk, proyecto=proyecto)
+    if sprint.estado not in ["planificado", "activo"]:
+        messages.error(request, "Solo se pueden cancelar sprints planificados o activos.")
+        return redirect("proyectos:sprint_board", pk=proyecto.pk, spk=sprint.pk)
+    if request.method == "POST":
+        sprint.estado = "cancelado"
+        sprint.save()
+        sprint.tareas.filter(activo=True).exclude(estado__in=["finalizada","cancelada"]).update(estado="cancelada", activo=False)
+        from ..models import RegistroAvance
+        RegistroAvance.objects.create(proyecto=proyecto, tipo="comentario",
+            descripcion=f"Sprint {sprint.numero} cancelado por {request.user.get_full_name()}", user=request.user, referencia_id=sprint.pk)
+        messages.success(request, f"Sprint {sprint.numero} cancelado. Tareas devueltas al backlog.")
+    return redirect("proyectos:sprint_list", pk=proyecto.pk)

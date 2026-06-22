@@ -77,6 +77,10 @@ def backlog_view(request, pk):
     if filtro_prioridad:
         historias = historias.filter(prioridad=filtro_prioridad)
         tareas_sueltas = tareas_sueltas.filter(prioridad=filtro_prioridad)
+    # Severidad aplica solo a incidencias
+    filtro_severidad = request.GET.get("severidad", "")
+    if filtro_severidad:
+        incidencias = incidencias.filter(severidad=filtro_severidad)
 
     # KPIs
     total_h = proyecto.historias.filter(activo=True).count()
