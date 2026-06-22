@@ -552,9 +552,10 @@ def proyecto_gantt(request, pk):
     })
 
 
+@login_required
 @miembro_requerido()
 def proyecto_estructura(request, pk):
-    proyecto = get_object_or_404(Proyecto, pk=pk, activo=True)
+    proyecto = request.proyecto
     sprints = proyecto.sprints.filter(activo=True).order_by("numero")
     tareas_sin = proyecto.tareas.filter(activo=True, historia__isnull=True, sprint__isnull=True).select_related("asignado_a")
     return render(request, "proyectos/proyecto_estructura.html", {

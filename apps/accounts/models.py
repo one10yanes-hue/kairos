@@ -91,6 +91,13 @@ class User(AbstractBaseUser, PermissionsMixin):
         # Revisar rol primario original en BD (el middleware cambia self.rol_id)
         return type(self).objects.filter(pk=self.pk, rol_id=rol_id).exists()
 
+    def tiene_rol_admin(self):
+        """Verifica si el usuario tiene rol Master o Admin (actual o adicional)."""
+        if self.rol.nombre in ["Master", "Admin"]:
+            return True
+        return self.roles_adicionales.filter(nombre__in=["Master", "Admin"]).exists() or \
+               type(self).objects.filter(pk=self.pk, rol__nombre__in=["Master", "Admin"]).exists()
+
     def roles_disponibles(self):
         # Obtener rol original desde BD (el middleware cambia self.rol en memoria)
         db = User.objects.values_list("rol_id", flat=True).get(pk=self.pk)
