@@ -55,9 +55,11 @@
         }
     }
 
-    // Hover auto-expand en desktop
+    // Hover auto-expand en desktop (solo tras primer movimiento del mouse)
+    var mouseReady = false;
+    document.addEventListener('mousemove', function() { mouseReady = true; }, { once: true });
     sidebar.addEventListener('mouseenter', function() {
-        if (isMob()) return;
+        if (isMob() || !mouseReady) return;
         clearTimeout(hoverTimer);
         expand();
     });
