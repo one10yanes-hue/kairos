@@ -44,6 +44,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "apps.auditoria.middleware.AuditLogMiddleware",
     "apps.accounts.middleware.RoleSwitchMiddleware",
+    "config.middleware.NoCacheMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
