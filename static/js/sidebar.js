@@ -3,12 +3,17 @@
     var main = document.getElementById('mainContent');
     var overlay = document.getElementById('sidebarOverlay');
     var toggle = document.getElementById('sidebarToggle');
+    var nav = document.getElementById('sidebarNav');
     if (!sidebar) return;
 
     function isMob() { return window.innerWidth <= 768; }
 
     var manualToggle = false;
     var hoverTimer = null;
+
+    function saveState() {
+        try { localStorage.setItem('kairos_sidebar_collapsed', sidebar.classList.contains('collapsed') ? '1' : '0'); } catch(e) {}
+    }
 
     function expand() {
         sidebar.classList.remove('collapsed');
@@ -22,16 +27,27 @@
         scrollToActive();
     }
 
+    // Restaurar estado al cargar
+    function restoreState() {
+        try {
+            var saved = localStorage.getItem('kairos_sidebar_collapsed');
+            if (saved === '1' && !isMob()) {
+                sidebar.classList.add('collapsed');
+                if (main) main.classList.add('shifted');
+            }
+        } catch(e) {}
+    }
+
     function scrollToActive() {
         requestAnimationFrame(function() {
-            var nav = sidebar.querySelector('.sidebar-nav');
+            var navEl = sidebar.querySelector('.sidebar-nav');
             var active = sidebar.querySelector('.nav-item.active');
-            if (nav && active) {
-                var navRect = nav.getBoundingClientRect();
+            if (navEl && active) {
+                var navRect = navEl.getBoundingClientRect();
                 var itemRect = active.getBoundingClientRect();
                 if (itemRect.height === 0) return;
-                var scrollTop = nav.scrollTop + (itemRect.top - navRect.top) - (navRect.height / 2) + (itemRect.height / 2);
-                nav.scrollTo({ top: scrollTop, behavior: 'smooth' });
+                var scrollTop = navEl.scrollTop + (itemRect.top - navRect.top) - (navRect.height / 2) + (itemRect.height / 2);
+                navEl.scrollTo({ top: scrollTop, behavior: 'smooth' });
             }
         });
     }
@@ -45,7 +61,7 @@
             if (main) main.classList.toggle('shifted');
             manualToggle = !sidebar.classList.contains('collapsed');
         }
-        try { localStorage.setItem('kairos_sidebar_collapsed', sidebar.classList.contains('collapsed') ? '1' : '0'); } catch(e) {}
+        saveState();
     }
 
     // Hover auto-expand en desktop
@@ -56,8 +72,21 @@
     });
     sidebar.addEventListener('mouseleave', function() {
         if (isMob()) return;
-        hoverTimer = setTimeout(function() { collapse(); }, 200);
+        hoverTimer = setTimeout(function() { collapse(); }, 150);
     });
+
+    // Click en link del sidebar: colapsa inmediatamente antes de navegar
+    if (nav) {
+        nav.addEventListener('click', function(e) {
+            var link = e.target.closest('.nav-item');
+            if (link && !isMob() && !sidebar.classList.contains('collapsed') && !manualToggle) {
+                clearTimeout(hoverTimer);
+                sidebar.classList.add('collapsed');
+                if (main) main.classList.add('shifted');
+                saveState();
+            }
+        });
+    }
 
     if (toggle) {
         toggle.addEventListener('click', function(e) {
@@ -149,6 +178,7 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
+        restoreState();
         initSections();
         scrollToActive();
     });
