@@ -192,6 +192,7 @@ def switch_role(request):
         return redirect(request.META.get("HTTP_REFERER", "/"))
     if request.user.tiene_rol(int(rol_id)):
         request.session["rol_activo"] = int(rol_id)
+        request.session.cycle_key()
         rol = Rol.objects.get(pk=int(rol_id))
         if rol.nombre == "Master":
             return redirect("estructura:empresa_list")
