@@ -206,7 +206,7 @@ document.addEventListener('DOMContentLoaded', function() {
         {% if cancelados > 0 %}labels.push('Cancelados'); dataVals.push({{ cancelados }}); colors.push('#94a3b8');{% endif %}
         new Chart(document.getElementById('chartDistProyectos'), {
             type: 'doughnut',
-            data: { labels: labels, datasets: [{ data: dataVals, backgroundColor: colors, borderWidth:3, borderColor:'#fff', hoverBorderColor:'#fff', hoverOffset:6 }] },
+            data: { labels: labels, datasets: [{ data: dataVals, backgroundColor: colors, borderWidth:0, hoverBorderWidth:2, hoverBorderColor:'#fff', hoverOffset:6 }] },
             options: { responsive:true, maintainAspectRatio:false, cutout:'72%',
                 plugins: { legend:{ position:'bottom', labels:{ boxWidth:10, padding:12, font:{ size:9 }, usePointStyle:true, color:'#64748b' } } } }
         });
