@@ -1,5 +1,5 @@
 # PENDIENTE — Cherry-pick fixes compartidos a produccion
-> Fecha: 20/06/2026 | Solo documentacion, no ejecutar aun
+> Fecha: 21/06/2026 | Solo documentacion, no ejecutar aun
 
 ## Archivos que necesitan cherry-pick a `produccion` (v4.2.x)
 
@@ -255,6 +255,111 @@ git commit -m "v4.2.x: Timeline unificado en detalle actividad"
 
 ---
 
+## 15. `static/css/main.css` — Navy branding global (#05053c)
+
+```powershell
+git checkout produccion
+# Copiar SOLO los cambios de main.css (NO todo el archivo si difiere mucho)
+git checkout mejoras -- static/css/main.css
+git add static/css/main.css
+git commit -m "v4.2.x: Navy #05053c global -- accent, brand vars, btn-primary, text-primary"
+```
+**Cambios clave en :root:**
+- `--accent: #05053c` (antes `#3b82f6`)
+- `--accent-light: #eef0f8` (antes `#eff6ff`)
+- `--accent-dark: #030330` (antes `#1d4ed8`)
+- `--brand-green: #35df6d`, `--brand-purple: #8a1fcf`, `--brand-dark: #05053c` (nuevas vars)
+
+---
+
+## 16. `static/css/sidebar.css` — Navy sidebar accents
+
+```powershell
+git checkout produccion
+git checkout mejoras -- static/css/sidebar.css
+git add static/css/sidebar.css
+git commit -m "v4.2.x: Sidebar usa var(--accent) navy para avatar, active items, iconos"
+```
+**Cambios:** `.sidebar-user-avatar`, `.nav-item.active`, `.sidebar-brand i` usan `var(--accent)` = navy.
+
+---
+
+## 17. `templates/accounts/login.html` — Logo KAIROS navy + boton solido
+
+```powershell
+git checkout produccion
+git checkout mejoras -- templates/accounts/login.html
+git add templates/accounts/login.html
+git commit -m "v4.2.x: Login KAIROS #05053c solido, boton #05053c, logo shadow navy"
+```
+**Cambios:**
+- KAIROS titulo: `color:#05053c` (antes `var(--slate-800)`)
+- Boton Ingresar: `background:#05053c` solid, `text-white`, `border:none` (antes `btn-primary`)
+- Logo shadow: `rgba(5,5,60,0.12)` (antes `rgba(59,130,246,0.15)`)
+- Version text: `color:var(--slate-400)` (antes `text-muted`)
+
+---
+
+## 18. `templates/base.html` — KAIROS sidebar navy
+
+```powershell
+# MANUAL: Solo cambiar el span de KAIROS en el sidebar-brand
+# Buscar: <span class="sidebar-brand-text" style="...">
+# Cambiar style a: font-family:'Nunito',sans-serif;font-weight:700;letter-spacing:1px;color:#05053c;
+# Agregar al img: style="...box-shadow:0 2px 8px rgba(5,5,60,0.10);"
+git add templates/base.html
+git commit -m "v4.2.x: Sidebar KAIROS texto #05053c + logo shadow navy"
+```
+**NO copiar base.html completo** — la version de `mejoras` puede tener diferencias estructurales.
+
+---
+
+## 19. `templates/gestion/calendario.html` — FullCalendar active button navy
+
+```powershell
+# MANUAL: Buscar .fc-button-active y cambiar:
+# background-color:#2563eb !important; border-color:#2563eb !important;
+# --- POR ---
+# background-color:var(--accent-dark) !important; border-color:var(--accent-dark) !important;
+git add templates/gestion/calendario.html
+git commit -m "v4.2.x: FullCalendar active button usa var(--accent-dark) navy"
+```
+
+---
+
+## 20. `templates/404.html` + `templates/500.html` + `templates/403_csrf.html` — Error pages navy
+
+```powershell
+git checkout produccion
+git checkout mejoras -- templates/404.html templates/500.html templates/403_csrf.html
+git add templates/404.html templates/500.html templates/403_csrf.html
+git commit -m "v4.2.x: Error pages cargan main.css + accent navy #05053c"
+```
+**Cambios:**
+- Eliminado `:root { --accent: #3b82f6; }` inline
+- Agregado `<link href="{% static 'css/main.css' %}">` (heredan `--accent: #05053c`)
+- `btn-primary` ahora es navy via `main.css`
+
+---
+
+## 21. `apps/dashboard/views.py` — Fix UnboundLocalError + import limpio
+
+```powershell
+git checkout produccion
+git checkout mejoras -- apps/dashboard/views.py
+# Verificar diff: solo deberia cambiar get_admin_subareas
+git diff --cached apps/dashboard/views.py
+git add apps/dashboard/views.py
+git commit -m "v4.2.x: Fix UnboundLocalError linea-tiempo - import get_admin_subareas al top"
+```
+**Cambios:**
+- Agregado `from apps.estructura.utils import get_admin_subareas` al top
+- Eliminada funcion local `def get_admin_subareas(user)` duplicada
+- Eliminado import inline dentro de `linea_tiempo` (causaba UnboundLocalError)
+- **PREREQUISITO:** `apps/estructura/utils.py` debe existir (seccion 8)
+
+---
+
 ## Orden recomendado de aplicacion
 
 | Orden | Que | Commando |
@@ -262,15 +367,20 @@ git commit -m "v4.2.x: Timeline unificado en detalle actividad"
 | 1 | `utils.py` (prerequisito) | `git checkout mejoras -- apps/estructura/utils.py` |
 | 2 | `settings.py` (DB engine) | Manual |
 | 3 | `config/__init__.py` (PyMySQL) | Manual |
-| 4 | `consumers.py` | `git checkout mejoras -- apps/gestion/consumers.py` |
-| 5 | `gestion_extras.py` (typo) | `git checkout mejoras -- apps/gestion/templatetags/gestion_extras.py` |
-| 6 | `login.html` + logo | `git checkout mejoras -- templates/accounts/login.html static/img/kairos_logo.png` |
-| 7 | `detalle_actividad.html` | `git checkout mejoras -- templates/gestion/detalle_actividad.html` |
-| 8 | `actividad_form.html` | `git checkout mejoras -- templates/actividades/actividad_form.html` |
-| 9 | `planificacion/views.py` | Manual (solo 3a-3d) |
-| 10 | `gestion/views.py` | Manual (solo 4a-4d) |
-| 11 | `dashboard/views.py` | Manual (solo item 7) |
-| 12 | `actividades/models.py` | Manual (unique + clean) |
+| 4 | `main.css` (navy accent global) | `git checkout mejoras -- static/css/main.css` |
+| 5 | `sidebar.css` (navy sidebar) | `git checkout mejoras -- static/css/sidebar.css` |
+| 6 | `consumers.py` | `git checkout mejoras -- apps/gestion/consumers.py` |
+| 7 | `gestion_extras.py` (typo) | `git checkout mejoras -- apps/gestion/templatetags/gestion_extras.py` |
+| 8 | `login.html` (logo + boton navy) | `git checkout mejoras -- templates/accounts/login.html` |
+| 9 | `base.html` (sidebar KAIROS navy) | Manual |
+| 10 | `detalle_actividad.html` | `git checkout mejoras -- templates/gestion/detalle_actividad.html` |
+| 11 | `actividad_form.html` | `git checkout mejoras -- templates/actividades/actividad_form.html` |
+| 12 | Error pages `404/500/403` | `git checkout mejoras -- templates/404.html templates/500.html templates/403_csrf.html` |
+| 13 | `calendario.html` (FC navy) | Manual |
+| 14 | `planificacion/views.py` | Manual (solo 3a-3d) |
+| 15 | `gestion/views.py` | Manual (solo 4a-4d) |
+| 16 | `dashboard/views.py` (UnboundLocalError) | `git checkout mejoras -- apps/dashboard/views.py` |
+| 17 | `actividades/models.py` | Manual (unique + clean) |
 
 Despues de cada paso:
 ```powershell
