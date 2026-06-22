@@ -182,26 +182,49 @@
     document.addEventListener('DOMContentLoaded', function() {
         restoreState();
         initSections();
+        updateActiveStates();
         scrollToActive();
     });
     document.addEventListener('htmx:afterSettle', function() {
         initSections();
+        updateActiveStates();
         if (typeof bootstrap !== 'undefined') {
             document.querySelectorAll('.toast').forEach(function(t) {
                 new bootstrap.Toast(t).show();
             });
         }
-        // Reinit dynamic-select options
         if (typeof window.DynamicSelect !== 'undefined') {
             window.DynamicSelect.initAll();
         }
-        // Reinit charts if needed
-        document.querySelectorAll('canvas[data-chart-init]').forEach(function(c) {
-            if (!c.chart) {
-                var ev = new Event('chart-init');
-                c.dispatchEvent(ev);
+    });
+
+    function updateActiveStates() {
+        var current = window.location.pathname;
+        var best = null, bestLen = 0;
+        document.querySelectorAll('.nav-item, .nav-item-sublink').forEach(function(el) {
+            var href = el.getAttribute('href') || '';
+            var idx = href.indexOf('?');
+            var clean = idx >= 0 ? href.substring(0, idx) : href;
+            if (current.indexOf(clean) === 0 && clean.length > bestLen) {
+                best = el; bestLen = clean.length;
             }
         });
-    });
+        document.querySelectorAll('.nav-item.active, .nav-item-sublink.active').forEach(function(el) {
+            el.classList.remove('active');
+        });
+        document.querySelectorAll('.nav-section-title').forEach(function(t) {
+            t.style.color = ''; t.style.fontWeight = '';
+        });
+        if (best) {
+            best.classList.add('active');
+            var sec = best.closest('.nav-section');
+            if (sec) {
+                var title = sec.querySelector('.nav-section-title');
+                if (title) { title.style.color = 'var(--accent)'; title.style.fontWeight = '700'; }
+                sec.classList.remove('collapsed');
+            }
+        }
+    }
+
     document.addEventListener('turbo:load', initSections);
 })();
