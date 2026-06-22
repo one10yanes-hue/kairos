@@ -193,8 +193,8 @@
         scrollToActive();
     });
     document.addEventListener('htmx:afterSettle', function() {
-        initSections();
         updateActiveStates();
+        initSections();
         scrollToActive();
         if (typeof bootstrap !== 'undefined') {
             document.querySelectorAll('.toast').forEach(function(t) {
