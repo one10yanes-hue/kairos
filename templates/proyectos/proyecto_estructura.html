@@ -87,7 +87,7 @@
                                     <div class="estr-card-title">
                                         <span class="icon" style="color:var(--accent);"><i class="bi bi-calendar-week"></i></span>
                                         <a href="{% url 'proyectos:sprint_board' proyecto.pk sp.pk %}" class="name estr-link">Sprint {{ sp.numero }}: {{ sp.nombre }}</a>
-                                        <span class="estr-meta-badge {% if sp.estado == 'activo' %}bg-success text-white{% elif sp.estado == 'finalizado' %}bg-secondary text-white{% else %}bg-light text-muted{% endif %}">{{ sp.get_estado_display }}</span>
+                                        <span class="estr-meta-badge{% if sp.estado == 'activo' %}" style="background:#35df6d;color:#fff;"{% elif sp.estado == 'finalizado' %}" style="background:#e2e8f0;color:#475569;"{% else %} bg-light text-muted{% endif %}">{{ sp.get_estado_display }}</span>
                                         {% with total=sp.historias.count %}<span class="estr-stat"><i class="bi bi-bookmark"></i> {{ total }} historia{{ total|pluralize:'s' }}</span>{% endwith %}
                                         <span class="estr-actions">
                                             <a href="{% url 'proyectos:sprint_board' proyecto.pk sp.pk %}" class="estr-action-btn"><i class="bi bi-kanban"></i> Tablero</a>
@@ -108,7 +108,7 @@
                                                 <span class="icon" style="color:#8a1fcf;"><i class="bi bi-bookmark"></i></span>
                                                 <span class="estr-meta-badge bg-light text-muted" style="font-size:0.55rem;">{{ h.codigo }}</span>
                                                 <a href="{% url 'proyectos:backlog' proyecto.pk %}?destacado={{ h.pk }}" class="name estr-link" style="font-size:0.82rem;">{{ h.titulo }}</a>
-                                                <span class="estr-meta-badge {% if h.prioridad == 'must' %}bg-danger text-white{% elif h.prioridad == 'should' %}bg-warning text-dark{% else %}bg-light text-muted{% endif %}">{{ h.get_prioridad_display }}</span>
+                                                <span class="estr-meta-badge{% if h.prioridad == 'must' %}" style="background:#8a1fcf;color:#fff;"{% elif h.prioridad == 'should' %}" style="background:#fef9e7;color:#8a1fcf;"{% else %} bg-light text-muted{% endif %}">{{ h.get_prioridad_display }}</span>
                                                 <span class="estr-meta-badge" style="background:#05053c;color:#fff;">{{ h.puntos_historia }} pts</span>
                                                 <span class="estr-stat"><i class="bi bi-check2-square"></i> {{ h.tareas.count }} tarea{{ h.tareas.count|pluralize:'s' }}</span>
                                                 <span class="estr-actions">
@@ -134,7 +134,7 @@
                                                         <span class="icon" style="color:var(--accent);"><i class="bi bi-check2-square"></i></span>
                                                         <span class="estr-meta-badge bg-light text-muted" style="font-size:0.55rem;">{{ t.codigo }}</span>
                                                         <a href="{% url 'proyectos:tarea_detail' proyecto.pk t.pk %}" class="name estr-link" style="font-size:0.78rem;">{{ t.titulo }}</a>
-                                                        <span class="estr-meta-badge {% if t.estado == 'finalizada' %}bg-success text-white{% elif t.estado == 'en_curso' %}bg-warning text-dark{% elif t.estado == 'revision' %}bg-info text-white{% elif t.estado == 'pausada' %}bg-secondary text-white{% else %}bg-light text-muted{% endif %}">{{ t.get_estado_display }}</span>
+                                                        <span class="estr-meta-badge{% if t.estado == 'finalizada' %}" style="background:#35df6d;color:#fff;"{% elif t.estado == 'en_curso' %}" style="background:#fef9e7;color:#8a1fcf;"{% elif t.estado == 'revision' %}" style="background:var(--accent);color:#fff;"{% elif t.estado == 'pausada' %}" style="background:#e2e8f0;color:#475569;"{% else %} bg-light text-muted{% endif %}">{{ t.get_estado_display }}</span>
                                                         {% if t.asignado_a %}
                                                         <span class="estr-avatar" title="{{ t.asignado_a.get_full_name }}">{{ t.asignado_a.nombre|first|upper }}{{ t.asignado_a.apellido|first|upper }}</span>
                                                         {% endif %}
@@ -192,7 +192,7 @@
                                                 <span class="icon" style="color:var(--accent);"><i class="bi bi-check2-square"></i></span>
                                                 <span class="estr-meta-badge bg-light text-muted" style="font-size:0.55rem;">{{ t.codigo }}</span>
                                                 <a href="{% url 'proyectos:tarea_detail' proyecto.pk t.pk %}" class="name estr-link" style="font-size:0.78rem;">{{ t.titulo }}</a>
-                                                <span class="estr-meta-badge {% if t.estado == 'finalizada' %}bg-success text-white{% elif t.estado == 'en_curso' %}bg-warning text-dark{% elif t.estado == 'revision' %}bg-info text-white{% elif t.estado == 'pausada' %}bg-secondary text-white{% else %}bg-light text-muted{% endif %}">{{ t.get_estado_display }}</span>
+                                                <span class="estr-meta-badge{% if t.estado == 'finalizada' %}" style="background:#35df6d;color:#fff;"{% elif t.estado == 'en_curso' %}" style="background:#fef9e7;color:#8a1fcf;"{% elif t.estado == 'revision' %}" style="background:var(--accent);color:#fff;"{% elif t.estado == 'pausada' %}" style="background:#e2e8f0;color:#475569;"{% else %} bg-light text-muted{% endif %}">{{ t.get_estado_display }}</span>
                                                 {% if t.asignado_a %}
                                                 <span class="estr-avatar" title="{{ t.asignado_a.get_full_name }}">{{ t.asignado_a.nombre|first|upper }}{{ t.asignado_a.apellido|first|upper }}</span>
                                                 {% endif %}
