@@ -8,7 +8,7 @@
         <i class="bi bi-graph-up"></i><span>Progreso del Equipo</span>
     </a>
     <a href="{% url 'dashboard:linea_tiempo' %}" class="nav-item {% if '/linea-tiempo' in request.path %}active{% endif %}">
-        <i class="bi bi-clock-history"></i><span>Linea de Tiempo</span>
+        <i class="bi bi-clock-history"></i><span>Línea de Tiempo</span>
     </a>
     <a href="{% url 'dashboard:tiempo_inactividad' %}" class="nav-item {% if '/tiempo-inactividad' in request.path %}active{% endif %}">
         <i class="bi bi-hourglass-split"></i><span>Tiempo de Inactividad</span>
@@ -35,11 +35,11 @@
         <i class="bi bi-person-plus"></i><span>Habilitaciones por Cargo</span>
     </a>
     <a href="{% url 'estructura:sync_cargo' %}" class="nav-item {% if '/sync' in request.path %}active{% endif %}">
-        <i class="bi bi-arrow-repeat"></i><span>Sincronizacion de Usuarios</span>
+        <i class="bi bi-arrow-repeat"></i><span>Sincronización de Usuarios</span>
     </a>
 </div>
 <div class="nav-section collapsed">
-    <div class="nav-section-title">Catalogo <span class="section-arrow">&#9660;</span></div>
+    <div class="nav-section-title">Catálogo <span class="section-arrow">&#9660;</span></div>
     <a href="{% url 'actividades:tipo_list' %}" class="nav-item {% if '/tipos' in request.path %}active{% endif %}">
         <i class="bi bi-tags"></i><span>Tipos de Actividad</span>
     </a>
@@ -48,7 +48,7 @@
     </a>
 </div>
 <div class="nav-section collapsed">
-    <div class="nav-section-title">Planificacion <span class="section-arrow">&#9660;</span></div>
+    <div class="nav-section-title">Planificación <span class="section-arrow">&#9660;</span></div>
     <a href="{% url 'planificacion:planificacion_list' %}" class="nav-item {% if '/planificaciones' in request.path %}active{% endif %}">
         <i class="bi bi-calendar-check"></i><span>Planificaciones</span>
     </a>
@@ -74,7 +74,7 @@
 <div class="nav-section collapsed">
     <div class="nav-section-title">Proyectos <span class="section-arrow">&#9660;</span></div>
     <a href="{% url 'proyectos:proyecto_list' %}" class="nav-item {% if '/proyectos' in request.path and not proyecto_ctx %}active{% endif %}">
-        <i class="bi bi-kanban"></i><span>Gestion de Proyectos</span>
+        <i class="bi bi-kanban"></i><span>Gestión de Proyectos</span>
     </a>
     {% if proyecto_ctx %}
     <a href="{% url 'proyectos:proyecto_detail' proyecto_ctx.pk %}" class="nav-item nav-item-sublink {% if '/proyectos/'|add:proyecto_ctx.pk|stringformat:'s' in request.path and '/backlog' not in request.path and '/sprints' not in request.path and '/tareas' not in request.path and '/incidencias' not in request.path and '/estructura' not in request.path and '/gantt' not in request.path and '/equipo' not in request.path %}active{% endif %}">
@@ -107,14 +107,14 @@
         <i class="bi bi-graph-up"></i><span>Progreso del Equipo</span>
     </a>
     <a href="{% url 'dashboard:linea_tiempo' %}" class="nav-item {% if '/linea-tiempo' in request.path %}active{% endif %}">
-        <i class="bi bi-clock-history"></i><span>Linea de Tiempo</span>
+        <i class="bi bi-clock-history"></i><span>Línea de Tiempo</span>
     </a>
     <a href="{% url 'dashboard:tiempo_inactividad' %}" class="nav-item {% if '/tiempo-inactividad' in request.path %}active{% endif %}">
         <i class="bi bi-hourglass-split"></i><span>Tiempo de Inactividad</span>
     </a>
 </div>
 <div class="nav-section collapsed">
-    <div class="nav-section-title">Catalogo <span class="section-arrow">&#9660;</span></div>
+    <div class="nav-section-title">Catálogo <span class="section-arrow">&#9660;</span></div>
     <a href="{% url 'actividades:tipo_list' %}" class="nav-item {% if '/tipos' in request.path %}active{% endif %}">
         <i class="bi bi-tags"></i><span>Tipos de Actividad</span>
     </a>
@@ -123,7 +123,7 @@
     </a>
 </div>
 <div class="nav-section collapsed">
-    <div class="nav-section-title">Planificacion <span class="section-arrow">&#9660;</span></div>
+    <div class="nav-section-title">Planificación <span class="section-arrow">&#9660;</span></div>
     <a href="{% url 'planificacion:planificacion_list' %}" class="nav-item {% if '/planificaciones' in request.path %}active{% endif %}">
         <i class="bi bi-calendar-check"></i><span>Planificaciones</span>
     </a>
@@ -138,7 +138,7 @@
 <div class="nav-section collapsed">
     <div class="nav-section-title">Proyectos <span class="section-arrow">&#9660;</span></div>
     <a href="{% url 'proyectos:proyecto_list' %}" class="nav-item {% if '/proyectos' in request.path and not proyecto_ctx %}active{% endif %}">
-        <i class="bi bi-kanban"></i><span>Gestion de Proyectos</span>
+        <i class="bi bi-kanban"></i><span>Gestión de Proyectos</span>
     </a>
     {% if proyecto_ctx %}
     <a href="{% url 'proyectos:proyecto_detail' proyecto_ctx.pk %}" class="nav-item nav-item-sublink {% if '/proyectos/'|add:proyecto_ctx.pk|stringformat:'s' in request.path and '/backlog' not in request.path and '/sprints' not in request.path and '/tareas' not in request.path and '/incidencias' not in request.path and '/estructura' not in request.path and '/gantt' not in request.path and '/equipo' not in request.path %}active{% endif %}">
@@ -171,7 +171,7 @@
 {% endif %}
 {% elif user.rol.nombre == 'Usuario' %}
 <div class="nav-section collapsed">
-    <div class="nav-section-title">Mi Gestion <span class="section-arrow">&#9660;</span></div>
+    <div class="nav-section-title">Mi Gestión <span class="section-arrow">&#9660;</span></div>
     <a href="{% url 'gestion:perfil' %}" class="nav-item {% if '/perfil' in request.path %}active{% endif %}">
         <i class="bi bi-person-circle"></i><span>Mi Perfil</span>
     </a>

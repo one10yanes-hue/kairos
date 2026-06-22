@@ -54,10 +54,13 @@
                 <i class="bi bi-box-arrow-right"></i>
                 <span>Cerrar sesion</span>
             </a>
-            <div class="sidebar-version" style="text-align:center;padding:6px 4px;font-size:0.7rem;color:#64748b;border-top:1px solid #334155;">Kairos v5.1.1</div>
+            <div class="sidebar-version" style="text-align:center;padding:6px 4px;font-size:0.7rem;color:#64748b;border-top:1px solid #f1f5f9;">Kairos v5.1.1</div>
         </div>
     </aside>
     <main class="main-content" id="mainContent">
+        <button class="mobile-menu-btn" id="sidebarToggle" aria-label="Menu">
+            <i class="bi bi-list"></i>
+        </button>
         {% if messages %}
         <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index:9999;">
             {% for message in messages %}
