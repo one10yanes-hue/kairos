@@ -11,10 +11,6 @@
     var manualToggle = false;
     var hoverTimer = null;
 
-    function saveState() {
-        try { localStorage.setItem('kairos_sidebar_collapsed', sidebar.classList.contains('collapsed') ? '1' : '0'); } catch(e) {}
-    }
-
     function expand() {
         sidebar.classList.remove('collapsed');
         if (main) main.classList.remove('shifted');
@@ -27,17 +23,11 @@
         scrollToActive();
     }
 
-    // Restaurar estado al cargar (sidebar inicia colapsado, JS expande si toca)
+    // Restaurar estado al cargar: siempre colapsado al inicio (hover expande)
     function restoreState() {
-        try {
-            var saved = localStorage.getItem('kairos_sidebar_collapsed');
-            if (saved === '0' && !isMob()) {
-                sidebar.classList.remove('collapsed');
-                if (main) main.classList.remove('shifted');
-            } else {
-                if (main) main.classList.add('shifted');
-            }
-        } catch(e) {}
+        if (!isMob()) {
+            if (main) main.classList.add('shifted');
+        }
     }
 
     function scrollToActive() {
@@ -63,7 +53,6 @@
             if (main) main.classList.toggle('shifted');
             manualToggle = !sidebar.classList.contains('collapsed');
         }
-        saveState();
     }
 
     // Hover auto-expand en desktop
@@ -86,7 +75,6 @@
             clearTimeout(hoverTimer);
             sidebar.classList.add('collapsed');
             if (main) main.classList.add('shifted');
-            saveState();
         }
     });
 
