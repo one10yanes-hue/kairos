@@ -27,12 +27,14 @@
         scrollToActive();
     }
 
-    // Restaurar estado al cargar
+    // Restaurar estado al cargar (sidebar inicia colapsado, JS expande si toca)
     function restoreState() {
         try {
             var saved = localStorage.getItem('kairos_sidebar_collapsed');
-            if (saved === '1' && !isMob()) {
-                sidebar.classList.add('collapsed');
+            if (saved === '0' && !isMob()) {
+                sidebar.classList.remove('collapsed');
+                if (main) main.classList.remove('shifted');
+            } else {
                 if (main) main.classList.add('shifted');
             }
         } catch(e) {}
