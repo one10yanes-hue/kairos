@@ -7,6 +7,7 @@ from django.utils import timezone
 from datetime import date, timedelta
 from apps.gestion.models import AsignacionActividad, RegistroTiempo
 from apps.estructura.models import UserSubArea, SubArea
+from apps.estructura.utils import get_admin_subareas
 from apps.accounts.models import User, Empresa
 
 
@@ -18,11 +19,6 @@ def admin_required(view_func):
         return view_func(request, *args, **kwargs)
     return wrapper
 
-
-def get_admin_subareas(user):
-    if user.rol.nombre == "Master":
-        return SubArea.objects.filter(activo=True)
-    return SubArea.objects.filter(usuarios__user=user, activo=True)
 
 
 @login_required
@@ -649,7 +645,6 @@ def linea_tiempo(request):
             if subarea_filter:
                 proyectos_qs = proyectos_qs.filter(subareas__id=subarea_filter)
         elif request.user.rol.nombre == "Admin" and request.user.maneja_proyectos:
-            from apps.estructura.utils import get_admin_subareas
             admin_subareas = get_admin_subareas(request.user)
             proyectos_qs = Proyecto.objects.filter(subareas__in=admin_subareas, activo=True).distinct()
             if subarea_filter:
