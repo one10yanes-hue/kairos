@@ -168,6 +168,16 @@
             }
         });
         setState(state);
+        // Garantizar: la seccion con item activo SIEMPRE expandida
+        var activeItem = document.querySelector('.nav-item.active, .nav-item-sublink.active');
+        if (activeItem) {
+            var activeSec = activeItem.closest('.nav-section');
+            if (activeSec) {
+                activeSec.classList.remove('collapsed');
+                var activeTitle = activeSec.querySelector('.nav-section-title');
+                if (activeTitle) { activeTitle.style.color = 'var(--accent)'; activeTitle.style.fontWeight = '700'; }
+            }
+        }
         // Tooltips para modo colapsado
         document.querySelectorAll('.nav-item').forEach(function(item) {
             var span = item.querySelector('span');
