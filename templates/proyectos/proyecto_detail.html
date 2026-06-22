@@ -93,68 +93,38 @@
     <div class="mb-2 pt-3 border-top">
         <small class="fw-semibold text-uppercase" style="color:var(--slate-500);font-size:0.68rem;">Reportes</small>
     </div>
-    <div class="row g-2 mb-3">
-        <div class="col-md-8">
-            <div class="card shadow-sm h-100">
-                <div class="card-header py-1 px-2"><small class="fw-semibold" style="font-size:0.65rem;">Velocidad por Sprint</small></div>
-                <div class="card-body p-0">
-                    <table class="table table-sm table-borderless mb-0" style="font-size:0.58rem;">
-                        <thead><tr style="color:var(--slate-400);"><th>#</th><th>Sprint</th><th>Estado</th><th>Comprom.</th><th>Complet.</th><th>Tareas</th><th>Inicio → Fin</th></tr></thead>
-                        <tbody>
-                            {% for s in sprint_table %}
-                            <tr>
-                                <td>{{ s.numero }}</td>
-                                <td>{{ s.nombre|truncatechars:15 }}</td>
-                                <td><span class="badge {% if s.estado == 'activo' %}bg-warning text-dark{% elif s.estado == 'finalizado' %}bg-success{% else %}bg-secondary{% endif %}" style="font-size:0.45rem;">{{ s.get_estado_display }}</span></td>
-                                <td>{{ s.comprometido }}</td>
-                                <td>{{ s.completado }}</td>
-                                <td>{{ s.tareas }}</td>
-                                <td style="font-size:0.5rem;">{{ s.inicio|date:"d/m"|default:"?" }} → {{ s.fin|date:"d/m"|default:"?" }}</td>
-                            </tr>
-                            {% empty %}
-                            <tr><td colspan="7" class="text-muted text-center py-2">Sin sprints registrados</td></tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+
+    <!-- Fila 1: Velocidad por Sprint -->
+    <div class="card shadow-sm mb-3">
+        <div class="card-header py-1 px-2"><small class="fw-semibold" style="font-size:0.65rem;">Velocidad por Sprint</small></div>
+        <div class="card-body p-0">
+            <table class="table table-sm table-borderless mb-0" style="font-size:0.58rem;">
+                <thead><tr style="color:var(--slate-400);"><th>#</th><th>Sprint</th><th>Estado</th><th>Comprom.</th><th>Complet.</th><th>Tareas</th><th>Inicio → Fin</th></tr></thead>
+                <tbody>
+                    {% for s in sprint_table %}
+                    <tr>
+                        <td>{{ s.numero }}</td>
+                        <td>{{ s.nombre|truncatechars:20 }}</td>
+                        <td><span class="badge {% if s.estado == 'activo' %}bg-warning text-dark{% elif s.estado == 'finalizado' %}bg-success{% else %}bg-secondary{% endif %}" style="font-size:0.48rem;">{{ s.get_estado_display }}</span></td>
+                        <td>{{ s.comprometido }}</td>
+                        <td>{{ s.completado }}</td>
+                        <td>{{ s.tareas }}</td>
+                        <td style="font-size:0.52rem;">{{ s.inicio|date:"d/m"|default:"?" }} → {{ s.fin|date:"d/m"|default:"?" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="text-muted text-center py-2">Sin sprints registrados</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
-        <div class="col-md-4">
-            <div class="row g-2">
-                <div class="col-6">
-                    <div class="card shadow-sm h-100">
-                        <div class="card-body text-center py-2">
-                            <div class="fw-bold" style="font-size:1rem;color:var(--accent);">{{ lead_time_prom }}d</div>
-                            <small class="text-muted" style="font-size:0.55rem;">Lead Time Promedio</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-6">
-                    <div class="card shadow-sm h-100">
-                        <div class="card-body text-center py-2">
-                            <div class="fw-bold" style="font-size:1rem;color:#8b5cf6;">{{ velocidad_prom }}</div>
-                            <small class="text-muted" style="font-size:0.55rem;">Velocidad Prom.</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-6">
-                    <div class="card shadow-sm h-100">
-                        <div class="card-body text-center py-2">
-                            <div class="fw-bold" style="font-size:1rem;color:#dc2626;">{{ tareas_aging }}</div>
-                            <small class="text-muted" style="font-size:0.55rem;">Tareas Aging +3d</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-6">
-                    <div class="card shadow-sm h-100">
-                        <div class="card-body text-center py-2">
-                            <div class="fw-bold" style="font-size:1rem;color:#22c55e;">{{ sprints_finalizados }}</div>
-                            <small class="text-muted" style="font-size:0.55rem;">Sprints Finaliz.</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+    </div>
+
+    <!-- Fila 2: KPIs de rendimiento -->
+    <div class="row row-cols-4 g-1 mb-3">
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:var(--accent);">{{ lead_time_prom }}d</div><small class="text-muted" style="font-size:0.55rem;">Lead Time Prom.</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#8b5cf6;">{{ velocidad_prom }}</div><small class="text-muted" style="font-size:0.55rem;">Velocidad Prom.</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#dc2626;">{{ tareas_aging }}</div><small class="text-muted" style="font-size:0.55rem;">Tareas Aging +3d</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#22c55e;">{{ sprints_finalizados }}</div><small class="text-muted" style="font-size:0.55rem;">Sprints Finalizados</small></div></div></div>
     </div>
 
     <!-- Bitacora completa -->
