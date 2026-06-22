@@ -80,14 +80,6 @@
         }
     });
 
-    // Forzar colapso antes de cualquier swap HTMX
-    document.addEventListener('htmx:beforeSwap', function() {
-        if (isMob() || manualToggle) return;
-        clearTimeout(hoverTimer);
-        sidebar.classList.add('collapsed');
-        if (main) { main.classList.add('shifted'); main.style.marginLeft = '58px'; }
-    });
-
     if (toggle) {
         toggle.addEventListener('click', function(e) {
             e.preventDefault();
@@ -191,19 +183,6 @@
         restoreState();
         initSections();
         scrollToActive();
-    });
-    document.addEventListener('htmx:afterSettle', function() {
-        updateActiveStates();
-        initSections();
-        scrollToActive();
-        if (typeof bootstrap !== 'undefined') {
-            document.querySelectorAll('.toast').forEach(function(t) {
-                new bootstrap.Toast(t).show();
-            });
-        }
-        if (typeof window.DynamicSelect !== 'undefined') {
-            window.DynamicSelect.initAll();
-        }
     });
 
     function updateActiveStates() {
