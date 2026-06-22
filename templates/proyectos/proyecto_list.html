@@ -201,7 +201,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (total > 0) {
         new Chart(document.getElementById('chartDistProyectos'), {
             type: 'doughnut',
-            data: { labels: ['Activos','Pausados','Finalizados','Cancelados'], datasets: [{ data: [{{ activos }},{{ pausados }},{{ finalizados }},{{ cancelados }}], backgroundColor: ['#1a7a3a','#8a6100','#075985','#94a3b8'], borderWidth:3, borderColor:'#fff', hoverBorderColor:'#fff', hoverOffset:6, spacing:3 }] },
+            data: { labels: ['Activos','Pausados','Finalizados','Cancelados'], datasets: [{ data: [{{ activos }},{{ pausados }},{{ finalizados }},{{ cancelados }}], backgroundColor: ['#1a7a3a','#8a6100','#075985','#94a3b8'], borderWidth:3, borderColor:'#fff', hoverBorderColor:'#fff', hoverOffset:6 }] },
             options: { responsive:true, maintainAspectRatio:false, cutout:'72%',
                 plugins: { legend:{ position:'bottom', labels:{ boxWidth:10, padding:12, font:{ size:9 }, usePointStyle:true, color:'#64748b' } } } }
         });
