@@ -13,20 +13,20 @@
 
     function expand() {
         sidebar.classList.remove('collapsed');
-        if (main) main.classList.remove('shifted');
+        if (main) { main.classList.remove('shifted'); main.style.marginLeft = '260px'; }
         scrollToActive();
     }
     function collapse(force) {
         if (manualToggle && !force) return;
         sidebar.classList.add('collapsed');
-        if (main) main.classList.add('shifted');
+        if (main) { main.classList.add('shifted'); main.style.marginLeft = '58px'; }
         scrollToActive();
     }
 
     // Restaurar estado al cargar: siempre colapsado al inicio (hover expande)
     function restoreState() {
         if (!isMob()) {
-            if (main) main.classList.add('shifted');
+            if (main) { main.classList.add('shifted'); main.style.marginLeft = '58px'; }
         }
     }
 
@@ -50,7 +50,7 @@
             overlay.classList.toggle('visible');
         } else {
             sidebar.classList.toggle('collapsed');
-            if (main) main.classList.toggle('shifted');
+            if (main) { main.classList.toggle('shifted'); main.style.marginLeft = sidebar.classList.contains('collapsed') ? '58px' : '260px'; }
             manualToggle = !sidebar.classList.contains('collapsed');
         }
     }
@@ -74,7 +74,7 @@
             if (href === '#' || href.startsWith('javascript:')) return;
             clearTimeout(hoverTimer);
             sidebar.classList.add('collapsed');
-            if (main) main.classList.add('shifted');
+            if (main) { main.classList.add('shifted'); main.style.marginLeft = '58px'; }
         }
     });
 
@@ -83,7 +83,7 @@
         if (isMob() || manualToggle) return;
         clearTimeout(hoverTimer);
         sidebar.classList.add('collapsed');
-        if (main) main.classList.add('shifted');
+        if (main) { main.classList.add('shifted'); main.style.marginLeft = '58px'; }
     });
 
     if (toggle) {
