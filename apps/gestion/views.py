@@ -28,6 +28,21 @@ def _notificar_usuario(user_id, tipo, data):
         pass  # Si channels no esta disponible, no pasa nada
 
 
+def _log_proyecto(asignacion, descripcion):
+    """Registra en la bitacora del proyecto si la actividad es de un proyecto."""
+    try:
+        tarea = getattr(asignacion, 'tarea_proyecto', None)
+        if tarea:
+            from apps.proyectos.models import RegistroAvance
+            RegistroAvance.objects.create(
+                proyecto=tarea.proyecto, tipo="comentario",
+                descripcion=descripcion,
+                user=asignacion.user, referencia_id=tarea.pk
+            )
+    except Exception:
+        pass
+
+
 def _gestionar_tiempo_inactividad(user):
     """Si el usuario no tiene actividad EnCurso, abre periodo de inactividad.
        Si tiene EnCurso, cierra cualquier periodo abierto."""
@@ -200,6 +215,8 @@ def activar_actividad(request, pk):
 
     messages.success(request, f"Actividad {'iniciada' if evento == 'Inicio' else 'reanudada'}.")
     _gestionar_tiempo_inactividad(request.user)
+    # Registrar en bitacora del proyecto si es tarea de proyecto
+    _log_proyecto(asignacion, f"Tarea iniciada por {request.user.get_full_name()}")
     return redirect("gestion:tablero")
 
 
@@ -461,6 +478,7 @@ def finalizar_actividad(request, pk):
     else:
         messages.error(request, "El numero de actividad (cantidad realizada) es obligatorio para finalizar.")
     _gestionar_tiempo_inactividad(request.user)
+    _log_proyecto(asignacion, f"Tarea finalizada por {request.user.get_full_name()}")
     return redirect("gestion:tablero")
 
 
@@ -506,8 +524,9 @@ def crear_no_programada(request):
         messages.success(request, f"Actividad '{actividad.nombre}' iniciada.")
         request.audit_record_id = asignacion.pk
         request.audit_modelo = "AsignacionActividad"
-        _gestionar_tiempo_inactividad(request.user)
-        return redirect("gestion:tablero")
+    _gestionar_tiempo_inactividad(request.user)
+    _log_proyecto(asignacion, f"Tarea pausada por {request.user.get_full_name()}{' (' + motivo_pausa + ')' if motivo_pausa else ''}")
+    return redirect("gestion:tablero")
 
     context = {
         "user_subareas": user_subareas,
