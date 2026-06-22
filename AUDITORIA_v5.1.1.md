@@ -1,5 +1,5 @@
-# Auditoria Modulo Proyectos — v5.1.1
-> Fecha: 19/06/2026
+# Auditoria Modulo Proyectos — v5.1.1 ✅ COMPLETADO 55/55
+> Fecha: 19-20/06/2026 | Estado: **100%**
 
 ---
 
@@ -17,7 +17,7 @@
 **Fix:** Agregar `"Revision": "revision"` al mapping
 **Impacto:** Kanban↔Tarea roto para todo el flujo de revision
 
-### C3 — actualizar_estado() roto con edge cases
+### C3 ✅ — actualizar_estado() roto con edge cases
 **Archivo:** `apps/proyectos/models.py:181-194`
 **Causa:**
 - Cero tareas → retorna sin cambiar estado (nunca avanza)
@@ -26,7 +26,7 @@
 **Fix:** Ignorar `cancelada` en el set de estados, manejar todos los casos
 **Impacto:** Historias atascadas en estado incorrecto permanentemente
 
-### C4 — RegistroAvance tipo "tarea_creada" no valido
+### C4 ✅ — RegistroAvance tipo "tarea_creada" no valido
 **Archivo:** `apps/proyectos/views/tarea_views.py:78` + `apps/proyectos/models.py:351-359`
 **Causa:** `RegistroAvance.TIPOS` no incluye `"tarea_creada"` ni otros tipos usados en views
 **Fix:** Agregar tipos faltantes: `tarea_creada`, `tarea_rechazada`, `incidencia_creada`, `historia_aprobada`, `historia_rechazada`, `miembro_agregado`, `miembro_removido`, `sprint_creado`
@@ -112,9 +112,9 @@
 
 | Sprint | Alcance | Issues |
 |--------|---------|--------|
-| **Sprint Fix 1** | Criticos C1-C3 (1-2h) | C1, C2, C3 |
-| **Sprint Fix 2** | Criticos C4-C5 + migracion (2-3h) | C4, C5 |
-| **Sprint Fix 3** | Altos H1-H13 (4-6h) | H1-H13 |
-| **Sprint Fix 4** | Medios + Bajos (6-8h) | M1-M18 + L1-L16 |
+| **Sprint Fix 1 ? | Criticos C1-C3 | C1 ?, C2 ?, C3 ?
+| **Sprint Fix 2 ? | Criticos C4-C5 | C4 ?, C5 ?
+| **Sprint Fix 3 ? | Altos H1-H13 | H1-H13 ?
+| **Sprint Fix 4 ? | Medios + Bajos | M1-M18 ? + L1-L16 ?
 
-**Total estimado: 13-19 horas**
+**Total: COMPLETADO en 1 sesion (~10h)**
