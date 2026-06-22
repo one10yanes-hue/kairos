@@ -12,6 +12,7 @@ staticfiles/
 # Environment
 .env
 !.env.example
+env_produccion.txt
 
 # Virtual environment
 venv/

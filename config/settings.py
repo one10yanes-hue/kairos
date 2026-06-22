@@ -119,14 +119,14 @@ if db_engine == "django.db.backends.mysql":
 # Base de datos externa KACTUS para integracion de empleados
 DATABASES["kactus"] = {
     "ENGINE": "mssql",
-    "NAME": "KACTUS",
-    "USER": "seven",
-    "PASSWORD": "SevenIps1a*",
-    "HOST": "172.27.198.73",
-    "PORT": "",
+    "NAME": env("KACTUS_DB_NAME", default=""),
+    "USER": env("KACTUS_DB_USER", default=""),
+    "PASSWORD": env("KACTUS_DB_PASSWORD", default=""),
+    "HOST": env("KACTUS_DB_HOST", default=""),
+    "PORT": env("KACTUS_DB_PORT", default=""),
     "OPTIONS": {
         "driver": "ODBC Driver 18 for SQL Server",
-        "extra_params": "Encrypt=no;TrustServerCertificate=yes;",
+        "extra_params": env("KACTUS_DB_EXTRA_PARAMS", default="Encrypt=no;TrustServerCertificate=yes;"),
     },
 }
 
