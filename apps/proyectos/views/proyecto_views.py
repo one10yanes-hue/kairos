@@ -633,6 +633,8 @@ def proyecto_workflow(request, pk):
                 if rol not in roles_actuales_set and proyecto.manager:
                     MiembroProyecto.objects.get_or_create(proyecto=proyecto, user=proyecto.manager, defaults={"rol": rol, "activo": True})
 
+            RegistroAvance.objects.create(proyecto=proyecto, tipo="comentario",
+                descripcion=f"Flujo '{preset}' aplicado por {request.user.get_full_name()}", user=request.user)
             messages.success(request, f"Flujo '{preset}' aplicado.")
             return redirect("proyectos:proyecto_workflow", pk=proyecto.pk)
 
@@ -640,15 +642,22 @@ def proyecto_workflow(request, pk):
             user_id = request.POST.get("user_id")
             rol = request.POST.get("rol", "ejecutor")
             if user_id:
-                MiembroProyecto.objects.update_or_create(
+                miembro, created = MiembroProyecto.objects.update_or_create(
                     proyecto=proyecto, user_id=user_id,
                     defaults={"rol": rol, "activo": True}
                 )
+                usuario = User.objects.get(pk=user_id)
+                RegistroAvance.objects.create(proyecto=proyecto, tipo="miembro_agregado",
+                    descripcion=f"{usuario.get_full_name()} agregado como {dict(MiembroProyecto.ROLES).get(rol, rol)} por {request.user.get_full_name()}", user=request.user)
                 messages.success(request, "Miembro agregado al equipo.")
         elif accion == "remover_equipo":
             user_id = request.POST.get("user_id")
             if user_id:
+                usuario = User.objects.filter(pk=user_id).first()
                 MiembroProyecto.objects.filter(proyecto=proyecto, user_id=user_id).update(activo=False)
+                nombre = usuario.get_full_name() if usuario else f"ID {user_id}"
+                RegistroAvance.objects.create(proyecto=proyecto, tipo="miembro_removido",
+                    descripcion=f"{nombre} removido del equipo por {request.user.get_full_name()}", user=request.user)
                 messages.success(request, "Miembro removido del equipo.")
 
     from ..models import HARDCODED_TAREA, HARDCODED_HISTORIA, HARDCODED_INCIDENCIA, _get_transiciones as gtrans
