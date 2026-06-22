@@ -77,18 +77,18 @@
         hoverTimer = setTimeout(function() { collapse(); }, 150);
     });
 
-    // Click en link del sidebar: colapsa inmediatamente antes de navegar
-    if (nav) {
-        nav.addEventListener('click', function(e) {
-            var link = e.target.closest('.nav-item');
-            if (link && !isMob() && !sidebar.classList.contains('collapsed') && !manualToggle) {
-                clearTimeout(hoverTimer);
-                sidebar.classList.add('collapsed');
-                if (main) main.classList.add('shifted');
-                saveState();
-            }
-        });
-    }
+    // Click en cualquier link del sidebar: colapsa antes de navegar
+    sidebar.addEventListener('click', function(e) {
+        var link = e.target.closest('a[href]');
+        if (link && !isMob() && !sidebar.classList.contains('collapsed') && !manualToggle) {
+            var href = link.getAttribute('href') || '';
+            if (href === '#' || href.startsWith('javascript:')) return;
+            clearTimeout(hoverTimer);
+            sidebar.classList.add('collapsed');
+            if (main) main.classList.add('shifted');
+            saveState();
+        }
+    });
 
     if (toggle) {
         toggle.addEventListener('click', function(e) {
