@@ -90,6 +90,14 @@
         }
     });
 
+    // Forzar colapso antes de cualquier swap HTMX
+    document.addEventListener('htmx:beforeSwap', function() {
+        if (isMob() || manualToggle) return;
+        clearTimeout(hoverTimer);
+        sidebar.classList.add('collapsed');
+        if (main) main.classList.add('shifted');
+    });
+
     if (toggle) {
         toggle.addEventListener('click', function(e) {
             e.preventDefault();
