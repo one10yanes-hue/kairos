@@ -199,9 +199,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     var total = {{ total_proyectos }};
     if (total > 0) {
+        var labels = [], dataVals = [], colors = [];
+        {% if activos > 0 %}labels.push('Activos'); dataVals.push({{ activos }}); colors.push('#1a7a3a');{% endif %}
+        {% if pausados > 0 %}labels.push('Pausados'); dataVals.push({{ pausados }}); colors.push('#8a6100');{% endif %}
+        {% if finalizados > 0 %}labels.push('Finalizados'); dataVals.push({{ finalizados }}); colors.push('#075985');{% endif %}
+        {% if cancelados > 0 %}labels.push('Cancelados'); dataVals.push({{ cancelados }}); colors.push('#94a3b8');{% endif %}
         new Chart(document.getElementById('chartDistProyectos'), {
             type: 'doughnut',
-            data: { labels: ['Activos','Pausados','Finalizados','Cancelados'], datasets: [{ data: [{{ activos }},{{ pausados }},{{ finalizados }},{{ cancelados }}], backgroundColor: ['#1a7a3a','#8a6100','#075985','#94a3b8'], borderWidth:3, borderColor:'#fff', hoverBorderColor:'#fff', hoverOffset:6 }] },
+            data: { labels: labels, datasets: [{ data: dataVals, backgroundColor: colors, borderWidth:3, borderColor:'#fff', hoverBorderColor:'#fff', hoverOffset:6 }] },
             options: { responsive:true, maintainAspectRatio:false, cutout:'72%',
                 plugins: { legend:{ position:'bottom', labels:{ boxWidth:10, padding:12, font:{ size:9 }, usePointStyle:true, color:'#64748b' } } } }
         });
