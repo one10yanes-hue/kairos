@@ -2,8 +2,8 @@
 <div class="container-fluid mt-3">
     <h5 class="fw-bold mb-3">Burndown &middot; Sprint {{ sprint.numero }}: {{ sprint.nombre }}</h5>
     <div class="row g-2 mb-3">
-        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#0ea5e9;">{{ sprint.puntos_comprometidos }}</div><small class="text-muted" style="font-size:0.6rem;">Pts totales</small></div></div></div>
-        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#22c55e;">{{ sprint.velocidad }}</div><small class="text-muted" style="font-size:0.6rem;">Pts completados</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#0ea5e9;">{{ total_tareas }}</div><small class="text-muted" style="font-size:0.6rem;">Tareas totales</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#22c55e;">{{ sprint.velocidad }}</div><small class="text-muted" style="font-size:0.6rem;">Tareas completadas</small></div></div></div>
         <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#f59e0b;">{{ dias|length }}</div><small class="text-muted" style="font-size:0.6rem;">D&iacute;as del sprint</small></div></div></div>
     </div>
     <div class="card shadow-sm"><div class="card-body p-4">
@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 tooltip: { backgroundColor:'#1e293b', titleFont:{ size:11 }, bodyFont:{ size:10 }, padding:10, cornerRadius:6 }
             },
             scales: {
-                y: { beginAtZero:true, max:{{ pts_inicio }}+2, title:{ display:true, text:'Story Points', color:'#94a3b8', font:{ size:9 } }, ticks:{ stepSize:{% if pts_inicio > 10 %}5{% else %}2{% endif %}, font:{ size:9 }, color:'#94a3b8' }, grid:{ display:false } },
+                y: { beginAtZero:true, max:{{ total_tareas }}+2, title:{ display:true, text:'Tareas pendientes', color:'#94a3b8', font:{ size:9 } }, ticks:{ stepSize:{% if total_tareas > 10 %}5{% else %}2{% endif %}, font:{ size:9 }, color:'#94a3b8' }, grid:{ display:false } },
                 x: { title:{ display:true, text:'Dias', color:'#94a3b8', font:{ size:9 } }, ticks:{ font:{ size:9 }, color:'#64748b' }, grid:{ display:false } }
             }
         }
