@@ -182,12 +182,12 @@
     document.addEventListener('DOMContentLoaded', function() {
         restoreState();
         initSections();
-        updateActiveStates();
         scrollToActive();
     });
     document.addEventListener('htmx:afterSettle', function() {
         initSections();
         updateActiveStates();
+        scrollToActive();
         if (typeof bootstrap !== 'undefined') {
             document.querySelectorAll('.toast').forEach(function(t) {
                 new bootstrap.Toast(t).show();
@@ -199,12 +199,14 @@
     });
 
     function updateActiveStates() {
-        var current = window.location.pathname;
+        var current = window.location.pathname.replace(/\/$/, '') || '/';
         var best = null, bestLen = 0;
         document.querySelectorAll('.nav-item, .nav-item-sublink').forEach(function(el) {
             var href = el.getAttribute('href') || '';
             var idx = href.indexOf('?');
             var clean = idx >= 0 ? href.substring(0, idx) : href;
+            clean = clean.replace(/\/$/, '') || '/';
+            if (clean === '/') return;
             if (current.indexOf(clean) === 0 && clean.length > bestLen) {
                 best = el; bestLen = clean.length;
             }
