@@ -21,6 +21,7 @@ INSTALLED_APPS = [
     "apps.estructura",
     "apps.actividades",
     "apps.planificacion",
+    "apps.proyectos",
     "apps.gestion",
     "apps.dashboard",
     "apps.reportes",
@@ -44,6 +45,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "apps.auditoria.middleware.AuditLogMiddleware",
     "apps.accounts.middleware.RoleSwitchMiddleware",
+    "config.middleware.HtmxMiddleware",
     "config.middleware.NoCacheMiddleware",
 ]
 
@@ -60,6 +62,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "apps.proyectos.context_processors.proyecto_contexto",
             ],
         },
     },
@@ -79,7 +82,7 @@ db_name = env("DB_NAME", default="db.sqlite3")
 
 if db_engine in ["mssql", "sql_server"]:
     db_engine = "mssql"
-elif db_engine in ["mysql", "mariadb"]:
+if db_engine in ["mariadb", "mysql"]:
     db_engine = "django.db.backends.mysql"
 
 DATABASES = {
@@ -102,14 +105,16 @@ if db_engine == "mssql":
             },
         }
     )
-elif db_engine == "django.db.backends.mysql":
-    DATABASES["default"].update({
-        "USER": env("DB_USER", default="root"),
-        "PASSWORD": env("DB_PASSWORD", default=""),
-        "HOST": env("DB_HOST", default="localhost"),
-        "PORT": env("DB_PORT", default="3306"),
-        "OPTIONS": {"charset": "utf8mb4"},
-    })
+
+if db_engine == "django.db.backends.mysql":
+    DATABASES["default"].update(
+        {
+            "HOST": env("DB_HOST", default="localhost"),
+            "PORT": env("DB_PORT", default="3306"),
+            "USER": env("DB_USER", default="root"),
+            "PASSWORD": env("DB_PASSWORD", default=""),
+        }
+    )
 
 # Base de datos externa KACTUS para integracion de empleados
 DATABASES["kactus"] = {
