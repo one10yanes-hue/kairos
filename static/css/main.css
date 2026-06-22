@@ -24,7 +24,6 @@
     --brand-green: #35df6d;
     --brand-purple: #8a1fcf;
     --brand-dark: #05053c;
-    --brand-gradient: linear-gradient(135deg, var(--brand-green), var(--brand-purple));
 }
 
 * {
