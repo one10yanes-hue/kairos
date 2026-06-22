@@ -21,7 +21,7 @@
                             {% endfor %}
                         </div>
                         {% endif %}
-                        <form method="POST" novalidate>
+                        <form method="POST" novalidate hx-boost="false">
                             {% csrf_token %}
                             <div class="mb-3">
                                 <label class="form-label small fw-semibold" style="font-size:0.75rem;color:var(--slate-600);">Cedula</label>

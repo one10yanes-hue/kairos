@@ -353,3 +353,20 @@ hr {
 .dynamic-select-option:last-child { border-bottom: none !important; }
 .dynamic-select-option:hover { background: var(--slate-50) !important; }
 .dynamic-select-option:active { background: var(--accent-light) !important; color: var(--accent-dark) !important; }
+
+/* HTMX loading indicator */
+.htmx-progress {
+    position: fixed; top: 0; left: 0; right: 0;
+    height: 3px; background: var(--accent);
+    transform: scaleX(0); transform-origin: 0 0;
+    transition: transform 0.3s ease;
+    z-index: 10000; opacity: 0; pointer-events: none;
+}
+.htmx-request .htmx-progress { opacity: 1; }
+.htmx-request .htmx-progress { animation: htmx-bar 1.5s ease infinite; }
+@keyframes htmx-bar {
+    0% { transform: scaleX(0); }
+    30% { transform: scaleX(0.6); }
+    60% { transform: scaleX(0.9); }
+    100% { transform: scaleX(0.99); }
+}

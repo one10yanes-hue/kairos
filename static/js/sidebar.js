@@ -184,5 +184,24 @@
         initSections();
         scrollToActive();
     });
+    document.addEventListener('htmx:afterSettle', function() {
+        initSections();
+        if (typeof bootstrap !== 'undefined') {
+            document.querySelectorAll('.toast').forEach(function(t) {
+                new bootstrap.Toast(t).show();
+            });
+        }
+        // Reinit dynamic-select options
+        if (typeof window.DynamicSelect !== 'undefined') {
+            window.DynamicSelect.initAll();
+        }
+        // Reinit charts if needed
+        document.querySelectorAll('canvas[data-chart-init]').forEach(function(c) {
+            if (!c.chart) {
+                var ev = new Event('chart-init');
+                c.dispatchEvent(ev);
+            }
+        });
+    });
     document.addEventListener('turbo:load', initSections);
 })();
