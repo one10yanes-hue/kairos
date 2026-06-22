@@ -18,12 +18,14 @@ def _get_subareas(user):
 @login_required
 def proyecto_list(request):
     from apps.accounts.models import Empresa
-    # Master ve TODOS los proyectos activos. Admin filtra por subareas.
+    # Master ve TODOS los proyectos activos.
     if request.user.rol.nombre == "Master":
         proyectos = Proyecto.objects.filter(activo=True)
-    elif request.user.rol.nombre == "Admin":
+    # Admin con maneja_proyectos ve proyectos de sus subareas.
+    elif request.user.rol.nombre == "Admin" and request.user.maneja_proyectos:
         subareas = _get_subareas(request.user)
         proyectos = Proyecto.objects.filter(subareas__in=subareas, activo=True).distinct()
+    # Admin sin maneja_proyectos o Usuario: solo proyectos donde es miembro.
     else:
         proyectos = Proyecto.objects.filter(
             membresias__user=request.user, membresias__activo=True, activo=True
@@ -164,7 +166,10 @@ def proyecto_list(request):
 
 @login_required
 def proyecto_create(request):
-    # Solo Master y Admin pueden crear proyectos
+    # Solo Master y Admin con maneja_proyectos pueden crear proyectos
+    if request.user.rol.nombre == "Admin" and not request.user.maneja_proyectos:
+        messages.error(request, "No tienes permisos para crear proyectos. Activa 'Manejar proyectos' en tu perfil.")
+        return redirect("proyectos:proyecto_list")
     if request.user.rol.nombre not in ["Master", "Admin"]:
         messages.error(request, "No tienes permisos para crear proyectos.")
         return redirect("proyectos:proyecto_list")
