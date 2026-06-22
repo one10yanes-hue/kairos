@@ -23,7 +23,7 @@ def login_view(request):
             if user:
                 auth_login(request, user)
                 return redirect("root")
-            messages.error(request, "Cedula o fecha de expedicion incorrectas.")
+            messages.error(request, "Credenciales invalidas.")
     return render(request, "accounts/login.html", {"form": form})
 
 
@@ -163,7 +163,6 @@ def master_usuario_delete(request, pk):
     return redirect("accounts:master_usuarios")
 
 
-@login_required
 @login_required
 def subir_foto(request):
     if request.method != "POST":
