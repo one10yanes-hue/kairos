@@ -23,14 +23,17 @@
     }
 
     function scrollToActive() {
-        var nav = sidebar.querySelector('.sidebar-nav');
-        var active = sidebar.querySelector('.nav-item.active');
-        if (nav && active) {
-            var navRect = nav.getBoundingClientRect();
-            var itemRect = active.getBoundingClientRect();
-            var scrollTop = nav.scrollTop + (itemRect.top - navRect.top) - (navRect.height / 2) + (itemRect.height / 2);
-            nav.scrollTo({ top: scrollTop, behavior: 'smooth' });
-        }
+        requestAnimationFrame(function() {
+            var nav = sidebar.querySelector('.sidebar-nav');
+            var active = sidebar.querySelector('.nav-item.active');
+            if (nav && active) {
+                var navRect = nav.getBoundingClientRect();
+                var itemRect = active.getBoundingClientRect();
+                if (itemRect.height === 0) return;
+                var scrollTop = nav.scrollTop + (itemRect.top - navRect.top) - (navRect.height / 2) + (itemRect.height / 2);
+                nav.scrollTo({ top: scrollTop, behavior: 'smooth' });
+            }
+        });
     }
 
     function handleToggle() {

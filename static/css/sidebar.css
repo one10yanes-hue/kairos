@@ -202,7 +202,7 @@ body { margin: 0; }
 .sidebar.collapsed .sidebar-brand span { display: none; }
 .sidebar.collapsed .sidebar-user-info { display: none; }
 .sidebar.collapsed .nav-section-title { display: none; }
-.sidebar.collapsed .nav-section .nav-item { max-height: 3rem; opacity: 1; margin-bottom: 1px; padding: 0.55rem 0; overflow: visible; }
+.sidebar.collapsed .nav-section .nav-item { max-height: 3rem; opacity: 1; margin-bottom: 1px; padding: 0.55rem 0; overflow: visible; transition: none; }
 .sidebar.collapsed .nav-item span { display: none; }
 .sidebar.collapsed .section-arrow { display: none; }
 .sidebar.collapsed .nav-item-sublink { display: none; }
