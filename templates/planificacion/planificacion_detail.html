@@ -26,7 +26,7 @@
     <div class="row g-2 mb-3">
         <div class="col-md-3"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.1rem;color:var(--slate-700);">{{ detalles|length }}</div><small class="text-muted" style="font-size:0.65rem;">Asignaciones</small></div></div></div>
         <div class="col-md-3"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.1rem;color:#64748b;">{{ pendientes|length }}</div><small class="text-muted" style="font-size:0.65rem;">Pendientes/Pausadas</small></div></div></div>
-        <div class="col-md-3"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.1rem;color:#ca8a04;">{{ planificacion.pk }}</div><small class="text-muted" style="font-size:0.65rem;">ID Planificacion</small></div></div></div>
+        <div class="col-md-3"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.1rem;color:#8a6100;">{{ planificacion.pk }}</div><small class="text-muted" style="font-size:0.65rem;">ID Planificacion</small></div></div></div>
         <div class="col-md-3"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.1rem;color:var(--slate-500);">{{ planificacion.admin.get_full_name }}</div><small class="text-muted" style="font-size:0.65rem;">Admin</small></div></div></div>
     </div>
 
@@ -82,7 +82,7 @@
 
     <div class="card shadow-sm mt-4">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h6 class="mb-0 fw-semibold"><i class="bi bi-exclamation-triangle" style="color:#f59e0b;"></i> Pendientes por Gestionar <span class="badge bg-warning text-dark ms-1">{{ pendientes|length }}</span></h6>
+            <h6 class="mb-0 fw-semibold"><i class="bi bi-exclamation-triangle" style="color:#8a6100;"></i> Pendientes por Gestionar <span class="badge bg-warning text-dark ms-1">{{ pendientes|length }}</span></h6>
         </div>
         <div class="card-body p-0">
             {% if pendientes %}

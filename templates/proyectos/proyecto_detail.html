@@ -31,13 +31,13 @@
     </div>
     <div class="row row-cols-5 row-cols-md-8 g-1 mb-2">
         <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:var(--slate-700);">{{ proyecto.tareas.count }}</div><small class="text-muted" style="font-size:0.6rem;">Tareas</small></div></div></div>
-        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#f59e0b;">{{ tareas_pend }}</div><small class="text-muted" style="font-size:0.6rem;">Pend.</small></div></div></div>
-        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#0ea5e9;">{{ tareas_curso }}</div><small class="text-muted" style="font-size:0.6rem;">Curso</small></div></div></div>
-        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#8b5cf6;">{{ tareas_rev }}</div><small class="text-muted" style="font-size:0.6rem;">Rev.</small></div></div></div>
-        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#16a34a;">{{ tareas_fin }}</div><small class="text-muted" style="font-size:0.6rem;">Fin</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#8a6100;">{{ tareas_pend }}</div><small class="text-muted" style="font-size:0.6rem;">Pend.</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#075985;">{{ tareas_curso }}</div><small class="text-muted" style="font-size:0.6rem;">Curso</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#7c1db8;">{{ tareas_rev }}</div><small class="text-muted" style="font-size:0.6rem;">Rev.</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#1a7a3a;">{{ tareas_fin }}</div><small class="text-muted" style="font-size:0.6rem;">Fin</small></div></div></div>
         <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:var(--slate-700);">{{ proyecto.avance }}%</div><small class="text-muted" style="font-size:0.6rem;">Avance</small></div></div></div>
-        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#dc2626;">{{ inc_abiertas }}</div><small class="text-muted" style="font-size:0.6rem;">Inc. Ab.</small></div></div></div>
-        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#8b5cf6;">{{ velocidad_prom }}</div><small class="text-muted" style="font-size:0.6rem;">Veloc.</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#991b1b;">{{ inc_abiertas }}</div><small class="text-muted" style="font-size:0.6rem;">Inc. Ab.</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#7c1db8;">{{ velocidad_prom }}</div><small class="text-muted" style="font-size:0.6rem;">Veloc.</small></div></div></div>
     </div>
 
     <div class="row g-2 mb-3">
@@ -61,22 +61,22 @@
             </a>
         </div>
         <div class="col-md-2">
-            <a href="{% url 'proyectos:sprint_list' proyecto.pk %}" class="card shadow-sm text-decoration-none h-100" style="border-left:3px solid #22c55e;">
+            <a href="{% url 'proyectos:sprint_list' proyecto.pk %}" class="card shadow-sm text-decoration-none h-100" style="border-left:3px solid #1a7a3a;">
                 <div class="card-body p-2"><div class="fw-semibold" style="font-size:0.65rem;color:var(--slate-700);">Sprints</div><small style="font-size:0.5rem;color:var(--slate-400);">Planificar y ejecutar sprints</small></div>
             </a>
         </div>
         <div class="col-md-2">
-            <a href="{% url 'proyectos:tarea_list' proyecto.pk %}" class="card shadow-sm text-decoration-none h-100" style="border-left:3px solid #f59e0b;">
+            <a href="{% url 'proyectos:tarea_list' proyecto.pk %}" class="card shadow-sm text-decoration-none h-100" style="border-left:3px solid #8a6100;">
                 <div class="card-body p-2"><div class="fw-semibold" style="font-size:0.65rem;color:var(--slate-700);">Tareas</div><small style="font-size:0.5rem;color:var(--slate-400);">Gestionar tareas del proyecto</small></div>
             </a>
         </div>
         <div class="col-md-2">
-            <a href="{% url 'proyectos:incidencia_list' proyecto.pk %}" class="card shadow-sm text-decoration-none h-100" style="border-left:3px solid #ef4444;">
+            <a href="{% url 'proyectos:incidencia_list' proyecto.pk %}" class="card shadow-sm text-decoration-none h-100" style="border-left:3px solid #991b1b;">
                 <div class="card-body p-2"><div class="fw-semibold" style="font-size:0.65rem;color:var(--slate-700);">Incidencias</div><small style="font-size:0.5rem;color:var(--slate-400);">Reportar bugs y mejoras</small></div>
             </a>
         </div>
         <div class="col-md-2">
-            <a href="{% url 'proyectos:proyecto_gantt' proyecto.pk %}" class="card shadow-sm text-decoration-none h-100" style="border-left:3px solid #8b5cf6;">
+            <a href="{% url 'proyectos:proyecto_gantt' proyecto.pk %}" class="card shadow-sm text-decoration-none h-100" style="border-left:3px solid #7c1db8;">
                 <div class="card-body p-2"><div class="fw-semibold" style="font-size:0.65rem;color:var(--slate-700);">Gantt</div><small style="font-size:0.5rem;color:var(--slate-400);">Cronograma del proyecto</small></div>
             </a>
         </div>
@@ -122,9 +122,9 @@
     <!-- Fila 2: KPIs de rendimiento -->
     <div class="row row-cols-4 g-1 mb-3">
         <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:var(--accent);">{{ lead_time_prom }}d</div><small class="text-muted" style="font-size:0.55rem;">Lead Time Prom.</small></div></div></div>
-        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#8b5cf6;">{{ velocidad_prom }}</div><small class="text-muted" style="font-size:0.55rem;">Velocidad Prom.</small></div></div></div>
-        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#dc2626;">{{ tareas_aging }}</div><small class="text-muted" style="font-size:0.55rem;">Tareas Aging +3d</small></div></div></div>
-        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#22c55e;">{{ sprints_finalizados }}</div><small class="text-muted" style="font-size:0.55rem;">Sprints Finalizados</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#7c1db8;">{{ velocidad_prom }}</div><small class="text-muted" style="font-size:0.55rem;">Velocidad Prom.</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#991b1b;">{{ tareas_aging }}</div><small class="text-muted" style="font-size:0.55rem;">Tareas Aging +3d</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#1a7a3a;">{{ sprints_finalizados }}</div><small class="text-muted" style="font-size:0.55rem;">Sprints Finalizados</small></div></div></div>
     </div>
 
     <!-- Bitacora completa -->
@@ -169,7 +169,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (cfd) {
         new Chart(cfd, {
             type: 'bar',
-            data: { labels: {{ cfd_labels|safe }}, datasets: [{ label: 'Tareas', data: {{ cfd_data|safe }}, backgroundColor: ['#f59e0b','#0ea5e9','#8b5cf6','#16a34a'], borderRadius:6, borderSkipped:false, barPercentage:0.6 }] },
+            data: { labels: {{ cfd_labels|safe }}, datasets: [{ label: 'Tareas', data: {{ cfd_data|safe }}, backgroundColor: ['#8a6100','#075985','#7c1db8','#1a7a3a'], borderRadius:6, borderSkipped:false, barPercentage:0.6 }] },
             options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } },
                 scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1, font:{ size:9 }, color:'#94a3b8' }, grid:{ display:false } }, x:{ ticks:{ font:{ size:9 }, color:'#64748b' }, grid:{ display:false } } } }
         });
@@ -180,7 +180,7 @@ document.addEventListener('DOMContentLoaded', function() {
             type: 'bar',
             data: { labels: {{ vel_labels|safe }}, datasets: [
                 { label: 'Comprometido', data: {{ vel_comp|safe }}, backgroundColor:'#e2e8f0', borderRadius:6, borderSkipped:false, barPercentage:0.6 },
-                { label: 'Completado', data: {{ vel_data|safe }}, backgroundColor:'#16a34a', borderRadius:6, borderSkipped:false, barPercentage:0.6 }
+                { label: 'Completado', data: {{ vel_data|safe }}, backgroundColor:'#1a7a3a', borderRadius:6, borderSkipped:false, barPercentage:0.6 }
             ]},
             options: { responsive:true, maintainAspectRatio:false,
                 plugins:{ legend:{ labels:{ font:{ size:9 }, boxWidth:10, usePointStyle:true }, position:'bottom' } },

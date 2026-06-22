@@ -8,10 +8,10 @@
 .backlog-row.expanded .expand-icon { transform:rotate(90deg); }
 .type-badge { font-size:0.48rem; padding:1px 5px; border-radius:2px; font-weight:500; }
 .type-badge.historia { background:#eef0f8; color:#05053c; }
-.type-badge.tarea { background:#dcfce7; color:#166534; }
-.type-badge.incidencia { background:#fef3c7; color:#92400e; }
+.type-badge.tarea { background:#d4f5e0; color:#1a7a3a; }
+.type-badge.incidencia { background:#fef9e7; color:#8a6100; }
 .tarea-minibar { width:30px; height:3px; background:var(--slate-200); border-radius:1px; overflow:hidden; display:inline-block; vertical-align:middle; }
-.tarea-minibar-fill { height:100%; background:#22c55e; border-radius:1px; }
+.tarea-minibar-fill { height:100%; background:#1a7a3a; border-radius:1px; }
 .subtareas { display:none; }
 .backlog-row.expanded + tr.subtareas { display:table-row; }
 /* Panel detalle */
@@ -47,11 +47,11 @@
     </div>
     <div class="row row-cols-4 row-cols-md-7 g-1 mt-1 mb-2">
         <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:var(--accent);">{{ total_h }}</div><small class="text-muted" style="font-size:0.6rem;">Historias</small></div></div></div>
-        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#22c55e;">{{ total_t }}</div><small class="text-muted" style="font-size:0.6rem;">Tareas</small></div></div></div>
-        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#f59e0b;">{{ total_i }}</div><small class="text-muted" style="font-size:0.6rem;">Incidencias</small></div></div></div>
-        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#dc2626;">{{ must_count }}</div><small class="text-muted" style="font-size:0.6rem;">Must Have</small></div></div></div>
-        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#8b5cf6;">{{ puntos_total }}</div><small class="text-muted" style="font-size:0.6rem;">Story Points</small></div></div></div>
-        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#0ea5e9;">{{ sprint_count }}</div><small class="text-muted" style="font-size:0.6rem;">Sprints</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#1a7a3a;">{{ total_t }}</div><small class="text-muted" style="font-size:0.6rem;">Tareas</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#8a6100;">{{ total_i }}</div><small class="text-muted" style="font-size:0.6rem;">Incidencias</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#991b1b;">{{ must_count }}</div><small class="text-muted" style="font-size:0.6rem;">Must Have</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#7c1db8;">{{ puntos_total }}</div><small class="text-muted" style="font-size:0.6rem;">Story Points</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:#075985;">{{ sprint_count }}</div><small class="text-muted" style="font-size:0.6rem;">Sprints</small></div></div></div>
         <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-1 px-1"><div class="fw-bold" style="font-size:1rem;color:var(--slate-700);">{{ historias.count|add:tareas_sueltas.count|add:incidencias.count }}</div><small class="text-muted" style="font-size:0.6rem;">En backlog</small></div></div></div>
     </div>
 
@@ -140,7 +140,7 @@
                                     </tr>
                                     {% for inc in t.incidencias.all %}
                                     {% if inc.estado not in 'cerrada,resuelta,duplicada' %}
-                                    <tr style="background:#fef2f2;">
+                                    <tr style="background:#fee2e2;">
                                         <td><span class="type-badge incidencia" style="font-size:0.4rem;">IN</span> <span class="badge bg-light text-muted" style="font-size:0.4rem;">{{ inc.codigo }}</span></td>
                                         <td><span class="badge bg-light text-muted" style="font-size:0.4rem;">{{ inc.get_tipo_display|truncatechars:6 }}</span></td>
                                         <td>-</td>

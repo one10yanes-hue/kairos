@@ -2,9 +2,9 @@
 <div class="container-fluid mt-3">
     <h5 class="fw-bold mb-3">Burndown &middot; Sprint {{ sprint.numero }}: {{ sprint.nombre }}</h5>
     <div class="row g-2 mb-3">
-        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#0ea5e9;">{{ total_tareas }}</div><small class="text-muted" style="font-size:0.6rem;">Tareas totales</small></div></div></div>
-        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#22c55e;">{{ sprint.velocidad }}</div><small class="text-muted" style="font-size:0.6rem;">Tareas completadas</small></div></div></div>
-        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#f59e0b;">{{ dias|length }}</div><small class="text-muted" style="font-size:0.6rem;">D&iacute;as del sprint</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#075985;">{{ total_tareas }}</div><small class="text-muted" style="font-size:0.6rem;">Tareas totales</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#1a7a3a;">{{ sprint.velocidad }}</div><small class="text-muted" style="font-size:0.6rem;">Tareas completadas</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1rem;color:#8a6100;">{{ dias|length }}</div><small class="text-muted" style="font-size:0.6rem;">D&iacute;as del sprint</small></div></div></div>
     </div>
     <div class="card shadow-sm"><div class="card-body p-4">
         <canvas id="burndownChart" height="360"></canvas>

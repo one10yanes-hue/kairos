@@ -144,9 +144,9 @@
                                                     </div>
                                                     {% for inc in t.incidencias.all %}
                                                     <div class="estr-card-title" style="margin-top:4px;padding-top:4px;border-top:1px dashed var(--slate-200);">
-                                                        <span style="color:#ef4444;font-size:0.7rem;"><i class="bi bi-bug"></i></span>
+                                                        <span style="color:#991b1b;font-size:0.7rem;"><i class="bi bi-bug"></i></span>
                                                         <span class="estr-meta-badge bg-danger text-white" style="font-size:0.5rem;">{{ inc.codigo }}</span>
-                                                        <a href="{% url 'proyectos:incidencia_detail' proyecto.pk inc.pk %}" class="text-decoration-none" style="font-size:0.7rem;color:#dc2626;">{{ inc.titulo }}</a>
+                                                        <a href="{% url 'proyectos:incidencia_detail' proyecto.pk inc.pk %}" class="text-decoration-none" style="font-size:0.7rem;color:#991b1b;">{{ inc.titulo }}</a>
                                                         <span class="estr-meta-badge bg-light text-muted" style="font-size:0.5rem;">{{ inc.get_estado_display }}</span>
                                                     </div>
                                                     {% endfor %}

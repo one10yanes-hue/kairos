@@ -219,11 +219,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (subChecks.length === 0) {
                 e.preventDefault();
                 var container = document.getElementById('subareasContainer');
-                container.style.borderColor = '#dc2626';
-                container.style.backgroundColor = '#fef2f2';
+                container.style.borderColor = '#991b1b';
+                container.style.backgroundColor = '#fee2e2';
                 var placeholder = document.getElementById('subareasPlaceholder');
                 if (placeholder) {
-                    placeholder.innerHTML = '<i class="bi bi-exclamation-triangle" style="color:#dc2626;"></i><br><span style="color:#dc2626;">Debes seleccionar al menos una subarea</span>';
+                    placeholder.innerHTML = '<i class="bi bi-exclamation-triangle" style="color:#991b1b;"></i><br><span style="color:#991b1b;">Debes seleccionar al menos una subarea</span>';
                     placeholder.style.display = 'block';
                 }
                 document.querySelector('[name="nombre"]').scrollIntoView({ behavior: 'smooth', block: 'start' });
