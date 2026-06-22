@@ -49,7 +49,7 @@
                     <div class="d-flex gap-1 flex-wrap mt-1">
                         <span class="stat-chip"><i class="bi bi-bookmark"></i> <span class="num">{{ s.historias.count }}</span> historias</span>
                         <span class="stat-chip"><i class="bi bi-check-circle"></i> <span class="num">{{ s.avance_tareas }}%</span> completo</span>
-                        <span class="stat-chip"><i class="bi bi-rocket-takeoff"></i> {{ s.puntos_comprometidos }} pts</span>
+                        <span class="stat-chip"><i class="bi bi-check2-square"></i> {{ s.velocidad }} / {{ s.tareas.count }} tareas</span>
                     </div>
                     <div class="d-flex gap-1 mt-2">
                         <a href="{% url 'proyectos:sprint_board' proyecto.pk s.pk %}" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size:0.65rem;">Board</a>

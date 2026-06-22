@@ -113,9 +113,8 @@ class Sprint(models.Model):
 
     @property
     def velocidad(self):
-        return self.historias.filter(estado="done").aggregate(
-            total=Sum("puntos_historia")
-        )["total"] or 0
+        """Tareas completadas en el sprint (metrica Kanban)."""
+        return self.tareas.filter(activo=True, estado="finalizada").count()
 
     @property
     def puntos_comprometidos(self):

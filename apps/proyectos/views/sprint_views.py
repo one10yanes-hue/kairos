@@ -177,8 +177,8 @@ def sprint_finalizar(request, pk, spk):
                 h.sprint = None
                 h.save()
         RegistroAvance.objects.create(proyecto=proyecto, tipo="sprint_finalizado",
-            descripcion=f"Sprint {sprint.numero} finalizado. Velocidad: {sprint.velocidad} pts.", user=request.user, referencia_id=sprint.pk)
-        messages.success(request, f"Sprint {sprint.numero} finalizado. Velocidad: {sprint.velocidad} pts.")
+            descripcion=f"Sprint {sprint.numero} finalizado. {sprint.velocidad} tareas completadas.", user=request.user, referencia_id=sprint.pk)
+        messages.success(request, f"Sprint {sprint.numero} finalizado. {sprint.velocidad} tareas completadas.")
         return redirect("proyectos:sprint_list", pk=proyecto.pk)
     return redirect("proyectos:sprint_board", pk=proyecto.pk, spk=sprint.pk)
 
