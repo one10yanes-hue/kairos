@@ -74,8 +74,8 @@
                     </div>
                     {% if planificacion %}
                     <div class="mt-2 p-2" style="background:#f8f9fb;border-radius:0.4rem;border-left:3px solid var(--accent);">
-                        <small class="text-muted d-block" style="font-size:0.55rem;">INSTRUCCIONES</small>
-                        <span style="font-size:0.75rem;color:var(--slate-700);">{% if planificacion.descripcion %}{{ planificacion.descripcion }}{% else %}Sin instrucciones{% endif %}</span>
+                        <small class="text-muted d-block" style="font-size:0.55rem;">DESCRIPCIÓN</small>
+                        <span style="font-size:0.75rem;color:var(--slate-700);">{% if planificacion.descripcion %}{{ planificacion.descripcion }}{% else %}Sin descripción{% endif %}</span>
                     </div>
                     {% endif %}
                     {% if asignacion.entregable or asignacion.estado_revision != 'pendiente' %}
