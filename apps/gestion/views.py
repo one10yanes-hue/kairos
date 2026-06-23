@@ -5,7 +5,6 @@ from django.utils import timezone
 from django.http import JsonResponse
 from django.db.models import Q
 from datetime import timedelta, date as dt_date
-import datetime
 from apps.actividades.views import get_admin_subareas
 from apps.actividades.models import Actividad, TipoActividad
 from apps.estructura.models import SubArea, UserSubArea
@@ -121,8 +120,6 @@ def tablero(request):
         fecha_sel = dt_date.fromisoformat(fecha_str)
     except (ValueError, TypeError):
         fecha_sel = hoy
-    fecha_sel_dt = timezone.make_aware(datetime.datetime.combine(fecha_sel, datetime.datetime.min.time()))
-    fecha_sel_fin = fecha_sel_dt + timedelta(days=1)
 
     asignaciones = AsignacionActividad.objects.filter(
         user=request.user, activo=True,
@@ -145,8 +142,7 @@ def tablero(request):
     planificadas = AsignacionActividad.objects.filter(
         user=request.user, activo=True, estado="Pendiente",
         planificacion_detalle__isnull=False,
-        planificacion_detalle__fecha_programada__gte=fecha_sel_dt,
-        planificacion_detalle__fecha_programada__lt=fecha_sel_fin,
+        planificacion_detalle__fecha_programada__date=fecha_sel,
     ).select_related("actividad__tipo_actividad", "actividad__subarea__area", "planificacion_detalle__planificacion").prefetch_related("comentarios")
     if subarea_id:
         planificadas = planificadas.filter(
