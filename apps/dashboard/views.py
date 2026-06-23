@@ -205,6 +205,11 @@ def dashboard_admin(request):
             "productividad": round((user_finalizadas / total_user * 100) if total_user > 0 else 0, 1),
         })
 
+    # Default: solo usuarios con actividad asignada (total > 0)
+    mostrar_todos = request.GET.get("todos") == "1"
+    if not mostrar_todos:
+        usuarios_stats = [u for u in usuarios_stats if u["total"] > 0]
+
     tm_total = 0
     for u in usuarios_stats:
         h, m = u["tiempo_inactividad"].split(":")
@@ -240,6 +245,7 @@ def dashboard_admin(request):
         "promedio_item": promedio_item,
         "finalizadas_hoy": finalizadas_hoy,
         "usuarios_stats": usuarios_page,
+        "mostrar_todos": mostrar_todos,
         "page_obj": usuarios_page,
         "subarea_id": int(subarea_id) if subarea_id else None,
         "user_id": int(user_id) if user_id else None,
