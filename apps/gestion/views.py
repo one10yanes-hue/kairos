@@ -907,6 +907,15 @@ def detalle_actividad(request, pk):
         "fecha": asignacion.fecha_asignacion, "tipo": "creacion", "icono": "plus-circle",
         "descripcion": f"Asignacion creada por {asignacion.origen_user.get_full_name() if asignacion.origen_user else 'Sistema'}"
     })
+    # Agregar entrada de planificacion si existe
+    planificacion = None
+    if asignacion.planificacion_detalle and asignacion.planificacion_detalle.planificacion:
+        planificacion = asignacion.planificacion_detalle.planificacion
+        desc_planif = planificacion.descripcion or "Sin instrucciones"
+        timeline.append({
+            "fecha": planificacion.fecha_creacion, "tipo": "planificacion", "icono": "calendar-check",
+            "descripcion": f"Planificacion: {desc_planif[:80]}"
+        })
     for r in registros:
         icono = {"Inicio":"play-fill","Pausa":"pause-fill","Reanudacion":"arrow-clockwise","Finalizacion":"check-circle-fill","Traslado":"arrow-right-circle"}.get(r.evento,"circle")
         timeline.append({"fecha":r.fecha_hora,"tipo":"registro","icono":icono,"descripcion":f"{r.evento} por {asignacion.user.get_full_name()}{' ('+r.motivo_pausa+')' if r.motivo_pausa else ''}"})
@@ -935,6 +944,7 @@ def detalle_actividad(request, pk):
         "historial": historial,
         "tiempo_efectivo": asignacion.tiempo_formateado(),
         "timeline": timeline,
+        "planificacion": planificacion,
     }
     return render(request, "gestion/detalle_actividad.html", context)
 
