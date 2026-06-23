@@ -5,6 +5,7 @@ from django.utils import timezone
 from django.http import JsonResponse
 from django.db.models import Q
 from datetime import timedelta, date as dt_date
+import datetime
 from apps.actividades.views import get_admin_subareas
 from apps.actividades.models import Actividad, TipoActividad
 from apps.estructura.models import SubArea, UserSubArea
@@ -705,8 +706,7 @@ def detalle_actividad(request, pk):
 
 @login_required
 def calendario(request):
-from datetime import timedelta, date as dt_date
-import datetime
+    from datetime import timedelta, date as dt_date
     hoy = timezone.now().date()
     year = int(request.GET.get("year", hoy.year))
     month = int(request.GET.get("month", hoy.month))
