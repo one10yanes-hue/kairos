@@ -139,14 +139,15 @@ def tablero(request):
             Q(planificacion_detalle__planificacion__subarea_id=subarea_id)
         )
 
-    # Planificadas para la fecha seleccionada
+    # Planificadas: Pendientes del dia seleccionado + las que no tienen fecha (siempre visibles)
     planificadas = AsignacionActividad.objects.filter(
         user=request.user, activo=True, estado="Pendiente",
-        planificacion_detalle__isnull=False,
     ).annotate(
         prog_date=TruncDate('planificacion_detalle__fecha_programada')
     ).filter(
-        prog_date=fecha_sel
+        Q(prog_date=fecha_sel) |
+        Q(planificacion_detalle__isnull=True) |
+        Q(planificacion_detalle__fecha_programada__isnull=True)
     ).select_related("actividad__tipo_actividad", "actividad__subarea__area", "planificacion_detalle__planificacion").prefetch_related("comentarios")
     if subarea_id:
         planificadas = planificadas.filter(
@@ -162,7 +163,8 @@ def tablero(request):
         fin_date=TruncDate('registros__fecha_hora')
     ).filter(
         Q(estado__in=["EnCurso", "Pausada"]) |
-        Q(estado="Pendiente", planificacion_detalle__isnull=False, prog_date=fecha_sel) |
+        Q(estado="Pendiente", prog_date=fecha_sel) |
+        Q(estado="Pendiente", planificacion_detalle__fecha_programada__isnull=True) |
         Q(estado__in=["Finalizada", "Trasladada"], registros__evento="Finalizacion", fin_date=fecha_sel)
     ).select_related("actividad__tipo_actividad", "actividad__subarea__area", "planificacion_detalle__planificacion").distinct()
 
