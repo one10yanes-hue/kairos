@@ -72,6 +72,12 @@
                         </div>
                         {% endif %}
                     </div>
+                    {% if planificacion and planificacion.descripcion %}
+                    <div class="mt-2 p-2" style="background:#f8f9fb;border-radius:0.4rem;border-left:3px solid var(--accent);">
+                        <small class="text-muted d-block" style="font-size:0.55rem;">INSTRUCCIONES</small>
+                        <span style="font-size:0.75rem;color:var(--slate-700);">{{ planificacion.descripcion }}</span>
+                    </div>
+                    {% endif %}
                     {% if asignacion.entregable or asignacion.estado_revision != 'pendiente' %}
                     <hr class="my-2">
                     <div class="row g-2" style="font-size:0.82rem;">

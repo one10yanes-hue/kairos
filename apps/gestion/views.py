@@ -708,6 +708,9 @@ def detalle_actividad(request, pk):
     traslados = TrasladoActividad.objects.filter(asignacion_origen=asignacion, activo=True)
     colaboraciones = Colaboracion.objects.filter(asignacion=asignacion, activo=True)
     historial = RevisionHistorial.objects.filter(asignacion=asignacion).select_related("user").order_by("-fecha")
+    planificacion = None
+    if asignacion.planificacion_detalle and asignacion.planificacion_detalle.planificacion:
+        planificacion = asignacion.planificacion_detalle.planificacion
     context = {
         "asignacion": asignacion,
         "registros": registros,
@@ -716,6 +719,7 @@ def detalle_actividad(request, pk):
         "colaboraciones": colaboraciones,
         "historial": historial,
         "tiempo_efectivo": asignacion.tiempo_formateado(),
+        "planificacion": planificacion,
     }
     return render(request, "gestion/detalle_actividad.html", context)
 
