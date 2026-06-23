@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}{% load static %}{% load gestion_extras %}
+{% extends "base.html" %}{% load static %}{% load gestion_extras %}
 {% block extra_css %}<link href="{% static 'css/gestion.css' %}?v=8" rel="stylesheet">{% endblock %}
 {% block content %}
 <div style="display:flex;flex-direction:column;height:calc(100vh - 3rem);overflow:hidden;">
@@ -14,6 +14,47 @@
             <a href="{% url 'gestion:crear_no_programada' %}" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:0.75rem;"><i class="bi bi-lightning-charge"></i> Flash</a>
         </div>
     </div>
+
+    {% if historias_revision %}
+    <div class="card shadow-sm mb-2" style="border-left:4px solid #8a6100;">
+        <div class="card-header py-1 px-2 d-flex justify-content-between align-items-center" style="background:#fffbeb;">
+            <small class="fw-semibold"><i class="bi bi-hourglass-split" style="color:#8a6100;"></i> Pendientes de Revisi&oacute;n ({{ historias_revision|length }})</small>
+        </div>
+        <div class="card-body p-2" style="max-height:260px;overflow-y:auto;">
+            <div class="row g-2">
+                {% for h in historias_revision %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="border rounded p-2" style="font-size:0.75rem;background:#fff;border-left:3px solid #8a6100;">
+                        <div class="d-flex justify-content-between align-items-start mb-1">
+                            <div>
+                                <span class="badge bg-light text-muted" style="font-size:0.5rem;">{{ h.proyecto.codigo }}</span>
+                                <span class="badge bg-light text-muted" style="font-size:0.5rem;">{{ h.codigo }}</span>
+                            </div>
+                            <span class="badge {% if h.prioridad == 'must' %}bg-danger{% elif h.prioridad == 'should' %}bg-warning text-dark{% else %}bg-light text-muted{% endif %}" style="font-size:0.5rem;">{{ h.puntos_historia }}pts</span>
+                        </div>
+                        <p class="fw-semibold mb-1" style="font-size:0.78rem;line-height:1.2;">{{ h.titulo }}</p>
+                        {% for t in h.tareas.all %}
+                        <div class="d-flex justify-content-between align-items-center py-1 {% if not forloop.last %}border-bottom{% endif %}">
+                            <div>
+                                <span class="badge bg-light text-muted" style="font-size:0.45rem;">{{ t.codigo }}</span>
+                                <span style="font-size:0.62rem;">{{ t.titulo|truncatechars:20 }}</span>
+                                <small class="text-muted" style="font-size:0.55rem;">{{ t.asignado_a.get_full_name|truncatechars:12|default:'-' }}</small>
+                            </div>
+                            <button class="btn btn-sm btn-outline-danger py-0 px-1" style="font-size:0.45rem;" title="Rechazar esta tarea" onclick="rechazarTareaHistoria({{ h.proyecto_id }}, {{ h.pk }}, {{ t.pk }})">&times;</button>
+                        </div>
+                        {% endfor %}
+                        <div class="d-flex gap-1 mt-2">
+                            <form method="POST" action="{% url 'proyectos:historia_aprobar' h.proyecto_id h.pk %}" class="d-inline">{% csrf_token %}
+                                <button class="btn btn-sm btn-success py-0 px-1" style="font-size:0.55rem;" title="Aprobar toda la historia">&check; Aprobar todo</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <div class="tablero-main">
 
@@ -31,7 +72,7 @@
             {% if actividades_dia %}
             <div class="row g-2 mx-0 flex-nowrap">
                 {% for a in actividades_dia %}
-                <div class="col-md-6 col-lg-4 col-xl-3">
+                <div class="col-auto px-1" style="min-width:220px;">
                     <div class="card h-100" style="border-left:3px solid {% if a.estado == 'EnCurso' %}var(--warning){% elif a.estado == 'Pausada' %}var(--slate-400){% else %}var(--accent){% endif %};">
                         <div class="card-body py-1 px-2">
                             <div class="d-flex justify-content-between align-items-start">
@@ -39,11 +80,6 @@
                                 <span class="badge {% if a.estado == 'Trasladada' %}bg-info text-white{% elif a.estado == 'Revision' %}bg-warning text-dark{% else %}bg-light text-muted{% endif %} ms-1" style="font-size:0.55rem;">{% if a.estado == 'Trasladada' %}Completada por otro{% elif a.estado == 'Revision' %}En revision{% else %}{{ a.get_estado_display }}{% endif %}</span>
                             </div>
                             <small class="text-muted" style="font-size:0.65rem;">{{ a.actividad.tipo_actividad.nombre }}{% if a.estado != "Pendiente" %} • {{ a.tiempo_formateado }}{% endif %}</small>
-                            {% if a.planificacion_detalle and a.planificacion_detalle.fecha_vencimiento %}
-                            <small class="d-block mt-1" style="font-size:0.58rem;color:{% if a.planificacion_detalle.fecha_vencimiento|days_overdue > 0 %}#991b1b{% else %}#64748b{% endif %};">
-                                <i class="bi bi-clock"></i> {{ a.planificacion_detalle.fecha_vencimiento|deadline_label }}
-                            </small>
-                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -131,6 +167,7 @@
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-start mb-1">
                                 <span class="badge bg-light text-muted small">{{ a.nombre_tipo|default:a.actividad.tipo_actividad.nombre }}</span>
+                                {% if a.tarea_proyecto %}<span class="badge bg-primary bg-opacity-10 text-primary" style="font-size:0.5rem;" title="Proyecto: {{ a.tarea_proyecto.proyecto.nombre }}"><i class="bi bi-kanban"></i> {{ a.tarea_proyecto.proyecto.codigo }}</span>{% endif %}
                                 {% if a.estado_revision == "rechazado" and a.comentarios.count > 0 %}
                                 <span class="badge bg-danger" style="font-size:0.5rem;" title="Tiene comentarios de revision"><i class="bi bi-chat-dots"></i> {{ a.comentarios.count }}</span>
                                 {% endif %}
@@ -142,6 +179,9 @@
                                 <small class="text-muted" style="font-size:0.6rem;"><i class="bi bi-calendar3"></i> {{ a.planificacion_detalle.fecha_asignacion|date:"d/m H:i"|default:a.fecha_asignacion|date:"d/m H:i" }}</small>
                                 {% if a.planificacion_detalle.fecha_programada %}
                                 <small class="text-muted" style="font-size:0.6rem;"><i class="bi bi-calendar-event"></i> <span title="Programada">{{ a.planificacion_detalle.fecha_programada|date:"d/m" }}</span></small>
+                                {% endif %}
+                                {% if a.planificacion_detalle.fecha_vencimiento %}
+                                <small class="ms-auto" style="font-size:0.55rem;color:{% if a.planificacion_detalle.fecha_vencimiento|days_overdue > 0 %}#991b1b{% else %}#64748b{% endif %};" title="Vence {{ a.planificacion_detalle.fecha_vencimiento|date:'d/m/Y' }}">⏰ {{ a.planificacion_detalle.fecha_vencimiento|deadline_label }}</small>
                                 {% endif %}
                             </div>
                             <div class="d-flex gap-1" style="margin-top:0.25rem;">
@@ -173,6 +213,7 @@
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-start mb-1">
                                 <span class="badge bg-light text-muted small">{{ a.nombre_tipo|default:a.actividad.tipo_actividad.nombre }}</span>
+                                {% if a.tarea_proyecto %}<span class="badge bg-primary bg-opacity-10 text-primary" style="font-size:0.5rem;" title="Proyecto: {{ a.tarea_proyecto.proyecto.nombre }}"><i class="bi bi-kanban"></i> {{ a.tarea_proyecto.proyecto.codigo }}</span>{% endif %}
                                 {% if a.estado_revision == "rechazado" and a.comentarios.count > 0 %}
                                 <span class="badge bg-danger" style="font-size:0.5rem;" title="Tiene comentarios de revision"><i class="bi bi-chat-dots"></i> {{ a.comentarios.count }}</span>
                                 {% endif %}
@@ -186,10 +227,13 @@
                                 {% if a.planificacion_detalle.fecha_programada %}
                                 <small class="text-muted" style="font-size:0.6rem;"><i class="bi bi-calendar-event"></i> <span title="Programada">{{ a.planificacion_detalle.fecha_programada|date:"d/m" }}</span></small>
                                 {% endif %}
+                                {% if a.planificacion_detalle.fecha_vencimiento %}
+                                <small class="ms-auto" style="font-size:0.55rem;color:{% if a.planificacion_detalle.fecha_vencimiento|days_overdue > 0 %}#991b1b{% else %}#64748b{% endif %};" title="Vence {{ a.planificacion_detalle.fecha_vencimiento|date:'d/m/Y' }}">⏰ {{ a.planificacion_detalle.fecha_vencimiento|deadline_label }}</small>
+                                {% endif %}
                             </div>
                             <div class="d-flex gap-1" style="margin-top:0.25rem;">
                                 <button type="button" class="btn btn-sm py-0 px-1 btn-warning" style="font-size:0.6rem;" title="Pausar" onclick="abrirPausa({{ a.pk }}, '{{ a.actividad.nombre|escapejs }}')"><i class="bi bi-pause-fill"></i></button>
-                                <button type="button" class="btn btn-sm py-0 px-1 btn-success" style="font-size:0.6rem;" title="Finalizar" onclick="abrirFinalizar({{ a.pk }}, '{{ a.actividad.nombre|escapejs }}', {{ a.actividad.subarea_id }}, {{ a.actividad.tipo_actividad.requiere_entregable|lower }})"><i class="bi bi-check-circle-fill"></i></button>
+                                <button type="button" class="btn btn-sm py-0 px-1 btn-success" style="font-size:0.6rem;" title="Finalizar" onclick="abrirFinalizar({{ a.pk }}, '{{ a.actividad.nombre|escapejs }}', {{ a.actividad.subarea_id }}, {{ a.actividad.tipo_actividad.requiere_entregable|lower }}, '{{ a.origen|default:'' }}')"><i class="bi bi-check-circle-fill"></i></button>
                                 <button type="button" class="btn btn-sm py-0 px-1 btn-outline-info" style="font-size:0.6rem;" title="Trasladar" onclick="abrirTraslado({{ a.pk }}, '{{ a.actividad.nombre|escapejs }}', {{ a.actividad_id }})"><i class="bi bi-arrow-right-circle"></i></button>
                                 <button type="button" class="btn btn-sm py-0 px-1 btn-outline-secondary" style="font-size:0.6rem;" title="Detalle" onclick="location.href='{% url 'gestion:detalle_actividad' a.pk %}'"><i class="bi bi-eye"></i></button>
                             </div>
@@ -214,6 +258,7 @@
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-start mb-1">
                                 <span class="badge bg-light text-muted small">{{ a.nombre_tipo|default:a.actividad.tipo_actividad.nombre }}</span>
+                                {% if a.tarea_proyecto %}<span class="badge bg-primary bg-opacity-10 text-primary" style="font-size:0.5rem;" title="Proyecto: {{ a.tarea_proyecto.proyecto.nombre }}"><i class="bi bi-kanban"></i> {{ a.tarea_proyecto.proyecto.codigo }}</span>{% endif %}
                                 {% if a.estado_revision == "rechazado" and a.comentarios.count > 0 %}
                                 <span class="badge bg-danger" style="font-size:0.5rem;" title="Tiene comentarios de revision"><i class="bi bi-chat-dots"></i> {{ a.comentarios.count }}</span>
                                 {% endif %}
@@ -227,13 +272,16 @@
                                 {% if a.planificacion_detalle.fecha_programada %}
                                 <small class="text-muted" style="font-size:0.6rem;"><i class="bi bi-calendar-event"></i> <span title="Programada">{{ a.planificacion_detalle.fecha_programada|date:"d/m" }}</span></small>
                                 {% endif %}
+                                {% if a.planificacion_detalle.fecha_vencimiento %}
+                                <small class="ms-auto" style="font-size:0.55rem;color:{% if a.planificacion_detalle.fecha_vencimiento|days_overdue > 0 %}#991b1b{% else %}#64748b{% endif %};" title="Vence {{ a.planificacion_detalle.fecha_vencimiento|date:'d/m/Y' }}">⏰ {{ a.planificacion_detalle.fecha_vencimiento|deadline_label }}</small>
+                                {% endif %}
                             </div>
                             <div class="d-flex gap-1" style="margin-top:0.25rem;">
                                 <form method="POST" action="{% url 'gestion:activar_actividad' a.pk %}" class="d-inline">
                                     {% csrf_token %}
                                     <button type="submit" class="btn btn-sm py-0 px-1 btn-success" style="font-size:0.6rem;" title="Reanudar"><i class="bi bi-play-fill"></i></button>
                                 </form>
-                                <button type="button" class="btn btn-sm py-0 px-1 btn-success" style="font-size:0.6rem;" title="Finalizar" onclick="abrirFinalizar({{ a.pk }}, '{{ a.actividad.nombre|escapejs }}', {{ a.actividad.subarea_id }}, {{ a.actividad.tipo_actividad.requiere_entregable|lower }})"><i class="bi bi-check-circle-fill"></i></button>
+                                <button type="button" class="btn btn-sm py-0 px-1 btn-success" style="font-size:0.6rem;" title="Finalizar" onclick="abrirFinalizar({{ a.pk }}, '{{ a.actividad.nombre|escapejs }}', {{ a.actividad.subarea_id }}, {{ a.actividad.tipo_actividad.requiere_entregable|lower }}, '{{ a.origen|default:'' }}')"><i class="bi bi-check-circle-fill"></i></button>
                                 <button type="button" class="btn btn-sm py-0 px-1 btn-outline-info" style="font-size:0.6rem;" title="Trasladar" onclick="abrirTraslado({{ a.pk }}, '{{ a.actividad.nombre|escapejs }}', {{ a.actividad_id }})"><i class="bi bi-arrow-right-circle"></i></button>
                                 <button type="button" class="btn btn-sm py-0 px-1 btn-outline-secondary" style="font-size:0.6rem;" title="Detalle" onclick="location.href='{% url 'gestion:detalle_actividad' a.pk %}'"><i class="bi bi-eye"></i></button>
                             </div>
@@ -267,6 +315,9 @@
                                 <small class="text-muted" style="font-size:0.6rem;"><i class="bi bi-calendar3"></i> {{ a.planificacion_detalle.fecha_asignacion|date:"d/m H:i"|default:a.fecha_asignacion|date:"d/m H:i" }}</small>
                                 {% if a.planificacion_detalle.fecha_programada %}
                                 <small class="text-muted" style="font-size:0.6rem;"><i class="bi bi-calendar-event"></i> <span title="Programada">{{ a.planificacion_detalle.fecha_programada|date:"d/m" }}</span></small>
+                                {% endif %}
+                                {% if a.planificacion_detalle.fecha_vencimiento %}
+                                <small class="ms-auto" style="font-size:0.55rem;color:{% if a.planificacion_detalle.fecha_vencimiento|days_overdue > 0 %}#991b1b{% else %}#64748b{% endif %};" title="Vence {{ a.planificacion_detalle.fecha_vencimiento|date:'d/m/Y' }}">⏰ {{ a.planificacion_detalle.fecha_vencimiento|deadline_label }}</small>
                                 {% endif %}
                             </div>
                             <div class="d-flex justify-content-end" style="margin-top:0.25rem;">
@@ -323,15 +374,10 @@
                             <span><i class="bi bi-list-check"></i> Actividades Planificadas</span>
                         </label>
                         <div id="pausPlanifContainer" style="display:none;padding-left:1.5rem;max-height:130px;overflow-y:auto;">
-                            {% for p in planificadas_todas %}
+                            {% for p in planificadas %}
                             <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:0.78rem;">
                                 <input type="radio" name="actividad_id" value="{{ p.actividad_id }}" class="form-check-input mt-0" onclick="document.getElementById('pausaSubareaId').value='{{ p.actividad.subarea_id }}'">
-                                <div>
-                                    <span>{{ p.nombre_actividad|default:p.actividad.nombre }}</span>
-                                    <small class="text-muted d-block" style="font-size:0.6rem;">{{ p.nombre_tipo|default:p.actividad.tipo_actividad.nombre }}</small>
-                                </div>
-                                {% if p.planificacion_detalle.fecha_programada %}<small class="text-muted ms-auto" style="font-size:0.55rem;" title="Programada">📅 {{ p.planificacion_detalle.fecha_programada|date:"d/m" }}</small>{% endif %}
-                                {% if p.planificacion_detalle.fecha_vencimiento %}<small class="text-muted ms-1" style="font-size:0.55rem;" title="Vence">⏰ {{ p.planificacion_detalle.fecha_vencimiento|date:"d/m" }}</small>{% endif %}
+                                <span>{{ p.nombre_actividad|default:p.actividad.nombre }} <small class="text-muted">({{ p.nombre_tipo|default:p.actividad.tipo_actividad.nombre }})</small></span>
                             </label>
                             {% endfor %}
                         </div>
@@ -357,7 +403,7 @@
 
 <!-- Overlay Finalizar -->
 <div id="finalizarOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:9999;align-items:center;justify-content:center;">
-    <div style="background:#fff;border-radius:0.75rem;max-width:520px;width:95%;padding:1.5rem;box-shadow:0 8px 32px rgba(0,0,0,0.12);">
+    <div style="background:#fff;border-radius:0.75rem;max-width:450px;width:90%;padding:1.5rem;box-shadow:0 8px 32px rgba(0,0,0,0.12);">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h6 class="fw-bold mb-0"><i class="bi bi-check-circle" style="color:var(--success);"></i> Finalizar Actividad</h6>
             <button type="button" class="btn-close" onclick="cerrarFinalizar()"></button>
@@ -377,6 +423,17 @@
                 <label class="form-label small fw-semibold">Archivo entregable <span class="text-danger">*</span></label>
                 <input type="file" name="entregable" class="form-control form-control-sm" style="font-size:0.78rem;">
             </div>
+            <div class="mb-3" id="revisionSection" style="display:none;background:#fffbeb;padding:0.7rem;border-radius:0.4rem;border:1px solid #8a6100;">
+                <label class="form-label small fw-semibold" style="color:#8a6100;">Accion de revision</label>
+                <div class="d-flex gap-2 align-items-center">
+                    <button type="submit" name="accion_revision" value="aprobar" class="btn btn-sm btn-success">Aprobar</button>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="mostrarMotivoRechazo()">Rechazar y devolver</button>
+                </div>
+                <div id="revisionMotivo" style="display:none;margin-top:0.5rem;">
+                    <textarea name="motivo_rechazo" class="form-control form-control-sm" rows="2" placeholder="Motivo del rechazo..."></textarea>
+                    <button type="submit" name="accion_revision" value="rechazar" class="btn btn-sm btn-outline-danger mt-1" style="font-size:0.65rem;">Confirmar Rechazo</button>
+                </div>
+            </div>
             <hr class="my-2">
             <div class="mb-3">
                 <label class="form-label small fw-semibold">Iniciar siguiente actividad</label>
@@ -395,12 +452,7 @@
                             {% for p in planificadas_todas %}
                             <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:0.78rem;">
                                 <input type="radio" name="reemplazo_actividad" value="{{ p.pk }}" class="form-check-input mt-0">
-                                <div>
-                                    <span>{{ p.actividad.nombre }}</span>
-                                    <small class="text-muted d-block" style="font-size:0.6rem;">{{ p.actividad.tipo_actividad.nombre }}</small>
-                                </div>
-                                {% if p.planificacion_detalle.fecha_programada %}<small class="text-muted ms-auto" style="font-size:0.55rem;" title="Programada">📅 {{ p.planificacion_detalle.fecha_programada|date:"d/m" }}</small>{% endif %}
-                                {% if p.planificacion_detalle.fecha_vencimiento %}<small class="text-muted ms-1" style="font-size:0.55rem;" title="Vence">⏰ {{ p.planificacion_detalle.fecha_vencimiento|date:"d/m" }}</small>{% endif %}
+                                <span>{{ p.nombre_actividad|default:p.actividad.nombre }} <small class="text-muted">({{ p.nombre_tipo|default:p.actividad.tipo_actividad.nombre }})</small></span>
                             </label>
                             {% endfor %}
                         </div>
@@ -459,15 +511,10 @@
                             <span><i class="bi bi-list-check"></i> Actividades Planificadas</span>
                         </label>
                         <div id="trasPlanifContainer" style="display:none;padding-left:1.5rem;max-height:130px;overflow-y:auto;">
-                            {% for p in planificadas_todas %}
+                            {% for p in planificadas %}
                             <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:0.78rem;">
                                 <input type="radio" name="traslado_reemplazo" value="{{ p.actividad_id }}" class="form-check-input mt-0" onchange="seleccionarReemplazoTraslado(this)">
-                                <div>
-                                    <span>{{ p.actividad.nombre }}</span>
-                                    <small class="text-muted d-block" style="font-size:0.6rem;">{{ p.actividad.tipo_actividad.nombre }}</small>
-                                </div>
-                                {% if p.planificacion_detalle.fecha_programada %}<small class="text-muted ms-auto" style="font-size:0.55rem;" title="Programada">📅 {{ p.planificacion_detalle.fecha_programada|date:"d/m" }}</small>{% endif %}
-                                {% if p.planificacion_detalle.fecha_vencimiento %}<small class="text-muted ms-1" style="font-size:0.55rem;" title="Vence">⏰ {{ p.planificacion_detalle.fecha_vencimiento|date:"d/m" }}</small>{% endif %}
+                                <span>{{ p.nombre_actividad|default:p.actividad.nombre }} <small class="text-muted">({{ p.nombre_tipo|default:p.actividad.tipo_actividad.nombre }})</small></span>
                             </label>
                             {% endfor %}
                         </div>
@@ -493,12 +540,39 @@
         </form>
     </div>
 </div>
+
+<div id="rechazoRevisionModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:0.75rem;max-width:400px;width:90%;padding:1.5rem;box-shadow:0 8px 32px rgba(0,0,0,0.12);">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold mb-0"><i class="bi bi-x-circle" style="color:var(--danger);"></i> Rechazar Historia</h6>
+            <button type="button" class="btn-close" onclick="document.getElementById('rechazoRevisionModal').style.display='none'"></button>
+        </div>
+        <form id="rechazoRevisionForm" method="POST">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="form-label small fw-semibold">Motivo del rechazo <span class="text-danger">*</span></label>
+                <textarea name="motivo" class="form-control" rows="3" placeholder="Explica por que se rechaza..." required></textarea>
+            </div>
+            <div class="mb-3">
+                <label class="d-flex align-items-center gap-2 small" style="cursor:pointer;font-size:0.72rem;">
+                    <input type="checkbox" name="crear_bug" value="1" class="form-check-input mt-0">
+                    <span>Crear incidencia (bug) de este rechazo</span>
+                </label>
+            </div>
+            <div class="d-flex justify-content-end gap-2">
+                <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('rechazoRevisionModal').style.display='none'">Cancelar</button>
+                <button type="submit" class="btn btn-sm btn-outline-danger">Rechazar</button>
+            </div>
+        </form>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
 var currentAsignacionId = null;
 var currentActividadId = null;
+var currentProyectoId = null;
 var timeoutBusqueda = null;
 
 function abrirTraslado(asignacionId, nombreActividad, actividadId) {
@@ -511,8 +585,13 @@ function abrirTraslado(asignacionId, nombreActividad, actividadId) {
     to.style.zIndex = '99999';
     currentAsignacionId = asignacionId;
     currentActividadId = actividadId;
+    currentProyectoId = null;
     document.getElementById('trasladoNombreActividad').textContent = nombreActividad;
     document.getElementById('trasladoForm').action = '/usuario/actividad/' + asignacionId + '/trasladar/';
+    // Obtener info del proyecto si esta tarea pertenece a uno
+    fetch('/usuario/api/asignacion/' + asignacionId + '/proyecto/', {headers:{'X-Requested-With':'XMLHttpRequest'}})
+    .then(function(r){return r.json()})
+    .then(function(d){ currentProyectoId = d.proyecto_id; });
     limpiarUsuario();
     document.getElementById('traslado_actividad_reemplazo').value = '';
     trasResetSecciones();
@@ -556,7 +635,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (q.length < 1) { limpiarUsuario(); return; }
         clearTimeout(timeoutBusqueda);
         timeoutBusqueda = setTimeout(function() {
-            fetch('/usuario/api/usuarios/buscar/?q=' + encodeURIComponent(q), { headers: {'X-Requested-With':'XMLHttpRequest'} })
+            var url = '/usuario/api/usuarios/buscar/?q=' + encodeURIComponent(q);
+            if (currentProyectoId) url += '&proyecto_id=' + currentProyectoId;
+            fetch(url, { headers: {'X-Requested-With':'XMLHttpRequest'} })
             .then(function(r){return r.json()})
             .then(function(d){
                 var h = '';
@@ -710,7 +791,7 @@ function cerrarPausa() {
 
 var finalizarSubareaId = null;
 
-function abrirFinalizar(actividadId, nombre, subareaId, requiereEntregable) {
+function abrirFinalizar(actividadId, nombre, subareaId, requiereEntregable, origen) {
     document.getElementById('pausaOverlay').style.display = 'none';
     document.getElementById('trasladoOverlay').style.display = 'none';
     finalizarSubareaId = subareaId;
@@ -725,7 +806,18 @@ function abrirFinalizar(actividadId, nombre, subareaId, requiereEntregable) {
     } else {
         entSection.style.display = 'none';
     }
+    var revSection = document.getElementById('revisionSection');
+    if (origen === 'Revision') {
+        revSection.style.display = 'block';
+    } else {
+        revSection.style.display = 'none';
+    }
+    document.getElementById('revisionMotivo').style.display = 'none';
     document.getElementById('finalizarOverlay').style.display = 'flex';
+}
+
+function mostrarMotivoRechazo() {
+    document.getElementById('revisionMotivo').style.display = 'block';
 }
 
 function cargarFlashActividades() {
@@ -830,6 +922,12 @@ ws.onmessage = function(e) {
     } else if (data.tipo === 'revision') {
         mostrarToast('Revision ' + data.accion + ': ' + data.actividad, data.accion === 'aprobado' ? 'success' : 'danger');
         setTimeout(function(){ window.location.reload(); }, 4000);
+    } else if (data.tipo === 'nueva_revision') {
+        mostrarToast('Historia pendiente de revision: ' + data.codigo + ' - ' + data.historia + ' (' + data.proyecto + ')', 'warning');
+        setTimeout(function(){ window.location.reload(); }, 5000);
+    } else if (data.tipo === 'tarea_rechazada') {
+        mostrarToast('Tarea rechazada: ' + data.codigo + ' - ' + data.actividad + '. Motivo: ' + (data.motivo||''), 'danger');
+        setTimeout(function(){ window.location.reload(); }, 5000);
     }
 };
 
@@ -904,5 +1002,26 @@ setInterval(function(){
         }
     }
 })();
+
+function rechazarDesdeTablero(proyectoId, historiaId) {
+    var modal = document.getElementById('rechazoRevisionModal');
+    var form = document.getElementById('rechazoRevisionForm');
+    form.action = '/proyectos/' + proyectoId + '/historias/' + historiaId + '/rechazar/';
+    modal.style.display = 'flex';
+}
+
+function abrirRechazarTarea(proyectoId, tareaId) {
+    var modal = document.getElementById('rechazoRevisionModal');
+    var form = document.getElementById('rechazoRevisionForm');
+    form.action = '/proyectos/' + proyectoId + '/tareas/' + tareaId + '/rechazar/';
+    modal.style.display = 'flex';
+}
+
+function rechazarTareaHistoria(proyectoId, historiaId, tareaId) {
+    var modal = document.getElementById('rechazoRevisionModal');
+    var form = document.getElementById('rechazoRevisionForm');
+    form.action = '/proyectos/' + proyectoId + '/tareas/' + tareaId + '/rechazar/';
+    modal.style.display = 'flex';
+}
 </script>
 {% endblock %}
