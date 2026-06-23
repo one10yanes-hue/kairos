@@ -126,18 +126,20 @@ def tablero(request):
 
     # Planificadas para la fecha seleccionada
     # Planificadas: filtradas por fecha seleccionada + las sin fecha (siempre visibles)
-    planificadas = AsignacionActividad.objects.filter(
+    planificadas_qs = AsignacionActividad.objects.filter(
         user=request.user, activo=True, estado="Pendiente",
-    ).filter(
-        Q(planificacion_detalle__fecha_programada__date=fecha_sel) |
-        Q(planificacion_detalle__isnull=True) |
-        Q(planificacion_detalle__fecha_programada__isnull=True)
     ).select_related("actividad__tipo_actividad", "actividad__subarea__area", "planificacion_detalle__planificacion").prefetch_related("comentarios")
     if subarea_id:
-        planificadas = planificadas.filter(
+        planificadas_qs = planificadas_qs.filter(
             Q(actividad__subarea_id=subarea_id) |
             Q(planificacion_detalle__planificacion__subarea_id=subarea_id)
         )
+    # Filtrar por fecha en Python (evita problemas de timezone en MySQL)
+    planificadas = [a for a in planificadas_qs if (
+        not a.planificacion_detalle or
+        not a.planificacion_detalle.fecha_programada or
+        a.planificacion_detalle.fecha_programada.date() == fecha_sel
+    )]
 
     # Actividades del dia para la lista horizontal (EnCurso/Pausadas siempre + Pendientes/Finalizadas del dia)
     actividades_dia = AsignacionActividad.objects.filter(
