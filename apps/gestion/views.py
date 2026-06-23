@@ -117,10 +117,10 @@ def tablero(request):
     # Fecha seleccionada por el usuario (default: hoy)
     fecha_str = request.GET.get("fecha", hoy.isoformat())
     try:
-        fecha_sel = date.fromisoformat(fecha_str)
+        fecha_sel = dt_date.fromisoformat(fecha_str)
     except (ValueError, TypeError):
         fecha_sel = hoy
-    fecha_sel_dt = timezone.make_aware(datetime.combine(fecha_sel, datetime.min.time()))
+    fecha_sel_dt = timezone.make_aware(datetime.datetime.combine(fecha_sel, datetime.datetime.min.time()))
     fecha_sel_fin = fecha_sel_dt + timedelta(days=1)
 
     asignaciones = AsignacionActividad.objects.filter(
@@ -926,6 +926,7 @@ def detalle_actividad(request, pk):
 @login_required
 def calendario(request):
     from datetime import timedelta, date as dt_date
+    import datetime
     hoy = timezone.now().date()
     year = int(request.GET.get("year", hoy.year))
     month = int(request.GET.get("month", hoy.month))
