@@ -925,10 +925,12 @@ def calendario(request):
     events = []
     for a in asignaciones:
         color = color_map.get(a.estado, {"bg": "#e2e8f0", "txt": "#334155"})
+        pd = a.planificacion_detalle
+        start_date = pd.fecha_programada.strftime("%Y-%m-%d") if pd and pd.fecha_programada else a.fecha_asignacion.strftime("%Y-%m-%d")
         events.append({
             "id": str(a.pk),
             "title": a.actividad.nombre,
-            "start": a.fecha_asignacion.strftime("%Y-%m-%d"),
+            "start": start_date,
             "allDay": True,
             "backgroundColor": color["bg"],
             "textColor": color["txt"],
@@ -940,7 +942,6 @@ def calendario(request):
                 "origen": a.origen or "Manual",
             },
         })
-        pd = a.planificacion_detalle
         if pd and pd.fecha_vencimiento:
             ld = pd.fecha_vencimiento.date() if hasattr(pd.fecha_vencimiento, 'date') else pd.fecha_vencimiento
             events.append({
