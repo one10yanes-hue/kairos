@@ -922,7 +922,21 @@ def detalle_actividad(request, pk):
     for c in comentarios:
         timeline.append({"fecha":c.fecha_creacion,"tipo":"comentario","icono":"chat-text","descripcion":f"Comentario de {c.user.get_full_name()}: {c.texto[:60]}"})
     for t in traslados:
-        timeline.append({"fecha":t.fecha_creacion,"tipo":"traslado","icono":"arrow-right-circle","descripcion":f"Traslado de {t.user_origen.get_full_name()} a {t.user_destino.get_full_name()} ({t.estado})"})
+        timeline.append({
+            "fecha": t.fecha_creacion, "tipo": "traslado", "icono": "arrow-right-circle",
+            "descripcion": f"Solicitud de traslado de {t.user_origen.get_full_name()} a {t.user_destino.get_full_name()}"
+        })
+        if t.estado == "Aceptado" and t.fecha_update and t.fecha_update != t.fecha_creacion:
+            timeline.append({
+                "fecha": t.fecha_update, "tipo": "traslado", "icono": "check-circle",
+                "descripcion": f"Traslado aceptado por {t.user_destino.get_full_name()}"
+            })
+        elif t.estado == "Rechazado":
+            motivo = t.motivo or ""
+            timeline.append({
+                "fecha": t.fecha_update or t.fecha_creacion, "tipo": "traslado", "icono": "x-circle",
+                "descripcion": f"Traslado rechazado por {t.user_destino.get_full_name()}{' (' + motivo[:40] + ')' if motivo else ''}"
+            })
     for h in historial:
         timeline.append({"fecha":h.fecha,"tipo":"revision","icono":"check-circle" if h.accion=="aprobar" else "x-circle","descripcion":f"{'Aprobacion' if h.accion=='aprobar' else 'Rechazo'} por {h.user.get_full_name()}"})
     if asignacion.estado_revision == "aprobado":
