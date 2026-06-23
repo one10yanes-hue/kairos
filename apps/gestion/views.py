@@ -942,6 +942,22 @@ def calendario(request):
                 "origen": a.origen or "Manual",
             },
         })
+        if pd and pd.fecha_vencimiento:
+            ld = pd.fecha_vencimiento.date() if hasattr(pd.fecha_vencimiento, 'date') else pd.fecha_vencimiento
+            events.append({
+                "id": f"v{a.pk}",
+                "title": f"Vence: {a.actividad.nombre}",
+                "start": ld.isoformat(),
+                "allDay": True,
+                "backgroundColor": "#fecaca",
+                "textColor": "#991b1b",
+                "borderColor": "#fca5a5",
+                "extendedProps": {
+                    "tipo": a.actividad.tipo_actividad.nombre,
+                    "estado": "Vence",
+                    "tiempo": "",
+                },
+            })
 
     # Grid del mes para navegacion
     month_cal = []
