@@ -180,9 +180,6 @@
                                 {% if a.planificacion_detalle.fecha_programada %}
                                 <small class="text-muted" style="font-size:0.6rem;"><i class="bi bi-calendar-event"></i> <span title="Programada">{{ a.planificacion_detalle.fecha_programada|date:"d/m" }}</span></small>
                                 {% endif %}
-                                {% if a.planificacion_detalle.fecha_vencimiento %}
-                                <small class="ms-auto" style="font-size:0.55rem;color:{% if a.planificacion_detalle.fecha_vencimiento|days_overdue > 0 %}#991b1b{% else %}#64748b{% endif %};" title="Vence {{ a.planificacion_detalle.fecha_vencimiento|date:'d/m/Y' }}">⏰ {{ a.planificacion_detalle.fecha_vencimiento|deadline_label }}</small>
-                                {% endif %}
                             </div>
                             <div class="d-flex gap-1" style="margin-top:0.25rem;">
                                 <button type="button" class="btn btn-sm py-0 px-1 btn-outline-secondary" style="font-size:0.6rem;" title="Ver" onclick="location.href='{% url 'gestion:detalle_actividad' a.pk %}'"><i class="bi bi-eye"></i></button>
@@ -227,9 +224,6 @@
                                 {% if a.planificacion_detalle.fecha_programada %}
                                 <small class="text-muted" style="font-size:0.6rem;"><i class="bi bi-calendar-event"></i> <span title="Programada">{{ a.planificacion_detalle.fecha_programada|date:"d/m" }}</span></small>
                                 {% endif %}
-                                {% if a.planificacion_detalle.fecha_vencimiento %}
-                                <small class="ms-auto" style="font-size:0.55rem;color:{% if a.planificacion_detalle.fecha_vencimiento|days_overdue > 0 %}#991b1b{% else %}#64748b{% endif %};" title="Vence {{ a.planificacion_detalle.fecha_vencimiento|date:'d/m/Y' }}">⏰ {{ a.planificacion_detalle.fecha_vencimiento|deadline_label }}</small>
-                                {% endif %}
                             </div>
                             <div class="d-flex gap-1" style="margin-top:0.25rem;">
                                 <button type="button" class="btn btn-sm py-0 px-1 btn-warning" style="font-size:0.6rem;" title="Pausar" onclick="abrirPausa({{ a.pk }}, '{{ a.actividad.nombre|escapejs }}')"><i class="bi bi-pause-fill"></i></button>
@@ -272,9 +266,6 @@
                                 {% if a.planificacion_detalle.fecha_programada %}
                                 <small class="text-muted" style="font-size:0.6rem;"><i class="bi bi-calendar-event"></i> <span title="Programada">{{ a.planificacion_detalle.fecha_programada|date:"d/m" }}</span></small>
                                 {% endif %}
-                                {% if a.planificacion_detalle.fecha_vencimiento %}
-                                <small class="ms-auto" style="font-size:0.55rem;color:{% if a.planificacion_detalle.fecha_vencimiento|days_overdue > 0 %}#991b1b{% else %}#64748b{% endif %};" title="Vence {{ a.planificacion_detalle.fecha_vencimiento|date:'d/m/Y' }}">⏰ {{ a.planificacion_detalle.fecha_vencimiento|deadline_label }}</small>
-                                {% endif %}
                             </div>
                             <div class="d-flex gap-1" style="margin-top:0.25rem;">
                                 <form method="POST" action="{% url 'gestion:activar_actividad' a.pk %}" class="d-inline">
@@ -315,9 +306,6 @@
                                 <small class="text-muted" style="font-size:0.6rem;"><i class="bi bi-calendar3"></i> {{ a.planificacion_detalle.fecha_asignacion|date:"d/m H:i"|default:a.fecha_asignacion|date:"d/m H:i" }}</small>
                                 {% if a.planificacion_detalle.fecha_programada %}
                                 <small class="text-muted" style="font-size:0.6rem;"><i class="bi bi-calendar-event"></i> <span title="Programada">{{ a.planificacion_detalle.fecha_programada|date:"d/m" }}</span></small>
-                                {% endif %}
-                                {% if a.planificacion_detalle.fecha_vencimiento %}
-                                <small class="ms-auto" style="font-size:0.55rem;color:{% if a.planificacion_detalle.fecha_vencimiento|days_overdue > 0 %}#991b1b{% else %}#64748b{% endif %};" title="Vence {{ a.planificacion_detalle.fecha_vencimiento|date:'d/m/Y' }}">⏰ {{ a.planificacion_detalle.fecha_vencimiento|deadline_label }}</small>
                                 {% endif %}
                             </div>
                             <div class="d-flex justify-content-end" style="margin-top:0.25rem;">
