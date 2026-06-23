@@ -144,9 +144,10 @@ def planificacion_create(request):
                 planificacion = form.save(commit=False)
                 planificacion.admin = request.user
                 planificacion.cerrada = True
-                proyecto_id = request.POST.get("proyecto")
-                if proyecto_id:
-                    planificacion.proyecto_id = int(proyecto_id)
+                if hasattr(planificacion, 'proyecto_id'):
+                    proyecto_id = request.POST.get("proyecto")
+                    if proyecto_id:
+                        planificacion.proyecto_id = int(proyecto_id)
                 planificacion.save()
 
                 count = 0
@@ -190,19 +191,24 @@ def planificacion_create(request):
                         nombre_tipo=actividad.tipo_actividad.nombre,
                     )
                     # Si la planificacion esta vinculada a un proyecto, crear Tarea automaticamente
-                    if planificacion.proyecto:
-                        from apps.proyectos.models import Tarea
-                        tarea = Tarea.objects.create(
-                            proyecto=planificacion.proyecto,
-                            titulo=actividad.nombre,
-                            tipo="tarea",
-                            asignado_a=usuario,
-                            creador=planificacion.admin,
-                            actividad_catalogo=actividad,
-                            asignacion=asignacion,
-                        )
-                        tarea.codigo = f"{planificacion.proyecto.codigo}-T-{tarea.pk:03d}"
-                        tarea.save()
+                    if hasattr(planificacion, 'proyecto_id') and planificacion.proyecto_id:
+                        try:
+                            from apps.proyectos.models import Proyecto, Tarea
+                            proyecto = Proyecto.objects.filter(pk=planificacion.proyecto_id, activo=True).first()
+                            if proyecto:
+                                tarea = Tarea.objects.create(
+                                    proyecto=proyecto,
+                                    titulo=actividad.nombre,
+                                    tipo="tarea",
+                                    asignado_a=usuario,
+                                    creador=planificacion.admin,
+                                    actividad_catalogo=actividad,
+                                    asignacion=asignacion,
+                                )
+                                tarea.codigo = f"{proyecto.codigo}-T-{tarea.pk:03d}"
+                                tarea.save()
+                        except (ImportError, Exception):
+                            pass
                 messages.success(request, f"Planificacion creada con {count} asignacion(es).")
                 request.audit_record_id = planificacion.pk
                 request.audit_modelo = "Planificacion"
