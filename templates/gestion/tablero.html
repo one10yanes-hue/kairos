@@ -64,7 +64,7 @@
         <div class="card-header py-1 px-2 d-flex justify-content-between align-items-center">
             <div class="d-flex align-items-center gap-2">
                 <small class="fw-semibold"><i class="bi bi-calendar2-day" style="color:var(--accent);"></i> Mis actividades</small>
-                <input type="date" id="fechaPlanif" name="fecha" value="{{ fecha_sel|date:'Y-m-d' }}" class="form-control form-control-sm" style="width:130px;font-size:0.72rem;padding:2px 4px;" onchange="var u=new URL(location);u.searchParams.set('fecha',this.value);location=u">
+                <input type="date" id="fechaPlanif" name="fecha" value="{{ fecha_sel|date:'Y-m-d' }}" class="form-control form-control-sm" style="width:130px;font-size:0.72rem;padding:2px 4px;" onchange="const p=new URLSearchParams(location.search);p.set('fecha',this.value);location.search=p.toString()">
             </div>
             <span class="badge bg-light text-muted" style="font-size:0.6rem;">{{ actividades_dia|length }}</span>
         </div>
