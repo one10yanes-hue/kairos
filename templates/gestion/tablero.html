@@ -21,13 +21,16 @@
 
     <div class="card shadow-sm mb-2">
         <div class="card-header py-1 px-2 d-flex justify-content-between align-items-center">
-            <small class="fw-semibold"><i class="bi bi-calendar2-day" style="color:var(--accent);"></i> Mis actividades - Hoy {{ hoy|date:"d/m/Y" }}</small>
-            <span class="badge bg-light text-muted" style="font-size:0.6rem;">{{ actividades_hoy|length }}</span>
+            <div class="d-flex align-items-center gap-2">
+                <small class="fw-semibold"><i class="bi bi-calendar2-day" style="color:var(--accent);"></i> Mis actividades</small>
+                <input type="date" id="fechaPlanif" name="fecha" value="{{ fecha_sel|date:'Y-m-d' }}" class="form-control form-control-sm" style="width:130px;font-size:0.72rem;padding:2px 4px;" onchange="var u=new URL(location);u.searchParams.set('fecha',this.value);location=u">
+            </div>
+            <span class="badge bg-light text-muted" style="font-size:0.6rem;">{{ planificadas|length }}</span>
         </div>
         <div class="card-body p-2 tablero-hoy-scroll">
-            {% if actividades_hoy %}
-            <div class="row g-2">
-                {% for a in actividades_hoy %}
+            {% if planificadas %}
+            <div class="row g-2 mx-0 flex-nowrap">
+                {% for a in planificadas %}
                 <div class="col-md-6 col-lg-4 col-xl-3">
                     <div class="card h-100" style="border-left:3px solid {% if a.estado == 'EnCurso' %}var(--warning){% elif a.estado == 'Pausada' %}var(--slate-400){% else %}var(--accent){% endif %};">
                         <div class="card-body py-1 px-2">
@@ -42,7 +45,7 @@
                 {% endfor %}
             </div>
             {% else %}
-            <p class="text-muted text-center py-2 mb-0" style="font-size:0.8rem;">Sin actividades programadas para hoy</p>
+            <p class="text-muted text-center py-2 mb-0" style="font-size:0.8rem;">Sin actividades para {{ fecha_sel|date:"d/m/Y" }}</p>
             {% endif %}
         </div>
     </div>
@@ -315,7 +318,7 @@
                             <span><i class="bi bi-list-check"></i> Actividades Planificadas</span>
                         </label>
                         <div id="pausPlanifContainer" style="display:none;padding-left:1.5rem;max-height:130px;overflow-y:auto;">
-                            {% for p in planificadas %}
+                            {% for p in planificadas_todas %}
                             <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:0.78rem;">
                                 <input type="radio" name="actividad_id" value="{{ p.actividad_id }}" class="form-check-input mt-0" onclick="document.getElementById('pausaSubareaId').value='{{ p.actividad.subarea_id }}'">
                                 <span>{{ p.nombre_actividad|default:p.actividad.nombre }} <small class="text-muted">({{ p.nombre_tipo|default:p.actividad.tipo_actividad.nombre }})</small></span>
@@ -379,7 +382,7 @@
                             <span><i class="bi bi-list-check"></i> Actividades Planificadas</span>
                         </label>
                         <div id="finPlanifContainer" style="display:none;padding-left:1.5rem;max-height:130px;overflow-y:auto;">
-                            {% for p in planificadas %}
+                            {% for p in planificadas_todas %}
                             <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:0.78rem;">
                                 <input type="radio" name="reemplazo_actividad" value="{{ p.pk }}" class="form-check-input mt-0">
                                 <span>{{ p.actividad.nombre }} <small class="text-muted">({{ p.actividad.tipo_actividad.nombre }})</small></span>
@@ -441,7 +444,7 @@
                             <span><i class="bi bi-list-check"></i> Actividades Planificadas</span>
                         </label>
                         <div id="trasPlanifContainer" style="display:none;padding-left:1.5rem;max-height:130px;overflow-y:auto;">
-                            {% for p in planificadas %}
+                            {% for p in planificadas_todas %}
                             <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:0.78rem;">
                                 <input type="radio" name="traslado_reemplazo" value="{{ p.actividad_id }}" class="form-check-input mt-0" onchange="seleccionarReemplazoTraslado(this)">
                                 <span>{{ p.actividad.nombre }} <small class="text-muted">({{ p.actividad.tipo_actividad.nombre }})</small></span>

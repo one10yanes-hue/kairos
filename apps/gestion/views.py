@@ -97,6 +97,17 @@ def tablero(request):
         subarea_id = user_subareas.first().subarea_id
 
     ahora = timezone.now()
+    hoy = ahora.date()
+
+    # Fecha seleccionada por el usuario (default: hoy)
+    fecha_str = request.GET.get("fecha", hoy.isoformat())
+    try:
+        fecha_sel = date.fromisoformat(fecha_str)
+    except (ValueError, TypeError):
+        fecha_sel = hoy
+    fecha_sel_dt = timezone.make_aware(datetime.combine(fecha_sel, datetime.min.time()))
+    fecha_sel_fin = fecha_sel_dt + timedelta(days=1)
+
     asignaciones = AsignacionActividad.objects.filter(
         user=request.user, activo=True,
     ).filter(
@@ -114,7 +125,25 @@ def tablero(request):
             Q(planificacion_detalle__planificacion__subarea_id=subarea_id)
         )
 
-    planificadas = asignaciones.filter(estado="Pendiente")
+    # Planificadas para la fecha seleccionada
+    planificadas = AsignacionActividad.objects.filter(
+        user=request.user, activo=True, estado="Pendiente",
+        planificacion_detalle__isnull=False,
+        planificacion_detalle__fecha_programada__gte=fecha_sel_dt,
+        planificacion_detalle__fecha_programada__lt=fecha_sel_fin,
+    ).select_related("actividad__tipo_actividad", "actividad__subarea__area", "planificacion_detalle__planificacion").prefetch_related("comentarios")
+    if subarea_id:
+        planificadas = planificadas.filter(
+            Q(actividad__subarea_id=subarea_id) |
+            Q(planificacion_detalle__planificacion__subarea_id=subarea_id)
+        )
+
+    # Todas las planificadas pendientes (sin filtro de fecha) para "Iniciar siguiente"
+    planificadas_todas = AsignacionActividad.objects.filter(
+        user=request.user, activo=True, estado="Pendiente",
+        planificacion_detalle__isnull=False,
+    ).select_related("actividad__tipo_actividad", "actividad__subarea__area").order_by("planificacion_detalle__fecha_programada", "actividad__nombre")
+
     en_curso = asignaciones.filter(estado="EnCurso")
     pausadas = asignaciones.filter(estado="Pausada")
     revision = asignaciones.filter(estado="Revision")
@@ -127,21 +156,17 @@ def tablero(request):
         registros__fecha_hora__gte=un_dia_atras
     ).order_by("-registros__fecha_hora").distinct()
 
-    hoy = ahora.date()
-    actividades_hoy = asignaciones.filter(estado__in=["Pendiente", "EnCurso", "Pausada"])
-
     context = {
         "user_subareas": user_subareas,
         "subarea_id": int(subarea_id) if subarea_id else None,
         "empresa_id": int(empresa_id) if empresa_id else None,
         "planificadas": planificadas,
-        "planificadas": planificadas,
+        "planificadas_todas": planificadas_todas,
         "en_curso": en_curso,
         "pausadas": pausadas,
         "revision": revision,
         "finalizadas": finalizadas,
-        "actividades_hoy": actividades_hoy,
-        "hoy": hoy,
+        "fecha_sel": fecha_sel,
         "now": timezone.now(),
         "form_finalizar": RegistroTiempoForm(),
         "form_comentario": ComentarioForm(),
