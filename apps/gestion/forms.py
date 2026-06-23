@@ -14,8 +14,13 @@ class RegistroTiempoForm(forms.ModelForm):
 
     def clean_nro_actividad(self):
         val = self.cleaned_data.get("nro_actividad")
-        if val and val < 0:
-            raise forms.ValidationError("Debe ser un numero positivo.")
+        if val is not None:
+            try:
+                val = int(val)
+            except (ValueError, TypeError):
+                raise forms.ValidationError("Debe ser un numero valido.")
+            if val < 0:
+                raise forms.ValidationError("Debe ser un numero positivo.")
         return val
 
 

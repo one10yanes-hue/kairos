@@ -285,12 +285,11 @@ def pausar_actividad(request, pk):
 def finalizar_actividad(request, pk):
     if request.method != "POST":
         return redirect("gestion:tablero")
-    try:
-        asignacion = get_object_or_404(AsignacionActividad, pk=pk, user=request.user, activo=True)
+    asignacion = get_object_or_404(AsignacionActividad, pk=pk, user=request.user, activo=True)
 
-        if asignacion.estado not in ["EnCurso", "Pausada"]:
-            messages.error(request, f"Solo puedes finalizar actividades En Curso o Pausadas. Estado actual: '{asignacion.get_estado_display()}'.")
-            return redirect("gestion:tablero")
+    if asignacion.estado not in ["EnCurso", "Pausada"]:
+        messages.error(request, f"Solo puedes finalizar actividades En Curso o Pausadas. Estado actual: '{asignacion.get_estado_display()}'.")
+        return redirect("gestion:tablero")
 
         reemplazo = request.POST.get("reemplazo_actividad")
         entregable_file = request.FILES.get("entregable")
@@ -380,10 +379,6 @@ def finalizar_actividad(request, pk):
         else:
             messages.error(request, "El numero de actividad (cantidad realizada) es obligatorio para finalizar.")
         _gestionar_tiempo_inactividad(request.user)
-        return redirect("gestion:tablero")
-    except Exception as e:
-        import traceback
-        messages.error(request, f"ERROR al finalizar: {type(e).__name__}: {e} | {traceback.format_exc()[-300:]}")
         return redirect("gestion:tablero")
 
 
