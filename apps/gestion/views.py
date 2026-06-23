@@ -135,6 +135,15 @@ def tablero(request):
             Q(planificacion_detalle__planificacion__subarea_id=subarea_id)
         )
 
+    # Actividades del dia para la lista horizontal (EnCurso/Pausadas siempre + Pendientes/Finalizadas del dia)
+    actividades_dia = AsignacionActividad.objects.filter(
+        user=request.user, activo=True
+    ).filter(
+        Q(estado__in=["EnCurso", "Pausada"]) |
+        Q(estado="Pendiente", planificacion_detalle__isnull=False, planificacion_detalle__fecha_programada__date=fecha_sel) |
+        Q(estado__in=["Finalizada", "Trasladada"], registros__evento="Finalizacion", registros__fecha_hora__date=fecha_sel)
+    ).select_related("actividad__tipo_actividad", "actividad__subarea__area", "planificacion_detalle__planificacion").distinct()
+
     # Todas las planificadas pendientes (sin filtro de fecha) para "Iniciar siguiente"
     planificadas_todas = AsignacionActividad.objects.filter(
         user=request.user, activo=True, estado="Pendiente",
@@ -159,6 +168,7 @@ def tablero(request):
         "empresa_id": int(empresa_id) if empresa_id else None,
         "planificadas": planificadas,
         "planificadas_todas": planificadas_todas,
+        "actividades_dia": actividades_dia,
         "en_curso": en_curso,
         "pausadas": pausadas,
         "revision": revision,
