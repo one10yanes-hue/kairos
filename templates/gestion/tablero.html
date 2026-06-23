@@ -39,6 +39,11 @@
                                 <span class="badge {% if a.estado == 'Trasladada' %}bg-info text-white{% elif a.estado == 'Revision' %}bg-warning text-dark{% else %}bg-light text-muted{% endif %} ms-1" style="font-size:0.55rem;">{% if a.estado == 'Trasladada' %}Completada por otro{% elif a.estado == 'Revision' %}En revision{% else %}{{ a.get_estado_display }}{% endif %}</span>
                             </div>
                             <small class="text-muted" style="font-size:0.65rem;">{{ a.actividad.tipo_actividad.nombre }}{% if a.estado != "Pendiente" %} • {{ a.tiempo_formateado }}{% endif %}</small>
+                            {% if a.planificacion_detalle and a.planificacion_detalle.fecha_vencimiento %}
+                            <small class="d-block mt-1" style="font-size:0.58rem;color:{% if a.planificacion_detalle.fecha_vencimiento|days_overdue > 0 %}#991b1b{% else %}#64748b{% endif %};">
+                                <i class="bi bi-clock"></i> {{ a.planificacion_detalle.fecha_vencimiento|deadline_label }}
+                            </small>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -321,7 +326,12 @@
                             {% for p in planificadas_todas %}
                             <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:0.78rem;">
                                 <input type="radio" name="actividad_id" value="{{ p.actividad_id }}" class="form-check-input mt-0" onclick="document.getElementById('pausaSubareaId').value='{{ p.actividad.subarea_id }}'">
-                                <span>{{ p.nombre_actividad|default:p.actividad.nombre }} <small class="text-muted">({{ p.nombre_tipo|default:p.actividad.tipo_actividad.nombre }})</small></span>
+                                <div>
+                                    <span>{{ p.nombre_actividad|default:p.actividad.nombre }}</span>
+                                    <small class="text-muted d-block" style="font-size:0.6rem;">{{ p.nombre_tipo|default:p.actividad.tipo_actividad.nombre }}</small>
+                                </div>
+                                {% if p.planificacion_detalle.fecha_programada %}<small class="text-muted ms-auto" style="font-size:0.55rem;" title="Programada">📅 {{ p.planificacion_detalle.fecha_programada|date:"d/m" }}</small>{% endif %}
+                                {% if p.planificacion_detalle.fecha_vencimiento %}<small class="text-muted ms-1" style="font-size:0.55rem;" title="Vence">⏰ {{ p.planificacion_detalle.fecha_vencimiento|date:"d/m" }}</small>{% endif %}
                             </label>
                             {% endfor %}
                         </div>
@@ -347,7 +357,7 @@
 
 <!-- Overlay Finalizar -->
 <div id="finalizarOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:9999;align-items:center;justify-content:center;">
-    <div style="background:#fff;border-radius:0.75rem;max-width:450px;width:90%;padding:1.5rem;box-shadow:0 8px 32px rgba(0,0,0,0.12);">
+    <div style="background:#fff;border-radius:0.75rem;max-width:520px;width:95%;padding:1.5rem;box-shadow:0 8px 32px rgba(0,0,0,0.12);">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h6 class="fw-bold mb-0"><i class="bi bi-check-circle" style="color:var(--success);"></i> Finalizar Actividad</h6>
             <button type="button" class="btn-close" onclick="cerrarFinalizar()"></button>
@@ -385,7 +395,12 @@
                             {% for p in planificadas_todas %}
                             <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:0.78rem;">
                                 <input type="radio" name="reemplazo_actividad" value="{{ p.pk }}" class="form-check-input mt-0">
-                                <span>{{ p.actividad.nombre }} <small class="text-muted">({{ p.actividad.tipo_actividad.nombre }})</small></span>
+                                <div>
+                                    <span>{{ p.actividad.nombre }}</span>
+                                    <small class="text-muted d-block" style="font-size:0.6rem;">{{ p.actividad.tipo_actividad.nombre }}</small>
+                                </div>
+                                {% if p.planificacion_detalle.fecha_programada %}<small class="text-muted ms-auto" style="font-size:0.55rem;" title="Programada">📅 {{ p.planificacion_detalle.fecha_programada|date:"d/m" }}</small>{% endif %}
+                                {% if p.planificacion_detalle.fecha_vencimiento %}<small class="text-muted ms-1" style="font-size:0.55rem;" title="Vence">⏰ {{ p.planificacion_detalle.fecha_vencimiento|date:"d/m" }}</small>{% endif %}
                             </label>
                             {% endfor %}
                         </div>
@@ -447,7 +462,12 @@
                             {% for p in planificadas_todas %}
                             <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:0.78rem;">
                                 <input type="radio" name="traslado_reemplazo" value="{{ p.actividad_id }}" class="form-check-input mt-0" onchange="seleccionarReemplazoTraslado(this)">
-                                <span>{{ p.actividad.nombre }} <small class="text-muted">({{ p.actividad.tipo_actividad.nombre }})</small></span>
+                                <div>
+                                    <span>{{ p.actividad.nombre }}</span>
+                                    <small class="text-muted d-block" style="font-size:0.6rem;">{{ p.actividad.tipo_actividad.nombre }}</small>
+                                </div>
+                                {% if p.planificacion_detalle.fecha_programada %}<small class="text-muted ms-auto" style="font-size:0.55rem;" title="Programada">📅 {{ p.planificacion_detalle.fecha_programada|date:"d/m" }}</small>{% endif %}
+                                {% if p.planificacion_detalle.fecha_vencimiento %}<small class="text-muted ms-1" style="font-size:0.55rem;" title="Vence">⏰ {{ p.planificacion_detalle.fecha_vencimiento|date:"d/m" }}</small>{% endif %}
                             </label>
                             {% endfor %}
                         </div>

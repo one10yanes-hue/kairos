@@ -142,17 +142,20 @@ def tablero(request):
     )]
 
     # Actividades del dia para la lista horizontal (EnCurso/Pausadas siempre + Pendientes/Finalizadas del dia)
-    actividades_dia = AsignacionActividad.objects.filter(
+    actividades_dia_qs = AsignacionActividad.objects.filter(
         user=request.user, activo=True
-    ).annotate(
-        prog_date=TruncDate('planificacion_detalle__fecha_programada'),
-        fin_date=TruncDate('registros__fecha_hora')
     ).filter(
         Q(estado__in=["EnCurso", "Pausada"]) |
-        Q(estado="Pendiente", prog_date=fecha_sel) |
-        Q(estado="Pendiente", planificacion_detalle__fecha_programada__isnull=True) |
-        Q(estado__in=["Finalizada", "Trasladada"], registros__evento="Finalizacion", fin_date=fecha_sel)
-    ).select_related("actividad__tipo_actividad", "actividad__subarea__area", "planificacion_detalle__planificacion").distinct()
+        Q(estado="Pendiente") |
+        Q(estado__in=["Finalizada", "Trasladada"], registros__evento="Finalizacion")
+    ).select_related("actividad__tipo_actividad", "actividad__subarea__area", "planificacion_detalle__planificacion").prefetch_related("registros").distinct()
+    # Filtrar por fecha en Python (evita problemas de timezone en MySQL)
+    actividades_dia = [a for a in actividades_dia_qs if (
+        a.estado in ["EnCurso", "Pausada"] or
+        (a.estado == "Pendiente" and a.planificacion_detalle and a.planificacion_detalle.fecha_programada and a.planificacion_detalle.fecha_programada.date() == fecha_sel) or
+        (a.estado == "Pendiente" and (not a.planificacion_detalle or not a.planificacion_detalle.fecha_programada)) or
+        (a.estado in ["Finalizada", "Trasladada"] and any(r.evento == "Finalizacion" and r.fecha_hora.date() == fecha_sel for r in a.registros.filter(activo=True)))
+    )]
 
     # Todas las planificadas pendientes (sin filtro de fecha) para "Iniciar siguiente"
     planificadas_todas = AsignacionActividad.objects.filter(
