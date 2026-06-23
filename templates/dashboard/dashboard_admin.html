@@ -59,11 +59,17 @@
 
     <div class="card shadow-sm">
         <div class="card-header py-1 px-2 d-flex justify-content-between align-items-center">
-            <small class="fw-semibold"><i class="bi bi-people-fill"></i> Detalle por Usuario</small>
-            <small class="text-muted" style="font-size:0.6rem;">{{ usuarios_stats|length }} usuario(s)</small>
+            <div class="d-flex align-items-center gap-2">
+                <small class="fw-semibold"><i class="bi bi-people-fill"></i> Detalle por Usuario</small>
+                <label class="form-check form-switch mb-0" style="font-size:0.58rem;">
+                    <input class="form-check-input" type="checkbox" id="chkAsignados" checked onchange="filtrarAsignados()" style="width:28px;height:16px;margin-top:0.15rem;cursor:pointer;">
+                    <span class="form-check-label" style="cursor:pointer;">Asignados</span>
+                </label>
+            </div>
+            <small class="text-muted" id="usrCount" style="font-size:0.6rem;">{{ usuarios_stats|length }} usuario(s)</small>
         </div>
         <div class="card-body p-0" style="overflow-x:auto;">
-            <table class="table table-hover mb-0" style="font-size:0.6rem;min-width:700px;">
+            <table class="table table-hover mb-0" style="font-size:0.6rem;min-width:700px;" id="tblUsuarios">
                 <thead class="table-light">
                     <tr>
                         <th style="font-size:0.5rem;">Usuario</th>
@@ -140,7 +146,25 @@
 
 {% block extra_js %}
 <script>
+function filtrarAsignados() {
+    var checked = document.getElementById('chkAsignados').checked;
+    var rows = document.querySelectorAll('#tblUsuarios tbody tr');
+    var count = 0;
+    rows.forEach(function(row) {
+        var totCell = row.cells[1];
+        var tot = parseInt(totCell.textContent) || 0;
+        if (!checked || tot > 0) {
+            row.style.display = '';
+            count++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    document.getElementById('usrCount').textContent = count + ' usuario(s)';
+}
 document.addEventListener('DOMContentLoaded', function() {
+    filtrarAsignados();
+
     var pend = {{ actividades_pendientes }}, curso = {{ actividades_curso }};
     var paus = {{ actividades_pausadas }}, fin = {{ actividades_finalizadas }};
     var total = pend + curso + paus + fin;
