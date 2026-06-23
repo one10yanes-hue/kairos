@@ -125,15 +125,9 @@ def tablero(request):
         )
 
     # Planificadas para la fecha seleccionada
-    # Planificadas: Pendientes del dia seleccionado + las que no tienen fecha (siempre visibles)
+    # Planificadas: TODAS las Pendientes (sin filtro de fecha, como siempre)
     planificadas = AsignacionActividad.objects.filter(
         user=request.user, activo=True, estado="Pendiente",
-    ).annotate(
-        prog_date=TruncDate('planificacion_detalle__fecha_programada')
-    ).filter(
-        Q(prog_date=fecha_sel) |
-        Q(planificacion_detalle__isnull=True) |
-        Q(planificacion_detalle__fecha_programada__isnull=True)
     ).select_related("actividad__tipo_actividad", "actividad__subarea__area", "planificacion_detalle__planificacion").prefetch_related("comentarios")
     if subarea_id:
         planificadas = planificadas.filter(
