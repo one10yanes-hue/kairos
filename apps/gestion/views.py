@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.utils import timezone
 from django.http import JsonResponse
 from django.db.models import Q
+from django.db.models.functions import TruncDate
 from datetime import timedelta, date as dt_date
 from apps.actividades.views import get_admin_subareas
 from apps.actividades.models import Actividad, TipoActividad
@@ -127,7 +128,10 @@ def tablero(request):
     planificadas = AsignacionActividad.objects.filter(
         user=request.user, activo=True, estado="Pendiente",
         planificacion_detalle__isnull=False,
-        planificacion_detalle__fecha_programada__date=fecha_sel,
+    ).annotate(
+        prog_date=TruncDate('planificacion_detalle__fecha_programada')
+    ).filter(
+        prog_date=fecha_sel
     ).select_related("actividad__tipo_actividad", "actividad__subarea__area", "planificacion_detalle__planificacion").prefetch_related("comentarios")
     if subarea_id:
         planificadas = planificadas.filter(
@@ -138,10 +142,13 @@ def tablero(request):
     # Actividades del dia para la lista horizontal (EnCurso/Pausadas siempre + Pendientes/Finalizadas del dia)
     actividades_dia = AsignacionActividad.objects.filter(
         user=request.user, activo=True
+    ).annotate(
+        prog_date=TruncDate('planificacion_detalle__fecha_programada'),
+        fin_date=TruncDate('registros__fecha_hora')
     ).filter(
         Q(estado__in=["EnCurso", "Pausada"]) |
-        Q(estado="Pendiente", planificacion_detalle__isnull=False, planificacion_detalle__fecha_programada__date=fecha_sel) |
-        Q(estado__in=["Finalizada", "Trasladada"], registros__evento="Finalizacion", registros__fecha_hora__date=fecha_sel)
+        Q(estado="Pendiente", planificacion_detalle__isnull=False, prog_date=fecha_sel) |
+        Q(estado__in=["Finalizada", "Trasladada"], registros__evento="Finalizacion", fin_date=fecha_sel)
     ).select_related("actividad__tipo_actividad", "actividad__subarea__area", "planificacion_detalle__planificacion").distinct()
 
     # Todas las planificadas pendientes (sin filtro de fecha) para "Iniciar siguiente"
