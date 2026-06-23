@@ -297,7 +297,7 @@ def finalizar_actividad(request, pk):
         form = RegistroTiempoForm(request.POST, request.FILES)
         if form.is_valid():
             requiere_ent = asignacion.actividad.tipo_actividad.requiere_entregable
-            if not requiere_ent and not form.cleaned_data.get("nro_actividad", "").strip():
+            if not requiere_ent and not str(form.cleaned_data.get("nro_actividad", "") or "").strip():
                 messages.error(request, "El numero de actividad (cantidad realizada) es obligatorio para finalizar.")
                 return redirect("gestion:tablero")
             if requiere_ent and not entregable_file:
@@ -328,7 +328,7 @@ def finalizar_actividad(request, pk):
             registro.fecha_hora = timezone.now()
             registro.save()
 
-            comentario_texto = form.cleaned_data.get("comentario", "").strip()
+            comentario_texto = (form.cleaned_data.get("comentario", "") or "").strip()
             if comentario_texto:
                 Comentario.objects.create(
                     asignacion=asignacion, user=request.user,
