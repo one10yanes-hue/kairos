@@ -119,7 +119,7 @@
                 </div>
                 <div class="card-body p-2 trello-column" id="col-planificadas">
                     {% for a in planificadas %}
-                    <div class="card trello-card mb-2 shadow-sm{% if a.actividad.tipo_actividad.requiere_fecha_limite and a.planificacion_detalle.fecha_vencimiento|days_overdue > 0 %}" style="border-left:3px solid #991b1b;{% endif %}">
+                    <div class="card trello-card mb-2 shadow-sm">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-start mb-1">
                                 <span class="badge bg-light text-muted small">{{ a.nombre_tipo|default:a.actividad.tipo_actividad.nombre }}</span>
@@ -127,13 +127,6 @@
                                 <span class="badge bg-danger" style="font-size:0.5rem;" title="Tiene comentarios de revision"><i class="bi bi-chat-dots"></i> {{ a.comentarios.count }}</span>
                                 {% endif %}
                                 <span class="badge bg-light text-muted" style="font-size:0.6rem;">{{ a.origen|default:"Manual" }}</span>
-                                {% if a.actividad.tipo_actividad.requiere_fecha_limite and a.planificacion_detalle and a.planificacion_detalle.fecha_vencimiento %}
-                                {% with cls=a.planificacion_detalle.fecha_vencimiento|deadline_class %}
-                                <span class="badge {{ cls }}" style="font-size:0.6rem;" title="{{ a.planificacion_detalle.fecha_vencimiento|date:'d/m/Y' }}">
-                                    <i class="bi bi-clock"></i> {{ a.planificacion_detalle.fecha_vencimiento|deadline_label }}
-                                </span>
-                                {% endwith %}
-                                {% endif %}
                             </div>
                             <p class="fw-semibold mb-1 small">{{ a.nombre_actividad|default:a.actividad.nombre }}</p>
                             <p class="text-muted mb-0" style="font-size:0.65rem;">{{ a.actividad.subarea.area.nombre }} &gt; {{ a.actividad.subarea.nombre }}</p>
