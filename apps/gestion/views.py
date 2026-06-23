@@ -291,95 +291,95 @@ def finalizar_actividad(request, pk):
         messages.error(request, f"Solo puedes finalizar actividades En Curso o Pausadas. Estado actual: '{asignacion.get_estado_display()}'.")
         return redirect("gestion:tablero")
 
-        reemplazo = request.POST.get("reemplazo_actividad")
-        entregable_file = request.FILES.get("entregable")
+    reemplazo = request.POST.get("reemplazo_actividad")
+    entregable_file = request.FILES.get("entregable")
 
-        form = RegistroTiempoForm(request.POST, request.FILES)
-        if form.is_valid():
-            requiere_ent = asignacion.actividad.tipo_actividad.requiere_entregable
-            if not requiere_ent and not str(form.cleaned_data.get("nro_actividad", "") or "").strip():
-                messages.error(request, "El numero de actividad (cantidad realizada) es obligatorio para finalizar.")
-                return redirect("gestion:tablero")
-            if requiere_ent and not entregable_file:
-                messages.error(request, "Esta actividad requiere un archivo entregable.")
-                return redirect("gestion:tablero")
-            if (asignacion.planificacion_detalle and asignacion.planificacion_detalle.fecha_vencimiento
-                    and asignacion.actividad.tipo_actividad.requiere_fecha_limite):
-                venc = asignacion.planificacion_detalle.fecha_vencimiento
-                if venc < timezone.now():
-                    asignacion.dias_vencida = ((timezone.now() - venc).days)
-            if requiere_ent and entregable_file:
-                asignacion.entregable = entregable_file
-                asignacion.estado = "Revision"
-                asignacion.estado_revision = "pendiente"
-            else:
-                asignacion.estado = "Finalizada"
-            asignacion.save()
-            # Cancelar cualquier traslado pendiente de esta actividad
-            traslados_pendientes = TrasladoActividad.objects.filter(
-                asignacion_origen=asignacion, estado="Pendiente", activo=True
-            )
-            for t in traslados_pendientes:
-                t.estado = "Cancelado"
-                t.save()
-            registro = form.save(commit=False)
-            registro.asignacion = asignacion
-            registro.evento = "Finalizacion"
-            registro.fecha_hora = timezone.now()
-            registro.save()
-
-            comentario_texto = (form.cleaned_data.get("comentario", "") or "").strip()
-            if comentario_texto:
-                Comentario.objects.create(
-                    asignacion=asignacion, user=request.user,
-                    texto=comentario_texto,
-                    detalle=asignacion.planificacion_detalle
-                )
-
-            if reemplazo == "flash":
-                flash_actividad_id = request.POST.get("flash_actividad_id")
-                flash_subarea_id = request.POST.get("flash_subarea")
-                if flash_actividad_id and flash_subarea_id:
-                    flash_actividad = get_object_or_404(Actividad, pk=flash_actividad_id, subarea_id=flash_subarea_id, activo=True)
-                    _pausar_activas(request.user)
-                    flash_asignacion = AsignacionActividad.objects.create(
-                        user=request.user,
-                        actividad=flash_actividad,
-                        estado="EnCurso",
-                        origen="Manual",
-                        origen_user=request.user,
-                        nombre_actividad=flash_actividad.nombre,
-                        nombre_tipo=flash_actividad.tipo_actividad.nombre,
-                    )
-                    RegistroTiempo.objects.create(
-                        asignacion=flash_asignacion,
-                        evento="Inicio",
-                        fecha_hora=timezone.now(),
-                        comentario=f"Flash iniciada tras finalizar '{asignacion.actividad.nombre}'",
-                    )
-                    messages.success(request, f"Actividad '{asignacion.actividad.nombre}' finalizada. Flash '{flash_actividad.nombre}' iniciada.")
-                else:
-                    messages.error(request, "Error al iniciar la actividad flash.")
-                return redirect("gestion:tablero")
-
-            reemplazo_asig = AsignacionActividad.objects.filter(
-                pk=reemplazo, user=request.user, activo=True, estado="Pendiente"
-            ).first()
-            if reemplazo_asig:
-                _pausar_activas(request.user)
-                reemplazo_asig.estado = "EnCurso"
-                reemplazo_asig.save()
-                RegistroTiempo.objects.create(
-                    asignacion=reemplazo_asig, evento="Inicio", fecha_hora=timezone.now(),
-                    comentario=f"Iniciada tras finalizar '{asignacion.actividad.nombre}'"
-                )
-                messages.success(request, f"Actividad '{asignacion.actividad.nombre}' finalizada. Ahora estas trabajando en '{reemplazo_asig.actividad.nombre}'.")
-            else:
-                messages.success(request, f"Actividad '{asignacion.actividad.nombre}' finalizada.")
-        else:
+    form = RegistroTiempoForm(request.POST, request.FILES)
+    if form.is_valid():
+        requiere_ent = asignacion.actividad.tipo_actividad.requiere_entregable
+        if not requiere_ent and not str(form.cleaned_data.get("nro_actividad", "") or "").strip():
             messages.error(request, "El numero de actividad (cantidad realizada) es obligatorio para finalizar.")
-        _gestionar_tiempo_inactividad(request.user)
-        return redirect("gestion:tablero")
+            return redirect("gestion:tablero")
+        if requiere_ent and not entregable_file:
+            messages.error(request, "Esta actividad requiere un archivo entregable.")
+            return redirect("gestion:tablero")
+        if (asignacion.planificacion_detalle and asignacion.planificacion_detalle.fecha_vencimiento
+                and asignacion.actividad.tipo_actividad.requiere_fecha_limite):
+            venc = asignacion.planificacion_detalle.fecha_vencimiento
+            if venc < timezone.now():
+                asignacion.dias_vencida = ((timezone.now() - venc).days)
+        if requiere_ent and entregable_file:
+            asignacion.entregable = entregable_file
+            asignacion.estado = "Revision"
+            asignacion.estado_revision = "pendiente"
+        else:
+            asignacion.estado = "Finalizada"
+        asignacion.save()
+        # Cancelar cualquier traslado pendiente de esta actividad
+        traslados_pendientes = TrasladoActividad.objects.filter(
+            asignacion_origen=asignacion, estado="Pendiente", activo=True
+        )
+        for t in traslados_pendientes:
+            t.estado = "Cancelado"
+            t.save()
+        registro = form.save(commit=False)
+        registro.asignacion = asignacion
+        registro.evento = "Finalizacion"
+        registro.fecha_hora = timezone.now()
+        registro.save()
+
+        comentario_texto = (form.cleaned_data.get("comentario", "") or "").strip()
+        if comentario_texto:
+            Comentario.objects.create(
+                asignacion=asignacion, user=request.user,
+                texto=comentario_texto,
+                detalle=asignacion.planificacion_detalle
+            )
+
+        if reemplazo == "flash":
+            flash_actividad_id = request.POST.get("flash_actividad_id")
+            flash_subarea_id = request.POST.get("flash_subarea")
+            if flash_actividad_id and flash_subarea_id:
+                flash_actividad = get_object_or_404(Actividad, pk=flash_actividad_id, subarea_id=flash_subarea_id, activo=True)
+                _pausar_activas(request.user)
+                flash_asignacion = AsignacionActividad.objects.create(
+                    user=request.user,
+                    actividad=flash_actividad,
+                    estado="EnCurso",
+                    origen="Manual",
+                    origen_user=request.user,
+                    nombre_actividad=flash_actividad.nombre,
+                    nombre_tipo=flash_actividad.tipo_actividad.nombre,
+                )
+                RegistroTiempo.objects.create(
+                    asignacion=flash_asignacion,
+                    evento="Inicio",
+                    fecha_hora=timezone.now(),
+                    comentario=f"Flash iniciada tras finalizar '{asignacion.actividad.nombre}'",
+                )
+                messages.success(request, f"Actividad '{asignacion.actividad.nombre}' finalizada. Flash '{flash_actividad.nombre}' iniciada.")
+            else:
+                messages.error(request, "Error al iniciar la actividad flash.")
+            return redirect("gestion:tablero")
+
+        reemplazo_asig = AsignacionActividad.objects.filter(
+            pk=reemplazo, user=request.user, activo=True, estado="Pendiente"
+        ).first()
+        if reemplazo_asig:
+            _pausar_activas(request.user)
+            reemplazo_asig.estado = "EnCurso"
+            reemplazo_asig.save()
+            RegistroTiempo.objects.create(
+                asignacion=reemplazo_asig, evento="Inicio", fecha_hora=timezone.now(),
+                comentario=f"Iniciada tras finalizar '{asignacion.actividad.nombre}'"
+            )
+            messages.success(request, f"Actividad '{asignacion.actividad.nombre}' finalizada. Ahora estas trabajando en '{reemplazo_asig.actividad.nombre}'.")
+        else:
+            messages.success(request, f"Actividad '{asignacion.actividad.nombre}' finalizada.")
+    else:
+        messages.error(request, "El numero de actividad (cantidad realizada) es obligatorio para finalizar.")
+    _gestionar_tiempo_inactividad(request.user)
+    return redirect("gestion:tablero")
 
 
 @login_required
