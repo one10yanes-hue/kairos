@@ -28,6 +28,21 @@ def _notificar_usuario(user_id, tipo, data):
         pass  # Si channels no esta disponible, no pasa nada
 
 
+def _log_proyecto(asignacion, descripcion):
+    """Registra en la bitacora del proyecto si la actividad es de un proyecto."""
+    try:
+        tarea = getattr(asignacion, 'tarea_proyecto', None)
+        if tarea:
+            from apps.proyectos.models import RegistroAvance
+            RegistroAvance.objects.create(
+                proyecto=tarea.proyecto, tipo="comentario",
+                descripcion=descripcion,
+                user=asignacion.user, referencia_id=tarea.pk
+            )
+    except Exception:
+        pass
+
+
 def _gestionar_tiempo_inactividad(user):
     """Si el usuario no tiene actividad EnCurso, abre periodo de inactividad.
        Si tiene EnCurso, cierra cualquier periodo abierto."""
@@ -105,7 +120,7 @@ def tablero(request):
         Q(planificacion_detalle__fecha_programada__isnull=True) |
         Q(planificacion_detalle__fecha_programada__lte=ahora) |
         Q(actividad__tipo_actividad__requiere_entregable=True)
-    ).select_related("actividad__tipo_actividad", "actividad__subarea__area", "planificacion_detalle__planificacion"
+    ).select_related("actividad__tipo_actividad", "actividad__subarea__area", "planificacion_detalle__planificacion", "tarea_proyecto__proyecto"
     ).prefetch_related("comentarios")
 
     if subarea_id:
@@ -152,6 +167,26 @@ def tablero(request):
             user_origen=request.user, estado="Pendiente", activo=True
         ).select_related("asignacion_origen__actividad", "user_destino"),
     }
+
+    # --- Tareas pendientes de Revision de Proyectos ---
+    from apps.proyectos.models import Tarea, HistoriaUsuario, MiembroProyecto
+    from apps.proyectos.decorators import ROLES_REVISION
+    proyectos_revisor = MiembroProyecto.objects.filter(
+        user=request.user, activo=True, rol__in=ROLES_REVISION
+    ).values_list("proyecto_id", flat=True)
+    if proyectos_revisor:
+        tareas_revision = Tarea.objects.filter(
+            proyecto_id__in=proyectos_revisor, activo=True, estado="revision"
+        ).select_related("proyecto", "historia", "asignado_a", "creador").order_by("-fecha_creacion")
+        historias_revision = HistoriaUsuario.objects.filter(
+            proyecto_id__in=proyectos_revisor, activo=True, estado="revision"
+        ).select_related("proyecto", "sprint", "creador").prefetch_related("tareas__asignado_a").order_by("-fecha_creacion")
+    else:
+        tareas_revision = Tarea.objects.none()
+        historias_revision = HistoriaUsuario.objects.none()
+    context["tareas_revision"] = tareas_revision
+    context["historias_revision"] = historias_revision
+
     return render(request, "gestion/tablero.html", context)
 
 
@@ -180,6 +215,8 @@ def activar_actividad(request, pk):
 
     messages.success(request, f"Actividad {'iniciada' if evento == 'Inicio' else 'reanudada'}.")
     _gestionar_tiempo_inactividad(request.user)
+    # Registrar en bitacora del proyecto si es tarea de proyecto
+    _log_proyecto(asignacion, f"Tarea iniciada por {request.user.get_full_name()}")
     return redirect("gestion:tablero")
 
 
@@ -249,13 +286,115 @@ def finalizar_actividad(request, pk):
         messages.error(request, f"Solo puedes finalizar actividades En Curso o Pausadas. Estado actual: '{asignacion.get_estado_display()}'.")
         return redirect("gestion:tablero")
 
+    # Validar entregable si el tipo de actividad del proyecto lo requiere
+    if hasattr(asignacion, 'tarea_proyecto') and asignacion.tarea_proyecto:
+        tarea = asignacion.tarea_proyecto
+        if tarea.actividad_catalogo and tarea.actividad_catalogo.tipo_actividad.requiere_entregable:
+            if not asignacion.entregable:
+                messages.error(request, "Este tipo de actividad requiere un archivo entregable. Adjunta el entregable antes de finalizar.")
+                return redirect("gestion:detalle_actividad", pk=asignacion.pk)
+
+    # --- Revision de proyecto: aprobar o rechazar via el modal Finalizar ---
+    accion_rev = request.POST.get("accion_revision")
+    if accion_rev and asignacion.origen == "Revision":
+        # Determinar si es revision de historia o de tarea
+        nombre = asignacion.nombre_actividad
+
+        # Formato tarea: "[Revisar] PRJ-0007-T-013: Crear formulario..."
+        if nombre.startswith("[Revisar] "):
+            from apps.proyectos.models import Tarea
+            tarea_codigo = nombre.split("] ")[1].split(":")[0].strip()
+            tarea = Tarea.objects.filter(codigo=tarea_codigo, activo=True).first()
+            if tarea:
+                if accion_rev == "aprobar":
+                    tarea.estado = "finalizada"
+                    tarea.save()
+                    if tarea.historia:
+                        tarea.historia.actualizar_estado()
+                    AsignacionActividad.objects.filter(
+                        nombre_actividad__startswith=f"[Revisar] {tarea.codigo}:",
+                        activo=True
+                    ).update(activo=False, estado="Finalizada")
+                    from apps.proyectos.models import RegistroAvance
+                    RegistroAvance.objects.create(
+                        proyecto=tarea.proyecto, tipo="tarea_finalizada",
+                        descripcion=f"Tarea {tarea.codigo} aprobada por {request.user.get_full_name()}",
+                        user=request.user, referencia_id=tarea.pk
+                    )
+                    messages.success(request, f"Tarea {tarea.codigo} aprobada.")
+                elif accion_rev == "rechazar":
+                    motivo = request.POST.get("motivo_rechazo", "").strip()
+                    if not motivo:
+                        messages.error(request, "Debes indicar el motivo del rechazo.")
+                        return redirect("gestion:tablero")
+                    tarea.estado = "pendiente"
+                    tarea.save()
+                    if tarea.asignacion:
+                        tarea.asignacion.estado = "Pendiente"
+                        tarea.asignacion.estado_revision = "rechazado"
+                        tarea.asignacion.revision_comentario = motivo
+                        tarea.asignacion.save()
+                    if tarea.historia:
+                        tarea.historia.actualizar_estado()
+                    AsignacionActividad.objects.filter(
+                        nombre_actividad__startswith=f"[Revisar] {tarea.codigo}:",
+                        activo=True
+                    ).update(activo=False, estado="Cancelada")
+                    from apps.proyectos.models import RegistroAvance
+                    RegistroAvance.objects.create(
+                        proyecto=tarea.proyecto, tipo="comentario",
+                        descripcion=f"Tarea {tarea.codigo} rechazada por {request.user.get_full_name()}: {motivo[:80]}",
+                        user=request.user, referencia_id=tarea.pk
+                    )
+                    messages.warning(request, f"Tarea {tarea.codigo} rechazada.")
+            return redirect("gestion:tablero")
+
+        # Formato historia: "[Revision] US-019: Recuperar contraseña"
+        historia_codigo = nombre.split("] ")[1].split(":")[0].strip() if "] " in nombre else ""
+        from apps.proyectos.models import HistoriaUsuario
+        historia = HistoriaUsuario.objects.filter(codigo=historia_codigo, activo=True).first()
+        if historia:
+            if accion_rev == "aprobar":
+                historia.estado = "done"
+                historia.save()
+                from apps.proyectos.models import RegistroAvance
+                RegistroAvance.objects.create(
+                    proyecto=historia.proyecto, tipo="historia_completada",
+                    descripcion=f"Historia {historia.codigo} aprobada por {request.user.get_full_name()}",
+                    user=request.user, referencia_id=historia.pk
+                )
+                messages.success(request, f"Historia {historia.codigo} aprobada.")
+            elif accion_rev == "rechazar":
+                motivo = request.POST.get("motivo_rechazo", "").strip()
+                if not motivo:
+                    messages.error(request, "Debes indicar el motivo del rechazo.")
+                    return redirect("gestion:tablero")
+                # Devolver todas las tareas de la historia a pendiente
+                for t in historia.tareas.filter(activo=True, estado="finalizada"):
+                    t.estado = "pendiente"
+                    t.save()
+                    if t.asignacion:
+                        t.asignacion.estado = "Pendiente"
+                        t.asignacion.estado_revision = "rechazado"
+                        t.asignacion.revision_comentario = motivo
+                        t.asignacion.save()
+                historia.actualizar_estado()
+                messages.warning(request, f"Historia {historia.codigo} rechazada. Tareas devueltas al Ejecutor.")
+            # Cerrar todas las AsignacionActividad de revision para esta historia
+            AsignacionActividad.objects.filter(
+                nombre_actividad__startswith=f"[Revision] {historia.codigo}:",
+                activo=True
+            ).update(activo=False, estado="Finalizada")
+        return redirect("gestion:tablero")
+
     reemplazo = request.POST.get("reemplazo_actividad")
     entregable_file = request.FILES.get("entregable")
 
     form = RegistroTiempoForm(request.POST, request.FILES)
     if form.is_valid():
         requiere_ent = asignacion.actividad.tipo_actividad.requiere_entregable
-        if not requiere_ent and not form.cleaned_data.get("nro_actividad", "").strip():
+        nro = form.cleaned_data.get("nro_actividad")
+        if not requiere_ent and not nro:
             messages.error(request, "El numero de actividad (cantidad realizada) es obligatorio para finalizar.")
             return redirect("gestion:tablero")
         if requiere_ent and not entregable_file:
@@ -331,12 +470,15 @@ def finalizar_actividad(request, pk):
                 asignacion=reemplazo_asig, evento="Inicio", fecha_hora=timezone.now(),
                 comentario=f"Iniciada tras finalizar '{asignacion.actividad.nombre}'"
             )
-            messages.success(request, f"Actividad '{asignacion.actividad.nombre}' finalizada. Ahora estas trabajando en '{reemplazo_asig.actividad.nombre}'.")
+            messages.success(request, f"'{asignacion.actividad.nombre}' finalizada. Ahora estas en '{reemplazo_asig.actividad.nombre}'.")
+        elif reemplazo == "nada" or not reemplazo:
+            messages.success(request, f"'{asignacion.actividad.nombre}' finalizada.")
         else:
-            messages.success(request, f"Actividad '{asignacion.actividad.nombre}' finalizada.")
+            messages.success(request, f"'{asignacion.actividad.nombre}' finalizada.")
     else:
         messages.error(request, "El numero de actividad (cantidad realizada) es obligatorio para finalizar.")
     _gestionar_tiempo_inactividad(request.user)
+    _log_proyecto(asignacion, f"Tarea finalizada por {request.user.get_full_name()}")
     return redirect("gestion:tablero")
 
 
@@ -382,8 +524,9 @@ def crear_no_programada(request):
         messages.success(request, f"Actividad '{actividad.nombre}' iniciada.")
         request.audit_record_id = asignacion.pk
         request.audit_modelo = "AsignacionActividad"
-        _gestionar_tiempo_inactividad(request.user)
-        return redirect("gestion:tablero")
+    _gestionar_tiempo_inactividad(request.user)
+    _log_proyecto(asignacion, f"Tarea pausada por {request.user.get_full_name()}{' (' + motivo_pausa + ')' if motivo_pausa else ''}")
+    return redirect("gestion:tablero")
 
     context = {
         "user_subareas": user_subareas,
@@ -416,6 +559,18 @@ def trasladar_actividad(request, pk):
         return redirect("gestion:tablero")
 
     user_destino = get_object_or_404(User, pk=user_destino_id, activo=True)
+    # Si la actividad pertenece a un proyecto, validar que el destino sea miembro Ejecutor
+    try:
+        tarea_proyecto = asignacion.tarea_proyecto
+        if tarea_proyecto:
+            from apps.proyectos.models import MiembroProyecto
+            if not MiembroProyecto.objects.filter(
+                proyecto=tarea_proyecto.proyecto, user=user_destino, activo=True, rol="ejecutor"
+            ).exists():
+                messages.error(request, "El usuario destino debe ser miembro Ejecutor del proyecto.")
+                return redirect("gestion:tablero")
+    except:
+        pass
     actividad_reemplazo = None
     if actividad_reemplazo_id:
         actividad_reemplazo = get_object_or_404(Actividad, pk=actividad_reemplazo_id, activo=True)
@@ -440,6 +595,7 @@ def trasladar_actividad(request, pk):
 
     request.audit_record_id = traslado.pk
     request.audit_modelo = "TrasladoActividad"
+    _log_proyecto(asignacion, f"Traslado de {request.user.get_full_name()} a {user_destino.get_full_name()}{' (' + motivo + ')' if motivo else ''}")
     _notificar_usuario(user_destino.pk, "nuevo_traslado", {
         "origen": request.user.get_full_name(),
         "actividad": asignacion.actividad.nombre,
@@ -542,6 +698,7 @@ def aceptar_traslado(request, pk):
                 comentario=f"Iniciada automaticamente tras trasladar '{asignacion.actividad.nombre}'"
             )
 
+    _log_proyecto(asignacion, f"Traslado aceptado: de {traslado.user_origen.get_full_name()} a {request.user.get_full_name()}")
     messages.success(request, f"Traslado aceptado. Actividad '{asignacion.actividad.nombre}' agregada a tu tablero.")
     _notificar_usuario(traslado.user_origen.pk, "traslado_respuesta", {
         "accion": "aceptado",
@@ -584,33 +741,62 @@ def buscar_usuarios_traslado(request):
     if request.headers.get("x-requested-with") == "XMLHttpRequest":
         query = request.GET.get("q", "")
         subarea_id = request.GET.get("subarea_id")
+        proyecto_id = request.GET.get("proyecto_id")
         usuarios = User.objects.filter(
             activo=True, is_active=True
         ).exclude(id=request.user.id)
 
-        # Mismo nivel: Usuario solo ve Usuario, Admin ve Usuarios
-        if request.user.rol.nombre == "Usuario":
-            usuarios = usuarios.filter(
-                Q(rol__nombre="Usuario") | Q(roles_adicionales__nombre="Usuario")
-            )
-        elif request.user.rol.nombre == "Admin":
-            usuarios = usuarios.filter(
-                Q(rol__nombre__in=["Usuario", "Admin"]) | Q(roles_adicionales__nombre__in=["Usuario", "Admin"])
-            ).exclude(rol__nombre="Master")
+        # Si es tarea de proyecto, filtrar solo Ejecutores del proyecto
+        if proyecto_id:
+            from apps.proyectos.models import MiembroProyecto
+            # Verificar que el Admin tiene acceso a las subareas del proyecto
+            if request.user.rol.nombre == "Admin":
+                from apps.estructura.utils import get_admin_subareas
+                admin_subareas = get_admin_subareas(request.user)
+                from apps.proyectos.models import Proyecto
+                proyecto = Proyecto.objects.filter(pk=proyecto_id, subareas__in=admin_subareas).first()
+                if not proyecto:
+                    return JsonResponse([], safe=False)
+            miembros_ids = MiembroProyecto.objects.filter(
+                proyecto_id=proyecto_id, activo=True, rol="ejecutor"
+            ).values_list("user_id", flat=True)
+            usuarios = usuarios.filter(id__in=miembros_ids)
+        else:
+            # Mismo nivel: Usuario solo ve Usuario, Admin ve Usuarios
+            if request.user.rol.nombre == "Usuario":
+                usuarios = usuarios.filter(
+                    Q(rol__nombre="Usuario") | Q(roles_adicionales__nombre="Usuario")
+                )
+            elif request.user.rol.nombre == "Admin":
+                usuarios = usuarios.filter(
+                    Q(rol__nombre__in=["Usuario", "Admin"]) | Q(roles_adicionales__nombre__in=["Usuario", "Admin"])
+                ).exclude(rol__nombre="Master")
 
-        usuarios = usuarios.filter(
-            subareas__subarea__in=SubArea.objects.filter(usuarios__user=request.user, activo=True),
-            subareas__activo=True
-        )
-        if query:
             usuarios = usuarios.filter(
-                Q(nombre__icontains=query) | Q(apellido__icontains=query) | Q(cedula__icontains=query)
+                subareas__subarea__in=SubArea.objects.filter(usuarios__user=request.user, activo=True),
+                subareas__activo=True
             )
-        if subarea_id:
-            usuarios = usuarios.filter(subareas__subarea_id=subarea_id, subareas__activo=True)
+            if subarea_id:
+                usuarios = usuarios.filter(subareas__subarea_id=subarea_id, subareas__activo=True)
         data = [{"id": u.id, "nombre": u.get_full_name(), "cedula": u.cedula} for u in usuarios.distinct()[:10]]
         return JsonResponse(data, safe=False)
     return JsonResponse([], safe=False)
+
+
+@login_required
+def asignacion_proyecto(request, pk):
+    from apps.gestion.models import AsignacionActividad
+    try:
+        a = AsignacionActividad.objects.get(pk=pk, activo=True)
+        try:
+            tarea = a.tarea_proyecto
+        except:
+            tarea = None
+        if tarea:
+            return JsonResponse({"proyecto_id": tarea.proyecto_id, "proyecto_codigo": tarea.proyecto.codigo})
+    except:
+        pass
+    return JsonResponse({"proyecto_id": None})
 
 
 @login_required
@@ -649,6 +835,7 @@ def agregar_comentario(request, pk):
         comentario.user = request.user
         comentario.detalle = asignacion.planificacion_detalle
         comentario.save()
+        _log_proyecto(asignacion, f"Comentario de {request.user.get_full_name()}: {comentario.texto[:60]}")
         messages.success(request, "Comentario agregado.")
     return redirect("gestion:detalle_actividad", pk=pk)
 
@@ -661,11 +848,43 @@ def detalle_actividad(request, pk):
     ).exists()
     if asignacion.user != request.user and request.user.rol.nombre not in ["Admin", "Master"] and not es_traslado_destino:
         return redirect("gestion:tablero")
+    # Admin: verificar que tiene acceso a la subarea de la actividad
+    if asignacion.user != request.user and request.user.rol.nombre == "Admin":
+        from apps.estructura.utils import get_admin_subareas
+        admin_subareas = get_admin_subareas(request.user)
+        if asignacion.actividad.subarea_id not in [s.pk for s in admin_subareas]:
+            messages.error(request, "No tienes acceso a la subarea de esta actividad.")
+            return redirect("gestion:tablero")
     registros = RegistroTiempo.objects.filter(asignacion=asignacion, activo=True).order_by("-fecha_hora")
     comentarios = Comentario.objects.filter(asignacion=asignacion, activo=True).order_by("-fecha_creacion")
     traslados = TrasladoActividad.objects.filter(asignacion_origen=asignacion, activo=True)
     colaboraciones = Colaboracion.objects.filter(asignacion=asignacion, activo=True)
     historial = RevisionHistorial.objects.filter(asignacion=asignacion).select_related("user").order_by("-fecha")
+    # Timeline unificado (como tarea_detail)
+    timeline = []
+    timeline.append({
+        "fecha": asignacion.fecha_asignacion, "tipo": "creacion", "icono": "plus-circle",
+        "descripcion": f"Asignacion creada por {asignacion.origen_user.get_full_name() if asignacion.origen_user else 'Sistema'}"
+    })
+    for r in registros:
+        icono = {"Inicio":"play-fill","Pausa":"pause-fill","Reanudacion":"arrow-clockwise","Finalizacion":"check-circle-fill","Traslado":"arrow-right-circle"}.get(r.evento,"circle")
+        timeline.append({"fecha":r.fecha_hora,"tipo":"registro","icono":icono,"descripcion":f"{r.evento} por {asignacion.user.get_full_name()}{' ('+r.motivo_pausa+')' if r.motivo_pausa else ''}"})
+    for c in comentarios:
+        timeline.append({"fecha":c.fecha_creacion,"tipo":"comentario","icono":"chat-text","descripcion":f"Comentario de {c.user.get_full_name()}: {c.texto[:60]}"})
+    for t in traslados:
+        timeline.append({"fecha":t.fecha_creacion,"tipo":"traslado","icono":"arrow-right-circle","descripcion":f"Traslado de {t.user_origen.get_full_name()} a {t.user_destino.get_full_name()} ({t.estado})"})
+    for h in historial:
+        timeline.append({"fecha":h.fecha,"tipo":"revision","icono":"check-circle" if h.accion=="aprobar" else "x-circle","descripcion":f"{'Aprobacion' if h.accion=='aprobar' else 'Rechazo'} por {h.user.get_full_name()}"})
+    if asignacion.estado_revision == "aprobado":
+        timeline.append({"fecha":asignacion.fecha_revision or asignacion.fecha_update,"tipo":"revision","icono":"check-circle","descripcion":"Tarea aprobada"})
+    elif asignacion.estado_revision == "rechazado" and asignacion.revision_comentario:
+        timeline.append({"fecha":asignacion.fecha_revision or asignacion.fecha_update,"tipo":"revision","icono":"x-circle","descripcion":f"Tarea rechazada: {asignacion.revision_comentario[:80]}"})
+    if hasattr(asignacion, 'tarea_proyecto') and asignacion.tarea_proyecto:
+        from apps.proyectos.models import Incidencia
+        for inc in Incidencia.objects.filter(tarea=asignacion.tarea_proyecto, activo=True):
+            timeline.append({"fecha":inc.fecha_creacion,"tipo":"incidencia","icono":"bug","descripcion":f"Bug {inc.codigo}: {inc.titulo[:60]} ({inc.get_estado_display()})"})
+    timeline.sort(key=lambda x: x["fecha"], reverse=True)
+
     context = {
         "asignacion": asignacion,
         "registros": registros,
@@ -674,6 +893,7 @@ def detalle_actividad(request, pk):
         "colaboraciones": colaboraciones,
         "historial": historial,
         "tiempo_efectivo": asignacion.tiempo_formateado(),
+        "timeline": timeline,
     }
     return render(request, "gestion/detalle_actividad.html", context)
 
@@ -722,22 +942,6 @@ def calendario(request):
                 "origen": a.origen or "Manual",
             },
         })
-        if pd and pd.fecha_vencimiento:
-            ld = pd.fecha_vencimiento.date() if hasattr(pd.fecha_vencimiento, 'date') else pd.fecha_vencimiento
-            events.append({
-                "id": f"v{a.pk}",
-                "title": f"Vence: {a.actividad.nombre}",
-                "start": ld.isoformat(),
-                "allDay": True,
-                "backgroundColor": "#fecaca",
-                "textColor": "#991b1b",
-                "borderColor": "#fca5a5",
-                "extendedProps": {
-                    "tipo": a.actividad.tipo_actividad.nombre,
-                    "estado": "Vence",
-                    "tiempo": "",
-                },
-            })
 
     # Grid del mes para navegacion
     month_cal = []
