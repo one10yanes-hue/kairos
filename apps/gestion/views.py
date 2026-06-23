@@ -466,7 +466,7 @@ def finalizar_actividad(request, pk):
         registro.fecha_hora = timezone.now()
         registro.save()
 
-        comentario_texto = form.cleaned_data.get("comentario", "").strip()
+        comentario_texto = (form.cleaned_data.get("comentario", "") or "").strip()
         if comentario_texto:
             Comentario.objects.create(
                 asignacion=asignacion, user=request.user,
