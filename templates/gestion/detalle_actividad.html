@@ -132,42 +132,21 @@
             </div>
 
             <div class="card shadow-sm mb-3">
-                <div class="card-header py-1 px-2"><small class="fw-semibold"><i class="bi bi-clock-history"></i> Linea de tiempo</small></div>
-                <div class="card-body p-3">
-                    {% if registros %}
-                    <div style="position:relative;padding-left:1.75rem;">
-                        <div style="position:absolute;left:0.65rem;top:0;bottom:0;width:2px;background:var(--slate-200);"></div>
-                        {% for r in registros %}
-                        <div style="position:relative;padding-bottom:1rem;">
-                            <div style="position:absolute;left:-1.45rem;top:0.3rem;width:12px;height:12px;border-radius:50%;
-                                {% if r.evento == 'Inicio' or r.evento == 'Finalizacion' %}background:var(--success);border:2px solid var(--success);
-                                {% elif r.evento == 'Pausa' %}background:var(--warning);border:2px solid var(--warning);
-                                {% elif r.evento == 'Reanudacion' %}background:var(--accent);border:2px solid var(--accent);
-                                {% else %}background:var(--slate-400);border:2px solid var(--slate-400);{% endif %}">
-                            </div>
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div>
-                                    <span class="fw-semibold" style="font-size:0.8rem;color:
-                                        {% if r.evento == 'Inicio' or r.evento == 'Finalizacion' %}var(--success)
-                                        {% elif r.evento == 'Pausa' %}var(--warning)
-                                        {% elif r.evento == 'Reanudacion' %}var(--accent)
-                                        {% else %}var(--slate-500){% endif %};">
-                                        {{ r.get_evento_display }}
-                                    </span>
-                                    {% if r.evento == 'Pausa' and r.motivo_pausa %}
-                                    <span class="badge bg-light text-muted ms-1" style="font-size:0.6rem;">{{ r.motivo_pausa }}</span>
-                                    {% endif %}
-                                    {% if r.comentario %}<p class="mb-0 text-muted mt-1" style="font-size:0.75rem;">{{ r.comentario }}</p>{% endif %}
-                                    {% if r.nro_actividad %}<p class="mb-0 text-muted" style="font-size:0.75rem;">Nro: {{ r.nro_actividad }}</p>{% endif %}
-                                </div>
-                                <small class="text-muted" style="font-size:0.7rem;white-space:nowrap;margin-left:0.5rem;">{{ r.fecha_hora|date:"d/m H:i:s" }}</small>
-                            </div>
-                        </div>
-                        {% endfor %}
+                <div class="card-header py-1 px-2 d-flex justify-content-between align-items-center">
+                    <small class="fw-semibold"><i class="bi bi-clock-history"></i> Linea de tiempo</small>
+                    <span class="badge bg-light text-muted" style="font-size:0.5rem;">{{ timeline|length }} eventos</span>
+                </div>
+                <div class="card-body p-2" style="max-height:300px;overflow-y:auto;">
+                    {% for ev in timeline %}
+                    <div class="d-flex gap-2 py-1 border-bottom" style="font-size:0.68rem;">
+                        <span class="text-muted" style="min-width:32px;font-size:0.52rem;">{{ ev.fecha|date:"d/m" }}</span>
+                        <span style="color:{% if ev.tipo == 'creacion' or ev.tipo == 'planificacion' %}var(--accent){% elif ev.tipo == 'registro' and 'Finalizacion' in ev.descripcion %}var(--success){% elif ev.tipo == 'registro' and 'Pausa' in ev.descripcion %}var(--slate-500){% elif ev.tipo == 'comentario' %}var(--accent){% elif ev.tipo == 'traslado' and 'aceptado' in ev.descripcion %}var(--success){% elif ev.tipo == 'traslado' and 'rechazado' in ev.descripcion %}var(--danger){% elif ev.tipo == 'traslado' %}var(--warning){% else %}var(--slate-700){% endif %}"><i class="bi bi-{{ ev.icono }}"></i></span>
+                        <span>{{ ev.descripcion }}</span>
+                        <span class="text-muted" style="font-size:0.52rem;margin-left:auto;">{{ ev.fecha|date:"H:i" }}</span>
                     </div>
-                    {% else %}
-                    <p class="text-muted text-center py-3 mb-0" style="font-size:0.8rem;">Sin registros de tiempo</p>
-                    {% endif %}
+                    {% empty %}
+                    <p class="text-muted text-center py-3 mb-0" style="font-size:0.8rem;">Sin eventos registrados</p>
+                    {% endfor %}
                 </div>
             </div>
         </div>

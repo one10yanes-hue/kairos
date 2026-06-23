@@ -711,6 +711,31 @@ def detalle_actividad(request, pk):
     planificacion = None
     if asignacion.planificacion_detalle and asignacion.planificacion_detalle.planificacion:
         planificacion = asignacion.planificacion_detalle.planificacion
+    # Timeline unificado: registros + traslados + comentarios
+    timeline = []
+    timeline.append({
+        "fecha": asignacion.fecha_asignacion, "tipo": "creacion", "icono": "plus-circle",
+        "descripcion": f"Asignacion creada por {asignacion.origen_user.get_full_name() if asignacion.origen_user else 'Sistema'}"
+    })
+    if planificacion:
+        desc_planif = planificacion.descripcion or "Sin descripcion"
+        timeline.append({
+            "fecha": planificacion.fecha_creacion, "tipo": "planificacion", "icono": "calendar-check",
+            "descripcion": f"Planificacion: {desc_planif[:80]}"
+        })
+    for r in registros:
+        icono = {"Inicio":"play-fill","Pausa":"pause-fill","Reanudacion":"arrow-clockwise","Finalizacion":"check-circle-fill"}.get(r.evento,"circle")
+        timeline.append({"fecha":r.fecha_hora,"tipo":"registro","icono":icono,"descripcion":f"{r.evento}{' ('+r.motivo_pausa+')' if r.motivo_pausa else ''}"})
+    for c in comentarios:
+        timeline.append({"fecha":c.fecha_creacion,"tipo":"comentario","icono":"chat-text","descripcion":f"{c.user.get_full_name()}: {c.texto[:60]}"})
+    for t in traslados:
+        timeline.append({"fecha":t.fecha_creacion,"tipo":"traslado","icono":"arrow-right-circle","descripcion":f"Solicitud de traslado de {t.user_origen.get_full_name()} a {t.user_destino.get_full_name()}"})
+        if t.estado == "Aceptado":
+            timeline.append({"fecha":t.fecha_update or t.fecha_creacion,"tipo":"traslado","icono":"check-circle","descripcion":f"Traslado aceptado por {t.user_destino.get_full_name()}"})
+        elif t.estado == "Rechazado":
+            motivo = t.motivo or ""
+            timeline.append({"fecha":t.fecha_update or t.fecha_creacion,"tipo":"traslado","icono":"x-circle","descripcion":f"Traslado rechazado por {t.user_destino.get_full_name()}{' (' + motivo[:40] + ')' if motivo else ''}"})
+    timeline.sort(key=lambda x: x["fecha"], reverse=True)
     context = {
         "asignacion": asignacion,
         "registros": registros,
@@ -720,6 +745,7 @@ def detalle_actividad(request, pk):
         "historial": historial,
         "tiempo_efectivo": asignacion.tiempo_formateado(),
         "planificacion": planificacion,
+        "timeline": timeline,
     }
     return render(request, "gestion/detalle_actividad.html", context)
 
