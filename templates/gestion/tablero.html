@@ -66,12 +66,12 @@
                 <small class="fw-semibold"><i class="bi bi-calendar2-day" style="color:var(--accent);"></i> Mis actividades</small>
                 <input type="date" id="fechaPlanif" name="fecha" value="{{ fecha_sel|date:'Y-m-d' }}" class="form-control form-control-sm" style="width:130px;font-size:0.72rem;padding:2px 4px;" onchange="var u=new URL(location);u.searchParams.set('fecha',this.value);location=u">
             </div>
-            <span class="badge bg-light text-muted" style="font-size:0.6rem;">{{ planificadas|length }}</span>
+            <span class="badge bg-light text-muted" style="font-size:0.6rem;">{{ actividades_dia|length }}</span>
         </div>
         <div class="card-body p-2 tablero-hoy-scroll">
-            {% if planificadas %}
+            {% if actividades_dia %}
             <div class="row g-2 mx-0 flex-nowrap">
-                {% for a in planificadas %}
+                {% for a in actividades_dia %}
                 <div class="col-auto px-1" style="min-width:220px;">
                     <div class="card h-100" style="border-left:3px solid {% if a.estado == 'EnCurso' %}var(--warning){% elif a.estado == 'Pausada' %}var(--slate-400){% else %}var(--accent){% endif %};">
                         <div class="card-body py-1 px-2">
