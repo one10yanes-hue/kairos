@@ -1,12 +1,14 @@
 {% extends "base.html" %}{% block content %}
 <div class="container-fluid mt-3">
-    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <h5 class="fw-bold mb-0"><i class="bi bi-calendar-plus" style="color:var(--accent);font-size:1.2rem;"></i> Mi Planificacion</h5>
-        <a href="{% url 'planificacion_self_list' %}" class="btn btn-outline-secondary btn-sm" style="font-size:0.78rem;">Cancelar</a>
+    <div class="row justify-content-center">
+        <div class="col-lg-7 col-xl-6">
+    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+        <h5 class="fw-bold mb-0" style="font-size:1rem;"><i class="bi bi-calendar-plus" style="color:var(--accent);font-size:1rem;"></i> Mi Planificacion</h5>
+        <a href="{% url 'planificacion_self_list' %}" class="btn btn-outline-secondary btn-sm" style="font-size:0.72rem;">Cancelar</a>
     </div>
 
     <div class="card shadow-sm">
-        <div class="card-body p-4">
+        <div class="card-body p-3">
             <form method="POST" id="planForm">
                 {% csrf_token %}
 
@@ -35,18 +37,17 @@
                     </div>
                 </div>
 
-                <hr class="my-4">
+                <hr class="my-3">
 
-                <h6 class="fw-semibold mb-3" style="font-size:0.85rem;color:var(--slate-700);">Asignar Actividades (para ti)</h6>
+                <h6 class="fw-semibold mb-2" style="font-size:0.78rem;color:var(--slate-700);">Asignar Actividades (para ti)</h6>
 
-                <div class="mb-4">
-                    <div class="d-flex gap-2 mb-2">
-                        <input type="text" class="form-control form-control-sm" id="filtroActividades" placeholder="Buscar..." style="font-size:0.75rem;flex:1;">
-                        <select id="filtroTipo" class="form-select form-select-sm" style="font-size:0.7rem;width:130px;" onchange="filtrarActividades()">
-                            <option value="">Todos</option>
-                        </select>
-                    </div>
-                    <div id="actividadesContainer" class="border rounded" style="max-height:260px;overflow-y:auto;font-size:0.85rem;">
+                <div class="d-flex gap-2 mb-2">
+                    <input type="text" class="form-control form-control-sm" id="filtroActividades" placeholder="Buscar..." style="font-size:0.7rem;flex:1;">
+                    <select id="filtroTipo" class="form-select form-select-sm" style="font-size:0.65rem;width:110px;" onchange="filtrarActividades()">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+                <div id="actividadesContainer" class="border rounded mb-3" style="max-height:180px;overflow-y:auto;font-size:0.78rem;">
                         {% if preserve_selection and actividades %}
                         {% for a in actividades %}
                         <label class="d-flex align-items-center gap-2 px-3 py-2 actividad-item" style="cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:0.85rem;">
@@ -60,26 +61,28 @@
                     </div>
                 </div>
 
-                <hr class="my-4">
+                <hr class="my-3">
 
-                <div class="row align-items-end mb-2">
-                    <div class="col-md-4">
-                        <label class="form-label fw-semibold" style="font-size:0.85rem;">Fecha Planificacion</label>
-                        <input type="date" name="fecha_programada" id="fechaProgramadaInput" class="form-control" style="font-size:0.85rem;" value="{{ fecha_programada_value }}" min="{% now 'Y-m-d' %}">
-                        <small class="text-muted" id="fechaLimiteMsg" style="font-size:0.7rem;">Si se deja vacia, aparece inmediato</small>
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold mb-1" style="font-size:0.75rem;">Fecha Planificacion</label>
+                        <input type="date" name="fecha_programada" id="fechaProgramadaInput" class="form-control form-control-sm" style="font-size:0.78rem;" value="{{ fecha_programada_value }}" min="{% now 'Y-m-d' %}">
+                        <small class="text-muted" id="fechaLimiteMsg" style="font-size:0.6rem;">Si se deja vacia, aparece inmediato</small>
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-semibold" style="font-size:0.85rem;">Fecha Vencimiento</label>
-                        <input type="date" name="fecha_vencimiento" id="fechaVencimiento" class="form-control" style="font-size:0.85rem;" value="{{ fecha_vencimiento_value }}" min="{% now 'Y-m-d' %}">
-                        <small class="text-muted" id="fechaVencimientoMsg" style="font-size:0.7rem;">Deadline de la actividad</small>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold mb-1" style="font-size:0.75rem;">Fecha Vencimiento</label>
+                        <input type="date" name="fecha_vencimiento" id="fechaVencimiento" class="form-control form-control-sm" style="font-size:0.78rem;" value="{{ fecha_vencimiento_value }}" min="{% now 'Y-m-d' %}">
+                        <small class="text-muted" id="fechaVencimientoMsg" style="font-size:0.6rem;">Deadline de la actividad</small>
                     </div>
                 </div>
 
-                <div class="text-end mt-4">
-                    <a href="{% url 'planificacion_self_list' %}" class="btn btn-outline-secondary me-2" style="font-size:0.85rem;">Cancelar</a>
-                    <button type="submit" class="btn btn-primary" style="font-size:0.85rem;"><i class="bi bi-check-lg"></i> Crear Planificacion</button>
+                <div class="text-end mt-3">
+                    <a href="{% url 'planificacion_self_list' %}" class="btn btn-outline-secondary btn-sm me-2" style="font-size:0.75rem;">Cancelar</a>
+                    <button type="submit" class="btn btn-primary btn-sm" style="font-size:0.75rem;"><i class="bi bi-check-lg"></i> Crear Planificacion</button>
                 </div>
             </form>
+        </div>
+    </div>
         </div>
     </div>
 </div>
