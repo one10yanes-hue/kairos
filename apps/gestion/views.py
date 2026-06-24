@@ -863,7 +863,8 @@ def perfil(request):
     nro_values = registros.filter(evento="Finalizacion", nro_actividad__isnull=False).values_list("nro_actividad", flat=True)
     total_items = sum(int(v) for v in nro_values if v.strip().isdigit())
 
-    hoy_registros = registros.filter(fecha_hora__date=hoy).order_by("-fecha_hora")[:15]
+    hoy_registros_raw = registros.order_by("-fecha_hora")[:50]
+    hoy_registros = [r for r in hoy_registros_raw if r.fecha_hora.date() == hoy][:15]
     ultimas = asignaciones.select_related("actividad", "actividad__tipo_actividad").order_by("-fecha_asignacion")[:5]
 
     return render(request, "gestion/perfil.html", {
