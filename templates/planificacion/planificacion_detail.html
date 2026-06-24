@@ -43,7 +43,8 @@
                     {% for d in detalles %}
                     {% for a in d.asignaciones.all %}
                     <tr>
-                        <td class="fw-semibold">{{ d.actividad.nombre }}
+                        <td class="fw-semibold">
+                            <a href="{% url 'gestion:detalle_actividad' a.pk %}" class="text-decoration-none">{{ d.actividad.nombre }}</a>
                             <small class="d-block text-muted" style="font-size:0.65rem;">{{ d.actividad.tipo_actividad.nombre }}</small>
                         </td>
                         <td style="font-size:0.78rem;">{{ a.user.get_full_name }}</td>
@@ -91,7 +92,7 @@
                 <tbody>
                     {% for a in pendientes %}
                     <tr>
-                        <td class="fw-semibold">{{ a.actividad.nombre }}</td>
+                        <td class="fw-semibold"><a href="{% url 'gestion:detalle_actividad' a.pk %}" class="text-decoration-none">{{ a.actividad.nombre }}</a></td>
                         <td>{{ a.user.get_full_name }}</td>
                         <td><span class="badge {% if a.estado == 'Pausada' %}bg-secondary{% else %}bg-light text-muted{% endif %}">{{ a.estado }}</span></td>
                         <td>{% if a.planificacion_detalle.fecha_programada %}{{ a.planificacion_detalle.fecha_programada|date:"d/m/Y" }}{% else %}-{% endif %}</td>
