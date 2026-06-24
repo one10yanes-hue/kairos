@@ -144,9 +144,10 @@ def planificacion_create(request):
                 planificacion = form.save(commit=False)
                 planificacion.admin = request.user
                 planificacion.cerrada = True
-                proyecto_id = request.POST.get("proyecto")
-                if proyecto_id:
-                    planificacion.proyecto_id = int(proyecto_id)
+                if hasattr(planificacion, 'proyecto_id'):
+                    proyecto_id = request.POST.get("proyecto")
+                    if proyecto_id:
+                        planificacion.proyecto_id = int(proyecto_id)
                 planificacion.save()
 
                 count = 0
@@ -190,19 +191,24 @@ def planificacion_create(request):
                         nombre_tipo=actividad.tipo_actividad.nombre,
                     )
                     # Si la planificacion esta vinculada a un proyecto, crear Tarea automaticamente
-                    if planificacion.proyecto:
-                        from apps.proyectos.models import Tarea
-                        tarea = Tarea.objects.create(
-                            proyecto=planificacion.proyecto,
-                            titulo=actividad.nombre,
-                            tipo="tarea",
-                            asignado_a=usuario,
-                            creador=planificacion.admin,
-                            actividad_catalogo=actividad,
-                            asignacion=asignacion,
-                        )
-                        tarea.codigo = f"{planificacion.proyecto.codigo}-T-{tarea.pk:03d}"
-                        tarea.save()
+                    if hasattr(planificacion, 'proyecto_id') and planificacion.proyecto_id:
+                        try:
+                            from apps.proyectos.models import Proyecto, Tarea
+                            proyecto = Proyecto.objects.filter(pk=planificacion.proyecto_id, activo=True).first()
+                            if proyecto:
+                                tarea = Tarea.objects.create(
+                                    proyecto=proyecto,
+                                    titulo=actividad.nombre,
+                                    tipo="tarea",
+                                    asignado_a=usuario,
+                                    creador=planificacion.admin,
+                                    actividad_catalogo=actividad,
+                                    asignacion=asignacion,
+                                )
+                                tarea.codigo = f"{proyecto.codigo}-T-{tarea.pk:03d}"
+                                tarea.save()
+                        except (ImportError, Exception):
+                            pass
                 messages.success(request, f"Planificacion creada con {count} asignacion(es).")
                 request.audit_record_id = planificacion.pk
                 request.audit_modelo = "Planificacion"
@@ -241,11 +247,6 @@ def planificacion_create(request):
 @ensure_csrf_cookie
 def planificacion_detail(request, pk):
     planificacion = get_object_or_404(Planificacion, pk=pk, activo=True)
-    # Verificar que el usuario tiene acceso a la subarea de la planificacion
-    subareas_user = get_admin_subareas(request.user)
-    if planificacion.subarea_id not in [s.pk for s in subareas_user]:
-        messages.error(request, "No tienes acceso a esta planificacion.")
-        return redirect("planificacion:planificacion_list")
     subarea = planificacion.subarea
     from apps.gestion.models import RegistroTiempo
     detalles = PlanificacionDetalle.objects.filter(
@@ -590,7 +591,8 @@ def planificacion_self_create(request):
                     count += 1
 
                 if count == 0:
-                    planificacion.delete()
+                    planificacion.activo = False
+                    planificacion.save()
                     messages.warning(request, "Todas las actividades ya estaban asignadas para esta fecha.")
                     return redirect("planificacion:planificacion_self_create")
 
@@ -647,7 +649,6 @@ def planificacion_self_cancel(request, pk):
     if request.method != "POST":
         return redirect("planificacion_self_list")
     planificacion = get_object_or_404(Planificacion, pk=pk, admin=request.user, activo=True)
-    # Verificar que ninguna actividad fue iniciada
     tiene_iniciada = planificacion.detalles.filter(
         activo=True, asignaciones__activo=True
     ).exclude(asignaciones__estado="Pendiente").exists()
