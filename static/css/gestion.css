@@ -82,7 +82,8 @@
     scrollbar-width: none;
 }
 .trello-card .card-body > .d-flex:last-child::-webkit-scrollbar { display: none; }
-.trello-card .card-body > .d-flex:last-child .btn {
+.trello-card .card-body > .d-flex:last-child .btn,
+.trello-card .card-body > .d-flex:last-child form {
     width: 26px;
     height: 24px;
     display: inline-flex;
@@ -90,6 +91,11 @@
     justify-content: center;
     flex-shrink: 0;
     padding: 0 !important;
+    margin: 0;
+    line-height: 1;
+}
+.trello-card .card-body > .d-flex:last-child form .btn {
+    width: 100%; height: 100%;
 }
 
 .trello-card:hover {
