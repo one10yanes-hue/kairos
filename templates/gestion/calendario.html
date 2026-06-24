@@ -45,8 +45,8 @@ document.addEventListener('DOMContentLoaded', function() {
         initialView: '{{ vista }}',
         initialDate: '{{ year }}-{{ month|stringformat:"02d" }}-01',
         locale: 'es',
-        headerToolbar: { left:'prev,next today', center:'title', right:'' },
-        buttonText: { today:'Hoy' },
+        headerToolbar: { left:'prev,next today', center:'title', right:'dayGridMonth,timeGridWeek' },
+        buttonText: { today:'Hoy', dayGridMonth:'Mes', timeGridWeek:'Semana' },
         events: events,
         eventDidMount: function(info) {
             var e = info.event;
@@ -55,6 +55,12 @@ document.addEventListener('DOMContentLoaded', function() {
             if (ep.tiempo && ep.tiempo !== '00:00:00') tooltipContent += ' &middot; ' + ep.tiempo;
             tooltipContent += '</small>';
             new bootstrap.Tooltip(info.el, { title: tooltipContent, html: true, placement:'top', container:'body' });
+        },
+        eventClick: function(info) {
+            var id = info.event.id;
+            if (id && !id.startsWith('v')) {
+                window.location.href = '/usuario/actividad/' + id + '/detalle/';
+            }
         },
         height: 'auto',
         dayMaxEvents: 3,
