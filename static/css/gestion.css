@@ -87,6 +87,14 @@
 
 .trello-card .fw-semibold {
     color: var(--slate-700);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.trello-card .text-muted[style*="font-size:0.65rem"] {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .timer-live {
