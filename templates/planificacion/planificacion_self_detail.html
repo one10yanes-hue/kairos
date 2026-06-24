@@ -34,7 +34,8 @@
                     {% for d in detalles %}
                     {% for a in d.asignaciones.all %}
                     <tr>
-                        <td class="fw-semibold">{{ d.actividad.nombre }}
+                        <td class="fw-semibold">
+                            <a href="{% url 'gestion:detalle_actividad' a.pk %}" class="text-decoration-none">{{ d.actividad.nombre }}</a>
                             <small class="d-block text-muted" style="font-size:0.65rem;">{{ d.actividad.tipo_actividad.nombre }}</small>
                         </td>
                         <td>
