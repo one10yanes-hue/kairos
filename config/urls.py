@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.shortcuts import redirect
 from . import views as config_views
+from apps.planificacion import views as planificacion_views
 
 from django.conf import settings
 from django.conf.urls.static import static
@@ -31,6 +32,8 @@ urlpatterns = [
     path("admin/", include("apps.reportes.urls")),
 
     path("usuario/", include("apps.gestion.urls")),
+    path("usuario/planificaciones/", planificacion_views.planificacion_self_list, name="planificacion_self_list"),
+    path("usuario/planificaciones/crear/", planificacion_views.planificacion_self_create, name="planificacion_self_create"),
 ]
 
 if settings.DEBUG:

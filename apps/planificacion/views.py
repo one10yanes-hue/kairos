@@ -507,3 +507,137 @@ def cancelar_pendiente(request, pk):
     asignacion.save()
     messages.success(request, f"'{nombre}' de {usuario} cancelada.")
     return redirect("planificacion:planificacion_detail", pk=asignacion.planificacion_detalle.planificacion_id)
+
+
+# ========= AUTOPLANIFICACION (USUARIO) =========
+
+@login_required
+def planificacion_self_list(request):
+    planificaciones = Planificacion.objects.filter(
+        detalles__user=request.user, activo=True
+    ).distinct().order_by("-fecha_creacion").select_related("subarea__area", "admin").prefetch_related("detalles__actividad")
+
+    return render(request, "planificacion/planificacion_self_list.html", {
+        "planificaciones": planificaciones,
+    })
+
+
+@login_required
+def planificacion_self_create(request):
+    subareas = SubArea.objects.filter(
+        usuarios__user=request.user, activo=True
+    ).select_related("area")
+    subarea_id = request.POST.get("subarea") if request.method == "POST" else None
+
+    actividades = Actividad.objects.none()
+    if subarea_id:
+        actividades = Actividad.objects.filter(subarea_id=subarea_id, activo=True).select_related("tipo_actividad")
+
+    actividad_ids = []
+    fecha_programada_value = ""
+    fecha_vencimiento_value = ""
+    nombre_value = ""
+    descripcion_value = ""
+    subarea_value = ""
+    preserve_selection = False
+
+    if request.method == "POST":
+        form = PlanificacionForm(request.POST)
+        form.fields["subarea"].queryset = subareas
+        actividad_ids = [x for x in request.POST.getlist("actividades") if x]
+        fecha_programada_value = request.POST.get("fecha_programada", "")
+        fecha_vencimiento_value = request.POST.get("fecha_vencimiento", "")
+        nombre_value = request.POST.get("nombre", "")
+        descripcion_value = request.POST.get("descripcion", "")
+        subarea_value = request.POST.get("subarea", "")
+
+        if form.is_valid() and actividad_ids:
+            actividades_qs = Actividad.objects.filter(pk__in=actividad_ids, activo=True, subarea__in=subareas).select_related("tipo_actividad")
+
+            requiere_fecha = actividades_qs.filter(tipo_actividad__requiere_fecha_limite=True).exists()
+            if requiere_fecha and not fecha_vencimiento_value:
+                messages.error(request, "Una o mas actividades requieren fecha de vencimiento.")
+            else:
+                if not fecha_programada_value:
+                    fecha_programada = timezone.localtime(timezone.now()).strftime("%Y-%m-%d")
+                else:
+                    if fecha_programada_value < timezone.localtime(timezone.now()).strftime("%Y-%m-%d"):
+                        messages.error(request, "La fecha programada no puede ser anterior a hoy.")
+                        return redirect("planificacion:planificacion_self_create")
+                    fecha_programada = fecha_programada_value
+
+                if fecha_vencimiento_value and fecha_vencimiento_value < timezone.localtime(timezone.now()).strftime("%Y-%m-%d"):
+                    messages.error(request, "La fecha de vencimiento no puede ser anterior a hoy.")
+                    return redirect("planificacion:planificacion_self_create")
+
+                planificacion = form.save(commit=False)
+                planificacion.admin = request.user
+                planificacion.cerrada = True
+                planificacion.save()
+
+                count = 0
+                detalles_creados = []
+                for actividad in actividades_qs:
+                    if PlanificacionDetalle.objects.filter(
+                        planificacion=planificacion, actividad=actividad, user=request.user, activo=True
+                    ).exists():
+                        continue
+                    if AsignacionActividad.objects.filter(
+                        user=request.user, actividad=actividad, activo=True,
+                        planificacion_detalle__fecha_programada=fecha_programada,
+                    ).exclude(estado__in=["Finalizada", "Cancelada", "Trasladada"]).exists():
+                        continue
+                    detalles_creados.append(actividad)
+                    count += 1
+
+                if count == 0:
+                    planificacion.delete()
+                    messages.warning(request, "Todas las actividades ya estaban asignadas para esta fecha.")
+                    return redirect("planificacion:planificacion_self_create")
+
+                for actividad in detalles_creados:
+                    detalle = PlanificacionDetalle.objects.create(
+                        planificacion=planificacion,
+                        actividad=actividad,
+                        user=request.user,
+                        fecha_asignacion=timezone.now(),
+                        fecha_programada=fecha_programada or None,
+                        fecha_vencimiento=fecha_vencimiento_value or None,
+                    )
+                    AsignacionActividad.objects.create(
+                        planificacion_detalle=detalle,
+                        user=request.user,
+                        actividad=actividad,
+                        estado="Pendiente",
+                        origen="Planificacion",
+                        origen_user=request.user,
+                        nombre_actividad=actividad.nombre,
+                        nombre_tipo=actividad.tipo_actividad.nombre,
+                    )
+                messages.success(request, f"Planificacion creada con {count} asignacion(es).")
+                return redirect("planificacion:planificacion_self_list")
+        elif not form.is_valid():
+            messages.error(request, f"Revisa los campos del formulario: {', '.join(f'{k}: {v[0]}' for k, v in form.errors.items())}")
+        else:
+            messages.error(request, "Debes seleccionar al menos una actividad.")
+
+        preserve_selection = True
+
+    else:
+        form = PlanificacionForm()
+        form.fields["subarea"].queryset = subareas
+        if subareas.count() == 1:
+            form.fields["subarea"].initial = subareas.first().pk
+            form.fields["subarea"].empty_label = None
+
+    return render(request, "planificacion/planificacion_self_form.html", {
+        "form": form, "subareas": subareas,
+        "actividades": actividades,
+        "actividad_ids": [int(x) for x in actividad_ids],
+        "fecha_programada_value": fecha_programada_value,
+        "fecha_vencimiento_value": fecha_vencimiento_value,
+        "nombre_value": nombre_value,
+        "descripcion_value": descripcion_value,
+        "subarea_value": subarea_value,
+        "preserve_selection": preserve_selection,
+    })
