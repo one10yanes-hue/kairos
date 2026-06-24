@@ -502,6 +502,7 @@ def cancelar_pendiente(request, pk):
     nombre = asignacion.actividad.nombre
     usuario = asignacion.user.get_full_name()
     asignacion.estado = "Cancelada"
+    asignacion.activo = False
     asignacion.save()
     messages.success(request, f"'{nombre}' de {usuario} cancelada.")
     return redirect("planificacion:planificacion_detail", pk=asignacion.planificacion_detalle.planificacion_id)
