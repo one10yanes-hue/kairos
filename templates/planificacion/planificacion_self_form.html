@@ -7,18 +7,16 @@
 
     <div class="card shadow-sm">
         <div class="card-body p-4">
-            <form method="POST" id="planForm" data-api-act="{% url 'estructura:api_buscar' 'actividad' %}" data-preserve="{{ preserve_selection|lower }}">
+            <form method="POST" id="planForm">
                 {% csrf_token %}
 
                 <div class="row g-3 mb-4">
                     <div class="col-12">
                         <label class="form-label fw-semibold" style="font-size:0.85rem;">SubArea</label>
-                        <input type="text" class="form-control mb-2" id="filtroSubarea" placeholder="Filtrar subareas..." onkeyup="filtrarSubareas()" style="font-size:0.85rem;">
-                        <select name="subarea" id="subareaSelect" class="form-select" required
-                            onclick="onSubareaClick(this)" onchange="onSubareaChange(this)" style="font-size:0.85rem;">
+                        <select name="subarea" id="subareaSelect" class="form-select dynamic-select" data-model="subarea" data-placeholder="Filtrar subareas..." required onchange="onSubareaChange(this)" style="font-size:0.85rem;">
                             <option value="" disabled>Seleccione una subarea...</option>
                             {% for s in subareas %}
-                            <option value="{{ s.pk }}"{% if s.pk|stringformat:"i" == subarea_value %} selected{% elif subareas|length == 1 and not subarea_value %} selected{% endif %}>{{ s.nombre }} ({{ s.area.nombre }})</option>
+                            <option value="{{ s.pk }}"{% if s.pk|stringformat:"i" == subarea_value %} selected{% elif subareas|length == 1 and not subarea_value %} selected{% endif %} data-label="{{ s.nombre }}">{{ s.nombre }} ({{ s.area.nombre }})</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -27,7 +25,7 @@
                 <div class="row g-3 mb-4">
                     <div class="col-md-12">
                         <label class="form-label fw-semibold" style="font-size:0.85rem;">Nombre</label>
-                        <input type="text" name="nombre" class="form-control" placeholder="Ej: Sprint 1, Planificacion semanal..." required style="font-size:0.85rem;" value="{{ nombre_value|escape }}">
+                        <input type="text" name="nombre" class="form-control" placeholder="Ej: Planificacion semanal..." required style="font-size:0.85rem;" value="{{ nombre_value|escape }}">
                     </div>
                 </div>
                 <div class="row g-3 mb-4">
@@ -41,26 +39,24 @@
 
                 <h6 class="fw-semibold mb-3" style="font-size:0.85rem;color:var(--slate-700);">Asignar Actividades (para ti)</h6>
 
-                <div class="row g-4 mb-4">
-                    <div class="col-12">
-                        <div class="d-flex gap-2 mb-2">
-                            <input type="text" class="form-control form-control-sm" id="filtroActividades" placeholder="Buscar..." style="font-size:0.75rem;flex:1;">
-                            <select id="filtroTipo" class="form-select form-select-sm" style="font-size:0.7rem;width:120px;" onchange="filtrarActividades()">
-                                <option value="">Todos</option>
-                            </select>
-                        </div>
-                        <div id="actividadesContainer" class="border rounded" style="max-height:280px;overflow-y:scroll;font-size:0.85rem;">
-                            {% if preserve_selection and actividades %}
-                            {% for a in actividades %}
-                            <label class="d-flex align-items-center gap-2 px-3 py-2 actividad-item" style="cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:0.85rem;">
-                                <input type="checkbox" name="actividades" value="{{ a.id }}" class="form-check-input mt-0 actividad-check" data-requiere-fecha="{{ a.tipo_actividad.requiere_fecha_limite|lower }}" onchange="toggleFechaProgramada();actualizarVolumen()"{% if a.id in actividad_ids %} checked{% endif %}>
-                                <span>{{ a.nombre }} ({{ a.tipo_actividad.nombre }})</span>
-                            </label>
-                            {% endfor %}
-                            {% else %}
-                            <p class="text-muted text-center py-4 mb-0">Primero selecciona una subarea</p>
-                            {% endif %}
-                        </div>
+                <div class="mb-4">
+                    <div class="d-flex gap-2 mb-2">
+                        <input type="text" class="form-control form-control-sm" id="filtroActividades" placeholder="Buscar..." style="font-size:0.75rem;flex:1;">
+                        <select id="filtroTipo" class="form-select form-select-sm" style="font-size:0.7rem;width:130px;" onchange="filtrarActividades()">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div id="actividadesContainer" class="border rounded" style="max-height:260px;overflow-y:auto;font-size:0.85rem;">
+                        {% if preserve_selection and actividades %}
+                        {% for a in actividades %}
+                        <label class="d-flex align-items-center gap-2 px-3 py-2 actividad-item" style="cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:0.85rem;">
+                            <input type="checkbox" name="actividades" value="{{ a.id }}" class="form-check-input mt-0 actividad-check" data-requiere-fecha="{{ a.tipo_actividad.requiere_fecha_limite|lower }}" onchange="actividadCheck(this);toggleFechaProgramada();actualizarVolumen()"{% if a.id in actividad_ids %} checked{% endif %}>
+                            <span>{{ a.nombre }} ({{ a.tipo_actividad.nombre }})</span>
+                        </label>
+                        {% endfor %}
+                        {% else %}
+                        <p class="text-muted text-center py-4 mb-0">Selecciona una subarea para ver actividades</p>
+                        {% endif %}
                     </div>
                 </div>
 
@@ -89,52 +85,85 @@
 </div>
 
 <script>
-// Variables del template
-var subareas = [{% for s in subareas %}{id:{{ s.pk }},name:'{{ s.nombre|escapejs }}',area:'{{ s.area.nombre|escapejs }}'},{% endfor %}];
+var currentSubareaId = '{{ subarea_value }}' || null;
+var checkedActividades = {{ actividad_ids|safe }};
+var timerAct = null;
 
-function onSubareaClick(el) {
-    if (el.dataset.loaded) return;
-    el.dataset.loaded = '1';
-    onSubareaChange(el);
-}
-function onSubareaChange(el) {
-    var subareaId = el.value;
-    if (!subareaId) return;
-    var apiUrl = document.getElementById('planForm').dataset.apiAct + '?subarea_id=' + subareaId;
-    fetch(apiUrl).then(function(r){return r.json()}).then(function(data){
-        var html = '', tipos = new Set();
-        data.forEach(function(a){ 
-            var checked = (document.querySelector('input[name="actividades"][value="'+a.id+'"]:checked') ? ' checked' : '');
-            html += '<label class="d-flex align-items-center gap-2 px-3 py-2 actividad-item" style="cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:0.85rem;">';
-            html += '<input type="checkbox" name="actividades" value="'+a.id+'" class="form-check-input mt-0 actividad-check" data-requiere-fecha="'+a.requiere_fecha_limite+'" onchange="toggleFechaProgramada();actualizarVolumen()"'+checked+'>';
-            html += '<span>'+a.text+'</span></label>';
-            tipos.add(a.tipo || '');
-        });
-        document.getElementById('actividadesContainer').innerHTML = html || '<p class="text-muted text-center py-4 mb-0">Sin actividades en esta subarea</p>';
-        var tipoSel = document.getElementById('filtroTipo');
-        tipoSel.innerHTML = '<option value="">Todos</option>';
-        tipos.forEach(function(t){ tipoSel.innerHTML += '<option value="'+t+'">'+t+'</option>'; });
-    });
-}
-function filtrarActividades() {
-    var texto = (document.getElementById('filtroActividades').value || '').toLowerCase();
-    var tipo = document.getElementById('filtroTipo').value;
-    document.querySelectorAll('.actividad-item').forEach(function(el){
-        var name = el.textContent.toLowerCase();
-        var tipoAct = el.querySelector('span').textContent.split('(')[1] || '';
-        tipoAct = tipoAct.replace(')','').trim();
-        var ok = (!texto || name.indexOf(texto) >= 0) && (!tipo || tipoAct === tipo);
-        el.style.display = ok ? '' : 'none';
-    });
-}
-function filtrarSubareas() {
-    var texto = (document.getElementById('filtroSubarea').value || '').toLowerCase();
+document.addEventListener('DOMContentLoaded', function() {
     var sel = document.getElementById('subareaSelect');
-    Array.from(sel.options).forEach(function(opt, i){
-        if (i === 0) return;
-        opt.style.display = (!texto || opt.textContent.toLowerCase().indexOf(texto) >= 0) ? '' : 'none';
-    });
+    if (sel && sel.value) {
+        onSubareaChange(sel);
+    }
+    var ia = document.getElementById('filtroActividades');
+    if (ia) ia.addEventListener('input', function(){ debounceSearch(this); });
+    var preserve = {{ preserve_selection|yesno:"true,false" }};
+    if (preserve) { actualizarVolumen(); toggleFechaProgramada(); }
+});
+
+function debounceSearch(el) {
+    clearTimeout(timerAct);
+    timerAct = setTimeout(function(){ searchItems(el.value); }, 300);
 }
+
+function searchItems(q) {
+    if (!currentSubareaId) return;
+    var url = '/admin/api/buscar/actividad/?subarea_id=' + currentSubareaId + '&limite=100&q=' + encodeURIComponent(q || '') + '&_=' + Date.now();
+    var tipoFiltro = document.getElementById('filtroTipo').value;
+    if (tipoFiltro) url += '&tipo_nombre=' + encodeURIComponent(tipoFiltro);
+    fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(function(r){ return r.json(); })
+        .then(function(d){ renderActividades(d); });
+}
+
+function onSubareaChange(el) {
+    var id = el ? el.value : null;
+    if (!id) {
+        document.getElementById('actividadesContainer').innerHTML = '<p class="text-muted text-center py-4 mb-0">Selecciona una subarea para ver actividades</p>';
+        return;
+    }
+    currentSubareaId = id;
+    document.getElementById('filtroTipo').innerHTML = '<option value="">Todos</option>';
+    document.getElementById('actividadesContainer').innerHTML = '<p class="text-muted text-center py-4 mb-0">Cargando...</p>';
+    // Cargar tipos
+    fetch('/admin/api/buscar/tipo_actividad/?subarea_id=' + id + '&_=' + Date.now(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+            var sel = document.getElementById('filtroTipo');
+            sel.innerHTML = '<option value="">Todos</option>';
+            d.forEach(function(t){ sel.innerHTML += '<option value="'+t.label+'">'+t.label+'</option>'; });
+        });
+    // Cargar actividades
+    fetch('/admin/api/buscar/actividad/?subarea_id=' + id + '&limite=100&_=' + Date.now(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(function(r){ return r.json(); })
+        .then(function(d){ renderActividades(d); });
+}
+
+function renderActividades(d) {
+    var c = document.getElementById('actividadesContainer');
+    if (!d.length) { c.innerHTML = '<p class="text-muted text-center py-4 mb-0">No hay actividades en esta subarea</p>'; return; }
+    var current = new Set();
+    document.querySelectorAll('#actividadesContainer input[name="actividades"]:checked').forEach(function(cb){ current.add(cb.value); });
+    checkedActividades.forEach(function(v){ current.add(v); });
+    checkedActividades = Array.from(current);
+    var h = '';
+    d.forEach(function(a){
+        var checked = current.has(String(a.id)) ? 'checked' : '';
+        h += '<label class="d-flex align-items-center gap-2 px-3 py-2 actividad-item" style="cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:0.85rem;"><input type="checkbox" name="actividades" value="'+a.id+'" class="form-check-input mt-0 actividad-check" data-requiere-fecha="'+a.requiere_fecha_limite+'" '+checked+' onchange="actividadCheck(this);toggleFechaProgramada();actualizarVolumen()"><span>'+a.text+'</span></label>';
+    });
+    c.innerHTML = h; actualizarVolumen();
+}
+
+function actividadCheck(cb) {
+    if (cb.checked) { checkedActividades.push(cb.value); }
+    else { checkedActividades = checkedActividades.filter(function(v){ return v !== cb.value; }); }
+}
+
+function filtrarActividades() {
+    var tipo = document.getElementById('filtroTipo').value;
+    var q = document.getElementById('filtroActividades').value;
+    searchItems(q);
+}
+
 function toggleFechaProgramada() {
     var checks = document.querySelectorAll('.actividad-check:checked');
     var m = document.getElementById('fechaLimiteMsg');
@@ -145,7 +174,8 @@ function toggleFechaProgramada() {
 }
 function actualizarVolumen() {
     var total = document.querySelectorAll('#actividadesContainer input:checked').length;
-    document.getElementById('volumenTotal').textContent = total ? total + ' actividad(es)': '';
+    var el = document.getElementById('volumenTotal');
+    if (el) el.textContent = total ? total + ' actividad(es)' : '';
 }
 </script>
 {% endblock %}
