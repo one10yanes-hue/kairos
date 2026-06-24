@@ -64,12 +64,12 @@
                 <hr class="my-3">
 
                 <div class="row g-2">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="form-label fw-semibold mb-1" style="font-size:0.75rem;">Fecha Planificacion</label>
                         <input type="date" name="fecha_programada" id="fechaProgramadaInput" class="form-control form-control-sm" style="font-size:0.78rem;" value="{{ fecha_programada_value }}" min="{% now 'Y-m-d' %}">
                         <small class="text-muted" id="fechaLimiteMsg" style="font-size:0.6rem;">Si se deja vacia, aparece inmediato</small>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="form-label fw-semibold mb-1" style="font-size:0.75rem;">Fecha Vencimiento</label>
                         <input type="date" name="fecha_vencimiento" id="fechaVencimiento" class="form-control form-control-sm" style="font-size:0.78rem;" value="{{ fecha_vencimiento_value }}" min="{% now 'Y-m-d' %}">
                         <small class="text-muted" id="fechaVencimientoMsg" style="font-size:0.6rem;">Deadline de la actividad</small>
