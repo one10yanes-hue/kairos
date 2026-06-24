@@ -1,14 +1,9 @@
 {% extends "base.html" %}{% block content %}
 <div class="container-fluid mt-3">
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <h5 class="fw-bold mb-0"><i class="bi bi-calendar-check" style="color:var(--accent);font-size:1.2rem;"></i> Planificaciones</h5>
+        <h5 class="fw-bold mb-0"><i class="bi bi-calendar-check" style="color:var(--accent);font-size:1.2rem;"></i> Planificaciones equipos de trabajos</h5>
         <a href="{% url 'planificacion:planificacion_create' %}" class="btn btn-primary btn-sm" style="font-size:0.78rem;"><i class="bi bi-plus-lg"></i> Nueva Planificacion</a>
     </div>
-
-    <ul class="nav nav-pills mb-3 gap-2" style="font-size:0.82rem;">
-        <li class="nav-item"><span class="nav-link active fw-semibold py-1 px-3" style="background:var(--accent);">Planificaciones por equipo</span></li>
-        <li class="nav-item"><a href="{% url 'planificacion_self_list' %}" class="nav-link py-1 px-3 text-decoration-none" style="color:var(--accent);border:1px solid var(--accent);">Mis Planificaciones</a></li>
-    </ul>
 
     <form method="GET" class="row g-2 mb-3">
         <div class="col-md-4">
