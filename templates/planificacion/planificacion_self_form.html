@@ -13,7 +13,7 @@
                 <div class="row g-3 mb-4">
                     <div class="col-12">
                         <label class="form-label fw-semibold" style="font-size:0.85rem;">SubArea</label>
-                        <select name="subarea" id="subareaSelect" class="form-select dynamic-select" data-model="subarea" data-placeholder="Filtrar subareas..." required onchange="onSubareaChange(this)" style="font-size:0.85rem;">
+                        <select name="subarea" id="subareaSelect" class="form-select" required onchange="onSubareaChange(this)" style="font-size:0.85rem;">
                             <option value="" disabled>Seleccione una subarea...</option>
                             {% for s in subareas %}
                             <option value="{{ s.pk }}"{% if s.pk|stringformat:"i" == subarea_value %} selected{% elif subareas|length == 1 and not subarea_value %} selected{% endif %} data-label="{{ s.nombre }}">{{ s.nombre }} ({{ s.area.nombre }})</option>
@@ -107,7 +107,7 @@ function debounceSearch(el) {
 
 function searchItems(q) {
     if (!currentSubareaId) return;
-    var url = '/admin/api/buscar/actividad/?subarea_id=' + currentSubareaId + '&limite=100&q=' + encodeURIComponent(q || '') + '&_=' + Date.now();
+    var url = '/master/api/buscar/actividad/?subarea_id=' + currentSubareaId + '&limite=100&q=' + encodeURIComponent(q || '') + '&_=' + Date.now();
     var tipoFiltro = document.getElementById('filtroTipo').value;
     if (tipoFiltro) url += '&tipo_nombre=' + encodeURIComponent(tipoFiltro);
     fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
@@ -125,15 +125,14 @@ function onSubareaChange(el) {
     document.getElementById('filtroTipo').innerHTML = '<option value="">Todos</option>';
     document.getElementById('actividadesContainer').innerHTML = '<p class="text-muted text-center py-4 mb-0">Cargando...</p>';
     // Cargar tipos
-    fetch('/admin/api/buscar/tipo_actividad/?subarea_id=' + id + '&_=' + Date.now(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+    fetch('/master/api/buscar/tipo_actividad/?subarea_id=' + id + '&_=' + Date.now(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
         .then(function(r){ return r.json(); })
         .then(function(d){
             var sel = document.getElementById('filtroTipo');
             sel.innerHTML = '<option value="">Todos</option>';
             d.forEach(function(t){ sel.innerHTML += '<option value="'+t.label+'">'+t.label+'</option>'; });
         });
-    // Cargar actividades
-    fetch('/admin/api/buscar/actividad/?subarea_id=' + id + '&limite=100&_=' + Date.now(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+    fetch('/master/api/buscar/actividad/?subarea_id=' + id + '&limite=100&_=' + Date.now(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
         .then(function(r){ return r.json(); })
         .then(function(d){ renderActividades(d); });
 }
