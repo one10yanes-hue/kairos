@@ -17,7 +17,8 @@
 /* Hoy y Traslados: altura limitada con scroll interno */
 .tablero-hoy-scroll {
     max-height: 160px;
-    overflow-y: auto;
+    overflow-x: auto;
+    overflow-y: hidden;
 }
 
 .tablero-traslados-scroll {
@@ -86,6 +87,14 @@
 
 .trello-card .fw-semibold {
     color: var(--slate-700);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.trello-card .text-muted[style*="font-size:0.65rem"] {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .timer-live {
