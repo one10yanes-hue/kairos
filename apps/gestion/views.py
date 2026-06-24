@@ -771,11 +771,10 @@ def calendario(request):
 
     # Construir eventos FullCalendar
     color_map = {
-        "Pendiente": {"bg": "#93c5fd", "txt": "#1e40af"},
-        "EnCurso": {"bg": "#86efac", "txt": "#166534"},
-        "Pausada": {"bg": "#cbd5e1", "txt": "#475569"},
-        "Finalizada": {"bg": "#bbf7d0", "txt": "#166534"},
-        "Vence": {"bg": "#fecaca", "txt": "#991b1b"},
+        "Pendiente": {"bg": "#e8eaf0", "txt": "#475569"},
+        "EnCurso": {"bg": "#d4f5e0", "txt": "#1a7a3a"},
+        "Pausada": {"bg": "#fef9e7", "txt": "#8a6100"},
+        "Finalizada": {"bg": "#e2f0e8", "txt": "#0d9488"},
     }
     events = []
     for a in asignaciones:
