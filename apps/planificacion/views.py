@@ -12,7 +12,7 @@ from apps.actividades.models import Actividad
 from apps.gestion.models import AsignacionActividad
 from .models import Planificacion, PlanificacionDetalle
 from .forms import PlanificacionForm, PlanificacionDetalleForm
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 
 def _get_proyectos_opt(subareas):
@@ -513,13 +513,91 @@ def cancelar_pendiente(request, pk):
 
 @login_required
 def planificacion_self_list(request):
+    subareas = SubArea.objects.filter(
+        usuarios__user=request.user, activo=True
+    ).select_related("area")
+    q = request.GET.get("q", "")
+    subarea_filter = request.GET.get("subarea", "")
+    fecha_desde = request.GET.get("fecha_desde", "")
+    fecha_hasta = request.GET.get("fecha_hasta", "")
+
     planificaciones = Planificacion.objects.filter(
         admin=request.user, detalles__user=request.user, activo=True
-    ).distinct().order_by("-fecha_creacion").select_related("subarea__area").prefetch_related("detalles__actividad")
+    ).distinct().select_related("subarea__area").annotate(
+        pen=Count("detalles__asignaciones", filter=Q(detalles__asignaciones__estado="Pendiente", detalles__asignaciones__activo=True)),
+        cur=Count("detalles__asignaciones", filter=Q(detalles__asignaciones__estado="EnCurso", detalles__asignaciones__activo=True)),
+        pau=Count("detalles__asignaciones", filter=Q(detalles__asignaciones__estado="Pausada", detalles__asignaciones__activo=True)),
+        fin=Count("detalles__asignaciones", filter=Q(detalles__asignaciones__estado="Finalizada", detalles__asignaciones__activo=True)),
+        total_act=Count("detalles__asignaciones", filter=Q(detalles__asignaciones__activo=True)),
+        fecha_plan=Min("detalles__fecha_programada"),
+    ).order_by("-fecha_creacion")
+
+    base = planificaciones
+    if q:
+        planificaciones = planificaciones.filter(Q(nombre__icontains=q) | Q(descripcion__icontains=q))
+    if subarea_filter:
+        planificaciones = planificaciones.filter(subarea_id=subarea_filter)
+    if fecha_desde:
+        planificaciones = planificaciones.filter(fecha_creacion__date__gte=fecha_desde)
+    if fecha_hasta:
+        planificaciones = planificaciones.filter(fecha_creacion__date__lte=fecha_hasta)
+
+    paginator = Paginator(planificaciones, 10)
+    page_obj = paginator.get_page(request.GET.get("page", 1))
 
     return render(request, "planificacion/planificacion_self_list.html", {
-        "planificaciones": planificaciones,
+        "planificaciones": page_obj, "page_obj": page_obj,
+        "subareas": subareas,
+        "q": q, "subarea_filter": subarea_filter,
+        "fecha_desde": fecha_desde, "fecha_hasta": fecha_hasta,
+        "total_base": base.count(),
+        "cursos_count": base.filter(cur__gt=0).count(),
     })
+
+
+@login_required
+def planificacion_self_detail(request, pk):
+    planificacion = get_object_or_404(Planificacion, pk=pk, admin=request.user, activo=True)
+    detalles = PlanificacionDetalle.objects.filter(
+        planificacion=planificacion, activo=True
+    ).select_related("actividad__tipo_actividad").prefetch_related(
+        Prefetch("asignaciones", queryset=AsignacionActividad.objects.filter(activo=True))
+    )
+    return render(request, "planificacion/planificacion_self_detail.html", {
+        "planificacion": planificacion, "detalles": detalles,
+    })
+
+
+@login_required
+def reprogramar_self(request, pk):
+    if request.method != "POST":
+        return redirect("planificacion_self_list")
+    asignacion = get_object_or_404(AsignacionActividad, pk=pk, activo=True, user=request.user)
+    if asignacion.estado not in ["Pendiente", "Pausada"]:
+        messages.error(request, "Solo actividades Pendientes o Pausadas pueden reprogramarse.")
+        return redirect("planificacion_self_list")
+    detalle = asignacion.planificacion_detalle
+    if not detalle:
+        messages.error(request, "Esta asignacion no tiene planificacion asociada.")
+        return redirect("planificacion_self_list")
+    nueva_fecha = request.POST.get("nueva_fecha")
+    if not nueva_fecha:
+        messages.error(request, "Debes seleccionar una nueva fecha.")
+        return redirect("planificacion_self_list")
+    try:
+        nueva_dt = timezone.make_aware(datetime.combine(date.fromisoformat(nueva_fecha), datetime.min.time()))
+    except (ValueError, TypeError):
+        messages.error(request, "Fecha invalida.")
+        return redirect("planificacion_self_list")
+    if nueva_dt.date() < date.today():
+        messages.error(request, "No puedes reprogramar a una fecha pasada.")
+        return redirect("planificacion_self_list")
+    detalle.fecha_programada = nueva_dt
+    detalle.save(update_fields=["fecha_programada"])
+    asignacion.prorroga_count += 1
+    asignacion.save(update_fields=["prorroga_count"])
+    messages.success(request, f"Actividad '{asignacion.actividad.nombre}' reprogramada al {nueva_fecha}.")
+    return redirect("planificacion_self_list")
 
 
 @login_required
