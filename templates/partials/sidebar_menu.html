@@ -181,11 +181,11 @@
     <a href="{% url 'gestion:calendario' %}" class="nav-item {% if '/calendario' in request.path %}active{% endif %}">
         <i class="bi bi-calendar3"></i><span>Calendario</span>
     </a>
-    <a href="{% url 'gestion:crear_no_programada' %}" class="nav-item {% if '/no-programada' in request.path %}active{% endif %}">
-        <i class="bi bi-lightning-charge"></i><span>Evento Flash</span>
-    </a>
     <a href="{% url 'planificacion_self_list' %}" class="nav-item {% if '/usuario/planificaciones' in request.path %}active{% endif %}">
         <i class="bi bi-calendar-check"></i><span>Planificación</span>
+    </a>
+    <a href="{% url 'gestion:crear_no_programada' %}" class="nav-item {% if '/no-programada' in request.path %}active{% endif %}">
+        <i class="bi bi-lightning-charge"></i><span>Evento Flash</span>
     </a>
 </div>
 {% if user.proyectos_miembro.count > 0 %}
