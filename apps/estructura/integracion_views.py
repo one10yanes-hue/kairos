@@ -636,7 +636,7 @@ def _batch_desactivar(request, cedulas):
                     stats["pausadas"] += 1
                 stats["pendientes"] = AsignacionActividad.objects.filter(
                     user=user, activo=True, estado="Pendiente"
-                ).update(estado="Cancelada")
+                ).update(activo=False, estado="Cancelada")
                 PlanificacionDetalle.objects.filter(user=user, activo=True).update(activo=False)
                 user.activo = False
                 user.save()
