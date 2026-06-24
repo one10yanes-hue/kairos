@@ -100,7 +100,7 @@ function onSubareaClick(el) {
 function onSubareaChange(el) {
     var subareaId = el.value;
     if (!subareaId) return;
-    var apiUrl = document.getElementById('planForm').dataset.apiAct + '?subarea=' + subareaId;
+    var apiUrl = document.getElementById('planForm').dataset.apiAct + '?subarea_id=' + subareaId;
     fetch(apiUrl).then(function(r){return r.json()}).then(function(data){
         var html = '', tipos = new Set();
         data.forEach(function(a){ 

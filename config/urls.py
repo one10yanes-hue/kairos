@@ -34,6 +34,7 @@ urlpatterns = [
     path("usuario/", include("apps.gestion.urls")),
     path("usuario/planificaciones/", planificacion_views.planificacion_self_list, name="planificacion_self_list"),
     path("usuario/planificaciones/crear/", planificacion_views.planificacion_self_create, name="planificacion_self_create"),
+    path("usuario/planificaciones/<int:pk>/cancelar/", planificacion_views.planificacion_self_cancel, name="planificacion_self_cancel"),
 ]
 
 if settings.DEBUG:
