@@ -60,10 +60,13 @@
 }
 
 .trello-card .card-body > .d-flex:first-child {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 2px;
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
 }
+.trello-card .card-body > .d-flex:first-child::-webkit-scrollbar { display: none; }
 
 .trello-card .card-body > .d-flex:first-child .badge {
     max-width: 100%;
