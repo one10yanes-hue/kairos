@@ -43,7 +43,7 @@
                         <td style="font-size:0.72rem;">{% if d.fecha_programada %}{{ d.fecha_programada|date:"d/m/Y" }}{% else %}-{% endif %}</td>
                         <td style="font-size:0.72rem;">{% if d.fecha_vencimiento %}{{ d.fecha_vencimiento|date:"d/m/Y" }}{% else %}-{% endif %}</td>
                         <td>
-                            {% if a.estado == 'Pendiente' or a.estado == 'Pausada' %}
+                            {% if a.estado == 'Pendiente' %}
                             <button type="button" class="btn btn-sm py-0 px-1 btn-outline-secondary" title="Reprogramar" style="font-size:0.65rem;" data-bs-toggle="modal" data-bs-target="#prorrogarModal{{ a.pk }}">
                                 <i class="bi bi-clock"></i> Prorrogar
                             </button>
@@ -64,7 +64,7 @@
     <a href="{% url 'planificacion_self_list' %}" class="btn btn-outline-secondary btn-sm mt-3" style="font-size:0.78rem;"><i class="bi bi-arrow-left"></i> Volver</a>
 </div>
 
-{% for d in detalles %}{% for a in d.asignaciones.all %}{% if a.estado == 'Pendiente' or a.estado == 'Pausada' %}
+{% for d in detalles %}{% for a in d.asignaciones.all %}{% if a.estado == 'Pendiente' %}
 <div class="modal fade" id="prorrogarModal{{ a.pk }}" tabindex="-1">
     <div class="modal-dialog modal-sm modal-dialog-centered">
         <div class="modal-content">

@@ -573,8 +573,8 @@ def reprogramar_self(request, pk):
     if request.method != "POST":
         return redirect("planificacion_self_list")
     asignacion = get_object_or_404(AsignacionActividad, pk=pk, activo=True, user=request.user)
-    if asignacion.estado not in ["Pendiente", "Pausada"]:
-        messages.error(request, "Solo actividades Pendientes o Pausadas pueden reprogramarse.")
+    if asignacion.estado != "Pendiente":
+        messages.error(request, "Solo actividades Pendientes pueden reprogramarse.")
         return redirect("planificacion_self_list")
     detalle = asignacion.planificacion_detalle
     if not detalle:
