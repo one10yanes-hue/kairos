@@ -591,7 +591,8 @@ def planificacion_self_create(request):
                     count += 1
 
                 if count == 0:
-                    planificacion.delete()
+                    planificacion.activo = False
+                    planificacion.save()
                     messages.warning(request, "Todas las actividades ya estaban asignadas para esta fecha.")
                     return redirect("planificacion:planificacion_self_create")
 
