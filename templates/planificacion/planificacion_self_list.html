@@ -2,46 +2,111 @@
 <div class="container-fluid mt-3">
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <h5 class="fw-bold mb-0"><i class="bi bi-calendar-check" style="color:var(--accent);font-size:1.2rem;"></i> Mis Planificaciones</h5>
-        <a href="{% url 'planificacion_self_create' %}" class="btn btn-sm btn-primary" style="font-size:0.78rem;"><i class="bi bi-plus-lg"></i> Nueva</a>
+        <a href="{% url 'planificacion_self_create' %}" class="btn btn-primary btn-sm" style="font-size:0.78rem;"><i class="bi bi-plus-lg"></i> Nueva</a>
     </div>
 
+    <form method="GET" class="row g-2 mb-3">
+        <div class="col-md-4">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white"><i class="bi bi-search" style="font-size:0.75rem;"></i></span>
+                <input type="text" name="q" class="form-control" placeholder="Buscar por nombre..." value="{{ q }}" style="font-size:0.78rem;">
+            </div>
+        </div>
+        <div class="col-md-2">
+            <select name="subarea" class="form-select form-select-sm" onchange="this.form.submit()" style="font-size:0.78rem;">
+                <option value="">Todas las subareas</option>
+                {% for s in subareas %}<option value="{{ s.pk }}" {% if subarea_filter == s.pk|stringformat:"s" %}selected{% endif %}>{{ s.nombre }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <input type="date" name="fecha_desde" class="form-control form-control-sm" value="{{ fecha_desde }}" title="Desde" style="font-size:0.78rem;">
+        </div>
+        <div class="col-md-2">
+            <input type="date" name="fecha_hasta" class="form-control form-control-sm" value="{{ fecha_hasta }}" title="Hasta" style="font-size:0.78rem;">
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-outline-secondary btn-sm" type="submit" style="font-size:0.78rem;">Filtrar</button>
+            {% if q or subarea_filter or fecha_desde or fecha_hasta %}<a href="{% url 'planificacion_self_list' %}" class="btn btn-outline-danger btn-sm" style="font-size:0.78rem;">Limpiar</a>{% endif %}
+        </div>
+    </form>
+
+    {% if page_obj.paginator.count > 0 %}
+    <div class="row g-2 mb-3">
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.1rem;color:var(--slate-700);">{{ total_base }}</div><small class="text-muted" style="font-size:0.65rem;">Total</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.1rem;color:#8a6100;">{{ cursos_count }}</div><small class="text-muted" style="font-size:0.65rem;">Con Activos</small></div></div></div>
+        <div class="col"><div class="card shadow-sm"><div class="card-body text-center py-2"><div class="fw-bold" style="font-size:1.1rem;color:#075985;">{{ page_obj.paginator.count }}</div><small class="text-muted" style="font-size:0.65rem;">Mostrando</small></div></div></div>
+    </div>
+    {% endif %}
+
     <div class="card shadow-sm">
-        <div class="card-body p-0" style="overflow-x:auto;">
-            <table class="table table-hover mb-0" style="font-size:0.75rem;min-width:600px;">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0" style="font-size:0.82rem;">
                 <thead class="table-light">
                     <tr>
-                        <th style="font-size:0.65rem;">Nombre</th>
-                        <th style="font-size:0.65rem;">Subarea</th>
-                        <th style="font-size:0.65rem;">Fecha</th>
-                        <th style="font-size:0.65rem;">Estado</th>
-                        <th style="font-size:0.65rem;">Actividades</th>
-                        <th style="font-size:0.65rem;"></th>
+                        <th class="py-2" style="width:25%;">Nombre</th>
+                        <th class="py-2">SubArea</th>
+                        <th class="py-2">Estado</th>
+                        <th class="py-2">F. Planif.</th>
+                        <th class="py-2">Creado</th>
+                        <th class="py-2" style="width:100px;">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for p in planificaciones %}
                     <tr>
-                        <td>
-                            <span class="fw-semibold">{{ p.nombre }}</span>
-                            {% if p.descripcion %}<small class="d-block text-muted" style="font-size:0.62rem;">{{ p.descripcion|truncatechars:50 }}</small>{% endif %}
+                        <td class="py-2">
+                            <a href="{% url 'planificacion_self_detail' p.pk %}" class="fw-semibold text-decoration-none">{{ p.nombre }}</a>
+                            {% if p.descripcion %}<small class="d-block text-muted" style="font-size:0.63rem;">{{ p.descripcion|truncatechars:60 }}</small>{% endif %}
                         </td>
-                        <td>{{ p.subarea.area.nombre }} &gt; {{ p.subarea.nombre }}</td>
-                        <td>{{ p.fecha_creacion|date:"d/m/Y" }}</td>
-                        <td><span class="badge bg-light text-muted" style="font-size:0.6rem;">{% if p.activo %}Activa{% else %}Inactiva{% endif %}</span></td>
-                        <td>{{ p.detalles.count }}</td>
-                        <td>
-                            <form method="POST" action="{% url 'planificacion_self_cancel' p.pk %}" onsubmit="return confirm('¿Cancelar esta planificacion?')">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" style="font-size:0.6rem;" title="Cancelar"><i class="bi bi-x-lg"></i></button>
-                            </form>
+                        <td class="py-2">
+                            <span class="text-muted" style="font-size:0.7rem;">{{ p.subarea.nombre }}</span>
+                            <small class="d-block text-muted" style="font-size:0.63rem;">{{ p.subarea.area.nombre }}</small>
+                        </td>
+                        <td class="py-2">
+                            {% if p.cur > 0 or p.pau > 0 %}
+                            <span class="badge bg-warning" style="font-size:0.65rem;">En curso</span>
+                            {% elif p.pen > 0 and p.fin == 0 %}
+                            <span class="badge bg-secondary" style="font-size:0.65rem;">Sin iniciar</span>
+                            {% elif p.fin > 0 %}
+                            <span class="badge bg-success" style="font-size:0.65rem;">Finalizada</span>
+                            {% else %}
+                            <span class="badge bg-light text-muted" style="font-size:0.65rem;">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-2 text-muted" style="font-size:0.7rem;">{% if p.fecha_plan %}{{ p.fecha_plan|date:"d/m/y" }}{% else %}-{% endif %}</td>
+                        <td class="py-2 text-muted" style="font-size:0.7rem;">{{ p.fecha_creacion|date:"d/m/y" }}</td>
+                        <td class="py-2">
+                            <div class="d-flex gap-1">
+                                <a href="{% url 'planificacion_self_detail' p.pk %}" class="btn btn-sm py-0 px-1 btn-outline-primary" title="Ver"><i class="bi bi-eye"></i></a>
+                                {% if p.cur == 0 and p.pau == 0 and p.fin == 0 %}
+                                <form method="POST" action="{% url 'planificacion_self_cancel' p.pk %}" onsubmit="return confirm('¿Cancelar esta planificacion?')" class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm py-0 px-1 btn-outline-danger" title="Cancelar"><i class="bi bi-trash"></i></button>
+                                </form>
+                                {% endif %}
+                            </div>
                         </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="6" class="text-center text-muted py-3">No tienes planificaciones.</td></tr>
+                    <tr><td colspan="6" class="text-center text-muted py-4" style="font-size:0.75rem;">{% if q %}Sin resultados para "{{ q }}"{% else %}No tienes planificaciones.{% endif %}</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
+        {% if page_obj.paginator.num_pages > 1 %}
+        <div class="card-footer py-2 px-3 d-flex justify-content-between align-items-center">
+            <small class="text-muted" style="font-size:0.7rem;">Pagina {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</small>
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item"><a class="page-link py-1 px-2" style="font-size:0.7rem;" href="?q={{ q }}&subarea={{ subarea_filter }}&fecha_desde={{ fecha_desde }}&fecha_hasta={{ fecha_hasta }}&page={{ page_obj.previous_page_number }}">Anterior</a></li>
+                    {% endif %}
+                    {% if page_obj.has_next %}
+                    <li class="page-item"><a class="page-link py-1 px-2" style="font-size:0.7rem;" href="?q={{ q }}&subarea={{ subarea_filter }}&fecha_desde={{ fecha_desde }}&fecha_hasta={{ fecha_hasta }}&page={{ page_obj.next_page_number }}">Siguiente</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
     </div>
-</div>
-{% endblock %}
+</div>{% endblock %}
