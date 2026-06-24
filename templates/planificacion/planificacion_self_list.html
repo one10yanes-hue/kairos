@@ -15,6 +15,7 @@
                         <th style="font-size:0.65rem;">Fecha</th>
                         <th style="font-size:0.65rem;">Estado</th>
                         <th style="font-size:0.65rem;">Actividades</th>
+                        <th style="font-size:0.65rem;"></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -28,9 +29,15 @@
                         <td>{{ p.fecha_creacion|date:"d/m/Y" }}</td>
                         <td><span class="badge bg-light text-muted" style="font-size:0.6rem;">{% if p.activo %}Activa{% else %}Inactiva{% endif %}</span></td>
                         <td>{{ p.detalles.count }}</td>
+                        <td>
+                            <form method="POST" action="{% url 'planificacion_self_cancel' p.pk %}" onsubmit="return confirm('¿Cancelar esta planificacion?')">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" style="font-size:0.6rem;" title="Cancelar"><i class="bi bi-x-lg"></i></button>
+                            </form>
+                        </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="5" class="text-center text-muted py-3">No tienes planificaciones.</td></tr>
+                    <tr><td colspan="6" class="text-center text-muted py-3">No tienes planificaciones.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>

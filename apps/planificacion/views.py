@@ -513,8 +513,8 @@ def cancelar_pendiente(request, pk):
 @login_required
 def planificacion_self_list(request):
     planificaciones = Planificacion.objects.filter(
-        detalles__user=request.user, activo=True
-    ).distinct().order_by("-fecha_creacion").select_related("subarea__area", "admin").prefetch_related("detalles__actividad")
+        admin=request.user, detalles__user=request.user, activo=True
+    ).distinct().order_by("-fecha_creacion").select_related("subarea__area").prefetch_related("detalles__actividad")
 
     return render(request, "planificacion/planificacion_self_list.html", {
         "planificaciones": planificaciones,
@@ -640,3 +640,27 @@ def planificacion_self_create(request):
         "subarea_value": subarea_value,
         "preserve_selection": preserve_selection,
     })
+
+
+@login_required
+def planificacion_self_cancel(request, pk):
+    if request.method != "POST":
+        return redirect("planificacion_self_list")
+    planificacion = get_object_or_404(Planificacion, pk=pk, admin=request.user, activo=True)
+    # Verificar que ninguna actividad fue iniciada
+    tiene_iniciada = planificacion.detalles.filter(
+        activo=True, asignaciones__activo=True
+    ).exclude(asignaciones__estado="Pendiente").exists()
+    if tiene_iniciada:
+        messages.error(request, "No se puede cancelar porque ya iniciaste actividades de esta planificacion.")
+        return redirect("planificacion_self_list")
+    for detalle in planificacion.detalles.filter(activo=True):
+        AsignacionActividad.objects.filter(
+            planificacion_detalle=detalle, activo=True
+        ).update(activo=False, estado="Cancelada")
+        detalle.activo = False
+        detalle.save()
+    planificacion.activo = False
+    planificacion.save()
+    messages.success(request, "Planificacion cancelada.")
+    return redirect("planificacion_self_list")
