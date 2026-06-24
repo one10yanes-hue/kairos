@@ -25,10 +25,10 @@
             <div id="fcCalendar"></div>
         </div>
         <div class="cal-legend">
-            <span><span class="cal-dot" style="background:#e8eaf0;"></span> Pendiente</span>
-            <span><span class="cal-dot" style="background:#d4f5e0;"></span> En Curso</span>
-            <span><span class="cal-dot" style="background:#fef9e7;border:1px solid #e2d8c0;"></span> Pausada</span>
-            <span><span class="cal-dot" style="background:#e2f0e8;"></span> Finalizada</span>
+            <span><span class="cal-dot" style="background:#c4d0e8;"></span> Pendiente</span>
+            <span><span class="cal-dot" style="background:#a7f0ba;"></span> En Curso</span>
+            <span><span class="cal-dot" style="background:#fde68a;"></span> Pausada</span>
+            <span><span class="cal-dot" style="background:#99f6e4;"></span> Finalizada</span>
         </div>
     </div>
 </div>
@@ -62,6 +62,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         },
         height: 'auto',
+        fixedWeekCount: false,
+        showNonCurrentDates: false,
         dayMaxEvents: 3,
         moreLinkClick: 'popover',
     });
