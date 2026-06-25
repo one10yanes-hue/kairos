@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% load static %}{% load gestion_extras %}
+﻿{% extends "base.html" %}{% load static %}{% load gestion_extras %}
 {% block extra_css %}<link href="{% static 'css/gestion.css' %}?v=8" rel="stylesheet">{% endblock %}
 {% block content %}
 <div style="display:flex;flex-direction:column;height:calc(100vh - 3rem);overflow:hidden;">
@@ -14,47 +14,6 @@
             <a href="{% url 'gestion:crear_no_programada' %}" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:0.75rem;"><i class="bi bi-lightning-charge"></i> Flash</a>
         </div>
     </div>
-
-    {% if historias_revision %}
-    <div class="card shadow-sm mb-2" style="border-left:4px solid #8a6100;">
-        <div class="card-header py-1 px-2 d-flex justify-content-between align-items-center" style="background:#fffbeb;">
-            <small class="fw-semibold"><i class="bi bi-hourglass-split" style="color:#8a6100;"></i> Pendientes de Revisi&oacute;n ({{ historias_revision|length }})</small>
-        </div>
-        <div class="card-body p-2" style="max-height:260px;overflow-y:auto;">
-            <div class="row g-2">
-                {% for h in historias_revision %}
-                <div class="col-md-6 col-lg-4">
-                    <div class="border rounded p-2" style="font-size:0.75rem;background:#fff;border-left:3px solid #8a6100;">
-                        <div class="d-flex justify-content-between align-items-start mb-1">
-                            <div>
-                                <span class="badge bg-light text-muted" style="font-size:0.5rem;">{{ h.proyecto.codigo }}</span>
-                                <span class="badge bg-light text-muted" style="font-size:0.5rem;">{{ h.codigo }}</span>
-                            </div>
-                            <span class="badge {% if h.prioridad == 'must' %}bg-danger{% elif h.prioridad == 'should' %}bg-warning text-dark{% else %}bg-light text-muted{% endif %}" style="font-size:0.5rem;">{{ h.puntos_historia }}pts</span>
-                        </div>
-                        <p class="fw-semibold mb-1" style="font-size:0.78rem;line-height:1.2;">{{ h.titulo }}</p>
-                        {% for t in h.tareas.all %}
-                        <div class="d-flex justify-content-between align-items-center py-1 {% if not forloop.last %}border-bottom{% endif %}">
-                            <div>
-                                <span class="badge bg-light text-muted" style="font-size:0.45rem;">{{ t.codigo }}</span>
-                                <span style="font-size:0.62rem;">{{ t.titulo|truncatechars:20 }}</span>
-                                <small class="text-muted" style="font-size:0.55rem;">{{ t.asignado_a.get_full_name|truncatechars:12|default:'-' }}</small>
-                            </div>
-                            <button class="btn btn-sm btn-outline-danger py-0 px-1" style="font-size:0.45rem;" title="Rechazar esta tarea" onclick="rechazarTareaHistoria({{ h.proyecto_id }}, {{ h.pk }}, {{ t.pk }})">&times;</button>
-                        </div>
-                        {% endfor %}
-                        <div class="d-flex gap-1 mt-2">
-                            <form method="POST" action="{% url 'proyectos:historia_aprobar' h.proyecto_id h.pk %}" class="d-inline">{% csrf_token %}
-                                <button class="btn btn-sm btn-success py-0 px-1" style="font-size:0.55rem;" title="Aprobar toda la historia">&check; Aprobar todo</button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
-    {% endif %}
 
     <div class="tablero-main">
 
@@ -72,7 +31,7 @@
             {% if actividades_dia %}
             <div class="row g-2 mx-0 flex-nowrap">
                 {% for a in actividades_dia %}
-                <div class="col-auto px-1" style="min-width:220px;">
+                <div class="col-md-6 col-lg-4 col-xl-3">
                     <div class="card h-100" style="border-left:3px solid {% if a.estado == 'EnCurso' %}var(--warning){% elif a.estado == 'Pausada' %}var(--slate-400){% else %}var(--accent){% endif %};">
                         <div class="card-body py-1 px-2">
                             <div class="d-flex justify-content-between align-items-start">
@@ -80,6 +39,11 @@
                                 <span class="badge {% if a.estado == 'Trasladada' %}bg-info text-white{% elif a.estado == 'Revision' %}bg-warning text-dark{% else %}bg-light text-muted{% endif %} ms-1" style="font-size:0.55rem;">{% if a.estado == 'Trasladada' %}Completada por otro{% elif a.estado == 'Revision' %}En revision{% else %}{{ a.get_estado_display }}{% endif %}</span>
                             </div>
                             <small class="text-muted" style="font-size:0.65rem;">{{ a.actividad.tipo_actividad.nombre }}{% if a.estado != "Pendiente" %} • {{ a.tiempo_formateado }}{% endif %}</small>
+                            {% if a.planificacion_detalle and a.planificacion_detalle.fecha_vencimiento %}
+                            <small class="d-block mt-1" style="font-size:0.58rem;color:{% if a.planificacion_detalle.fecha_vencimiento|days_overdue > 0 %}#991b1b{% else %}#64748b{% endif %};">
+                                <i class="bi bi-clock"></i> {{ a.planificacion_detalle.fecha_vencimiento|deadline_label }}
+                            </small>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -167,7 +131,6 @@
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-start mb-1">
                                 <span class="badge bg-light text-muted small">{{ a.nombre_tipo|default:a.actividad.tipo_actividad.nombre }}</span>
-                                {% if a.tarea_proyecto %}<span class="badge bg-primary bg-opacity-10 text-primary" style="font-size:0.5rem;" title="Proyecto: {{ a.tarea_proyecto.proyecto.nombre }}"><i class="bi bi-kanban"></i> {{ a.tarea_proyecto.proyecto.codigo }}</span>{% endif %}
                                 {% if a.estado_revision == "rechazado" and a.comentarios.count > 0 %}
                                 <span class="badge bg-danger" style="font-size:0.5rem;" title="Tiene comentarios de revision"><i class="bi bi-chat-dots"></i> {{ a.comentarios.count }}</span>
                                 {% endif %}
@@ -213,7 +176,6 @@
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-start mb-1">
                                 <span class="badge bg-light text-muted small">{{ a.nombre_tipo|default:a.actividad.tipo_actividad.nombre }}</span>
-                                {% if a.tarea_proyecto %}<span class="badge bg-primary bg-opacity-10 text-primary" style="font-size:0.5rem;" title="Proyecto: {{ a.tarea_proyecto.proyecto.nombre }}"><i class="bi bi-kanban"></i> {{ a.tarea_proyecto.proyecto.codigo }}</span>{% endif %}
                                 {% if a.estado_revision == "rechazado" and a.comentarios.count > 0 %}
                                 <span class="badge bg-danger" style="font-size:0.5rem;" title="Tiene comentarios de revision"><i class="bi bi-chat-dots"></i> {{ a.comentarios.count }}</span>
                                 {% endif %}
@@ -258,7 +220,6 @@
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-start mb-1">
                                 <span class="badge bg-light text-muted small">{{ a.nombre_tipo|default:a.actividad.tipo_actividad.nombre }}</span>
-                                {% if a.tarea_proyecto %}<span class="badge bg-primary bg-opacity-10 text-primary" style="font-size:0.5rem;" title="Proyecto: {{ a.tarea_proyecto.proyecto.nombre }}"><i class="bi bi-kanban"></i> {{ a.tarea_proyecto.proyecto.codigo }}</span>{% endif %}
                                 {% if a.estado_revision == "rechazado" and a.comentarios.count > 0 %}
                                 <span class="badge bg-danger" style="font-size:0.5rem;" title="Tiene comentarios de revision"><i class="bi bi-chat-dots"></i> {{ a.comentarios.count }}</span>
                                 {% endif %}
@@ -378,13 +339,11 @@
                             <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:0.78rem;">
                                 <input type="radio" name="actividad_id" value="{{ p.actividad_id }}" class="form-check-input mt-0" onclick="document.getElementById('pausaSubareaId').value='{{ p.actividad.subarea_id }}'">
                                 <div>
-                                    <span>{{ p.actividad.nombre }}</span>
-                                    <small class="text-muted d-block" style="font-size:0.6rem;">{{ p.actividad.tipo_actividad.nombre }}</small>
+                                    <span>{{ p.nombre_actividad|default:p.actividad.nombre }}</span>
+                                    <small class="text-muted d-block" style="font-size:0.6rem;">{{ p.nombre_tipo|default:p.actividad.tipo_actividad.nombre }}</small>
                                 </div>
-                                {% with pd=p.planificacion_detalle %}
-                                {% if pd.fecha_programada %}<small class="text-muted ms-auto" style="font-size:0.55rem;" title="Programada">📅 {{ pd.fecha_programada|date:"d/m" }}</small>{% endif %}
-                                {% if pd.fecha_vencimiento %}<small class="text-muted ms-1" style="font-size:0.55rem;" title="Vence">⏰ {{ pd.fecha_vencimiento|date:"d/m" }}</small>{% endif %}
-                                {% endwith %}
+                                {% if p.planificacion_detalle.fecha_programada %}<small class="text-muted ms-auto" style="font-size:0.55rem;" title="Programada">📅 {{ p.planificacion_detalle.fecha_programada|date:"d/m" }}</small>{% endif %}
+                                {% if p.planificacion_detalle.fecha_vencimiento %}<small class="text-muted ms-1" style="font-size:0.55rem;" title="Vence">⏰ {{ p.planificacion_detalle.fecha_vencimiento|date:"d/m" }}</small>{% endif %}
                             </label>
                             {% endfor %}
                         </div>
@@ -410,7 +369,7 @@
 
 <!-- Overlay Finalizar -->
 <div id="finalizarOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:9999;align-items:center;justify-content:center;">
-    <div style="background:#fff;border-radius:0.75rem;max-width:450px;width:90%;padding:1.5rem;box-shadow:0 8px 32px rgba(0,0,0,0.12);">
+    <div style="background:#fff;border-radius:0.75rem;max-width:520px;width:95%;padding:1.5rem;box-shadow:0 8px 32px rgba(0,0,0,0.12);">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h6 class="fw-bold mb-0"><i class="bi bi-check-circle" style="color:var(--success);"></i> Finalizar Actividad</h6>
             <button type="button" class="btn-close" onclick="cerrarFinalizar()"></button>
@@ -452,10 +411,8 @@
                                     <span>{{ p.actividad.nombre }}</span>
                                     <small class="text-muted d-block" style="font-size:0.6rem;">{{ p.actividad.tipo_actividad.nombre }}</small>
                                 </div>
-                                {% with pd=p.planificacion_detalle %}
-                                {% if pd.fecha_programada %}<small class="text-muted ms-auto" style="font-size:0.55rem;" title="Programada">📅 {{ pd.fecha_programada|date:"d/m" }}</small>{% endif %}
-                                {% if pd.fecha_vencimiento %}<small class="text-muted ms-1" style="font-size:0.55rem;" title="Vence">⏰ {{ pd.fecha_vencimiento|date:"d/m" }}</small>{% endif %}
-                                {% endwith %}
+                                {% if p.planificacion_detalle.fecha_programada %}<small class="text-muted ms-auto" style="font-size:0.55rem;" title="Programada">📅 {{ p.planificacion_detalle.fecha_programada|date:"d/m" }}</small>{% endif %}
+                                {% if p.planificacion_detalle.fecha_vencimiento %}<small class="text-muted ms-1" style="font-size:0.55rem;" title="Vence">⏰ {{ p.planificacion_detalle.fecha_vencimiento|date:"d/m" }}</small>{% endif %}
                             </label>
                             {% endfor %}
                         </div>
@@ -527,10 +484,8 @@
                                     <span>{{ p.actividad.nombre }}</span>
                                     <small class="text-muted d-block" style="font-size:0.6rem;">{{ p.actividad.tipo_actividad.nombre }}</small>
                                 </div>
-                                {% with pd=p.planificacion_detalle %}
-                                {% if pd.fecha_programada %}<small class="text-muted ms-auto" style="font-size:0.55rem;" title="Programada">📅 {{ pd.fecha_programada|date:"d/m" }}</small>{% endif %}
-                                {% if pd.fecha_vencimiento %}<small class="text-muted ms-1" style="font-size:0.55rem;" title="Vence">⏰ {{ pd.fecha_vencimiento|date:"d/m" }}</small>{% endif %}
-                                {% endwith %}
+                                {% if p.planificacion_detalle.fecha_programada %}<small class="text-muted ms-auto" style="font-size:0.55rem;" title="Programada">📅 {{ p.planificacion_detalle.fecha_programada|date:"d/m" }}</small>{% endif %}
+                                {% if p.planificacion_detalle.fecha_vencimiento %}<small class="text-muted ms-1" style="font-size:0.55rem;" title="Vence">⏰ {{ p.planificacion_detalle.fecha_vencimiento|date:"d/m" }}</small>{% endif %}
                             </label>
                             {% endfor %}
                         </div>
@@ -556,39 +511,12 @@
         </form>
     </div>
 </div>
-
-<div id="rechazoRevisionModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:9999;align-items:center;justify-content:center;">
-    <div style="background:#fff;border-radius:0.75rem;max-width:400px;width:90%;padding:1.5rem;box-shadow:0 8px 32px rgba(0,0,0,0.12);">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h6 class="fw-bold mb-0"><i class="bi bi-x-circle" style="color:var(--danger);"></i> Rechazar Historia</h6>
-            <button type="button" class="btn-close" onclick="document.getElementById('rechazoRevisionModal').style.display='none'"></button>
-        </div>
-        <form id="rechazoRevisionForm" method="POST">
-            {% csrf_token %}
-            <div class="mb-3">
-                <label class="form-label small fw-semibold">Motivo del rechazo <span class="text-danger">*</span></label>
-                <textarea name="motivo" class="form-control" rows="3" placeholder="Explica por que se rechaza..." required></textarea>
-            </div>
-            <div class="mb-3">
-                <label class="d-flex align-items-center gap-2 small" style="cursor:pointer;font-size:0.72rem;">
-                    <input type="checkbox" name="crear_bug" value="1" class="form-check-input mt-0">
-                    <span>Crear incidencia (bug) de este rechazo</span>
-                </label>
-            </div>
-            <div class="d-flex justify-content-end gap-2">
-                <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('rechazoRevisionModal').style.display='none'">Cancelar</button>
-                <button type="submit" class="btn btn-sm btn-outline-danger">Rechazar</button>
-            </div>
-        </form>
-    </div>
-</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
 var currentAsignacionId = null;
 var currentActividadId = null;
-var currentProyectoId = null;
 var timeoutBusqueda = null;
 
 function abrirTraslado(asignacionId, nombreActividad, actividadId) {
@@ -601,13 +529,8 @@ function abrirTraslado(asignacionId, nombreActividad, actividadId) {
     to.style.zIndex = '99999';
     currentAsignacionId = asignacionId;
     currentActividadId = actividadId;
-    currentProyectoId = null;
     document.getElementById('trasladoNombreActividad').textContent = nombreActividad;
     document.getElementById('trasladoForm').action = '/usuario/actividad/' + asignacionId + '/trasladar/';
-    // Obtener info del proyecto si esta tarea pertenece a uno
-    fetch('/usuario/api/asignacion/' + asignacionId + '/proyecto/', {headers:{'X-Requested-With':'XMLHttpRequest'}})
-    .then(function(r){return r.json()})
-    .then(function(d){ currentProyectoId = d.proyecto_id; });
     limpiarUsuario();
     document.getElementById('traslado_actividad_reemplazo').value = '';
     trasResetSecciones();
@@ -651,9 +574,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (q.length < 1) { limpiarUsuario(); return; }
         clearTimeout(timeoutBusqueda);
         timeoutBusqueda = setTimeout(function() {
-            var url = '/usuario/api/usuarios/buscar/?q=' + encodeURIComponent(q);
-            if (currentProyectoId) url += '&proyecto_id=' + currentProyectoId;
-            fetch(url, { headers: {'X-Requested-With':'XMLHttpRequest'} })
+            fetch('/usuario/api/usuarios/buscar/?q=' + encodeURIComponent(q), { headers: {'X-Requested-With':'XMLHttpRequest'} })
             .then(function(r){return r.json()})
             .then(function(d){
                 var h = '';
@@ -817,30 +738,26 @@ function abrirFinalizar(actividadId, nombre, subareaId, requiereEntregable, orig
     document.getElementById('siguienteError').style.display = 'none';
     finResetSecciones();
     var entSection = document.getElementById('entregableSection');
-    if (requiereEntregable) {
-        entSection.style.display = 'block';
-    } else {
-        entSection.style.display = 'none';
-    }
-    var revSection = document.getElementById('revisionSection');
     if (origen === 'Revision') {
         document.getElementById('btnFinalizar').style.display = 'none';
         document.getElementById('btnAprobar').style.display = 'inline-block';
         document.getElementById('btnRechazar').style.display = 'inline-block';
         document.getElementById('revisionMotivoContainer').style.display = 'none';
-        document.getElementById('entregableSection').style.display = 'block';
-        var ast = document.querySelector('#entregableSection .text-danger');
+        entSection.style.display = 'block';
+        var ast = entSection.querySelector('.text-danger');
         if (ast) ast.style.display = 'none';
-        document.querySelector('#finalizarForm input[name="nro_actividad"]').closest('.mb-3').style.display = 'none';
+        var nro = document.querySelector('#finalizarForm input[name="nro_actividad"]');
+        if (nro) nro.closest('.mb-3').style.display = 'none';
     } else {
         document.getElementById('btnFinalizar').style.display = 'inline-block';
         document.getElementById('btnAprobar').style.display = 'none';
         document.getElementById('btnRechazar').style.display = 'none';
         document.getElementById('revisionMotivoContainer').style.display = 'none';
-        document.getElementById('entregableSection').style.display = requiereEntregable ? 'block' : 'none';
-        var ast = document.querySelector('#entregableSection .text-danger');
+        entSection.style.display = requiereEntregable ? 'block' : 'none';
+        var ast = entSection.querySelector('.text-danger');
         if (ast) ast.style.display = '';
-        document.querySelector('#finalizarForm input[name="nro_actividad"]').closest('.mb-3').style.display = '';
+        var nro = document.querySelector('#finalizarForm input[name="nro_actividad"]');
+        if (nro) nro.closest('.mb-3').style.display = '';
     }
     document.getElementById('finalizarOverlay').style.display = 'flex';
 }
@@ -881,7 +798,8 @@ function cargarFlashActividades() {
 function cerrarFinalizar() {
     document.getElementById('finalizarOverlay').style.display = 'none';
     document.getElementById('entregableSection').style.display = 'none';
-    document.getElementById('entregableSection').querySelector('input[type="file"]').value = '';
+    var entInput = document.querySelector('#entregableSection input[type="file"]');
+    if (entInput) entInput.value = '';
     document.getElementById('revisionMotivoContainer').style.display = 'none';
     finResetSecciones();
 }
@@ -957,12 +875,6 @@ ws.onmessage = function(e) {
     } else if (data.tipo === 'revision') {
         mostrarToast('Revision ' + data.accion + ': ' + data.actividad, data.accion === 'aprobado' ? 'success' : 'danger');
         setTimeout(function(){ window.location.reload(); }, 4000);
-    } else if (data.tipo === 'nueva_revision') {
-        mostrarToast('Historia pendiente de revision: ' + data.codigo + ' - ' + data.historia + ' (' + data.proyecto + ')', 'warning');
-        setTimeout(function(){ window.location.reload(); }, 5000);
-    } else if (data.tipo === 'tarea_rechazada') {
-        mostrarToast('Tarea rechazada: ' + data.codigo + ' - ' + data.actividad + '. Motivo: ' + (data.motivo||''), 'danger');
-        setTimeout(function(){ window.location.reload(); }, 5000);
     }
 };
 
@@ -1037,26 +949,5 @@ setInterval(function(){
         }
     }
 })();
-
-function rechazarDesdeTablero(proyectoId, historiaId) {
-    var modal = document.getElementById('rechazoRevisionModal');
-    var form = document.getElementById('rechazoRevisionForm');
-    form.action = '/proyectos/' + proyectoId + '/historias/' + historiaId + '/rechazar/';
-    modal.style.display = 'flex';
-}
-
-function abrirRechazarTarea(proyectoId, tareaId) {
-    var modal = document.getElementById('rechazoRevisionModal');
-    var form = document.getElementById('rechazoRevisionForm');
-    form.action = '/proyectos/' + proyectoId + '/tareas/' + tareaId + '/rechazar/';
-    modal.style.display = 'flex';
-}
-
-function rechazarTareaHistoria(proyectoId, historiaId, tareaId) {
-    var modal = document.getElementById('rechazoRevisionModal');
-    var form = document.getElementById('rechazoRevisionForm');
-    form.action = '/proyectos/' + proyectoId + '/tareas/' + tareaId + '/rechazar/';
-    modal.style.display = 'flex';
-}
 </script>
 {% endblock %}
