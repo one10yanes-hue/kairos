@@ -423,17 +423,6 @@
                 <label class="form-label small fw-semibold">Archivo entregable <span class="text-danger">*</span></label>
                 <input type="file" name="entregable" class="form-control form-control-sm" style="font-size:0.78rem;">
             </div>
-            <div class="mb-3" id="revisionSection" style="display:none;background:#fffbeb;padding:0.7rem;border-radius:0.4rem;border:1px solid #8a6100;">
-                <label class="form-label small fw-semibold" style="color:#8a6100;">Accion de revision</label>
-                <div class="d-flex gap-2 align-items-center">
-                    <button type="submit" name="accion_revision" value="aprobar" class="btn btn-sm btn-success">Aprobar</button>
-                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="mostrarMotivoRechazo()">Rechazar y devolver</button>
-                </div>
-                <div id="revisionMotivo" style="display:none;margin-top:0.5rem;">
-                    <textarea name="motivo_rechazo" class="form-control form-control-sm" rows="2" placeholder="Motivo del rechazo..."></textarea>
-                    <button type="submit" name="accion_revision" value="rechazar" class="btn btn-sm btn-outline-danger mt-1" style="font-size:0.65rem;">Confirmar Rechazo</button>
-                </div>
-            </div>
             <hr class="my-2">
             <div class="mb-3">
                 <label class="form-label small fw-semibold">Iniciar siguiente actividad</label>
@@ -469,9 +458,15 @@
                     <small id="siguienteError" class="text-danger" style="display:none;font-size:0.7rem;">Selecciona una actividad o deja vacio para solo finalizar.</small>
                 </div>
             </div>
+            <div class="mb-3" id="revisionMotivoContainer" style="display:none;">
+                <label class="form-label small fw-semibold text-danger">Motivo del rechazo <span class="text-danger">*</span></label>
+                <textarea name="motivo_rechazo" class="form-control form-control-sm" rows="2" placeholder="Explica por que se rechaza..."></textarea>
+            </div>
             <div class="d-flex justify-content-end gap-2">
                 <button type="button" class="btn btn-sm btn-secondary" onclick="cerrarFinalizar()">Cancelar</button>
-                <button type="submit" class="btn btn-sm btn-success">Finalizar</button>
+                <button type="submit" name="accion_revision" value="rechazar" class="btn btn-sm btn-outline-danger" id="btnRechazar" style="display:none;" onclick="return confirmRechazo()">Rechazar</button>
+                <button type="submit" class="btn btn-sm btn-success btn-finalizar" id="btnFinalizar">Finalizar</button>
+                <button type="submit" name="accion_revision" value="aprobar" class="btn btn-sm btn-success" id="btnAprobar" style="display:none;">Aprobar</button>
             </div>
         </form>
     </div>
@@ -808,16 +803,34 @@ function abrirFinalizar(actividadId, nombre, subareaId, requiereEntregable, orig
     }
     var revSection = document.getElementById('revisionSection');
     if (origen === 'Revision') {
-        revSection.style.display = 'block';
+        document.getElementById('btnFinalizar').style.display = 'none';
+        document.getElementById('btnAprobar').style.display = 'inline-block';
+        document.getElementById('btnRechazar').style.display = 'inline-block';
+        document.getElementById('revisionMotivoContainer').style.display = 'none';
+        document.getElementById('entregableSection').style.display = 'block';
+        var ast = document.querySelector('#entregableSection .text-danger');
+        if (ast) ast.style.display = 'none';
+        document.querySelector('#finalizarForm input[name="nro_actividad"]').closest('.mb-3').style.display = 'none';
     } else {
-        revSection.style.display = 'none';
+        document.getElementById('btnFinalizar').style.display = 'inline-block';
+        document.getElementById('btnAprobar').style.display = 'none';
+        document.getElementById('btnRechazar').style.display = 'none';
+        document.getElementById('revisionMotivoContainer').style.display = 'none';
+        document.getElementById('entregableSection').style.display = requiereEntregable ? 'block' : 'none';
+        var ast = document.querySelector('#entregableSection .text-danger');
+        if (ast) ast.style.display = '';
+        document.querySelector('#finalizarForm input[name="nro_actividad"]').closest('.mb-3').style.display = '';
     }
-    document.getElementById('revisionMotivo').style.display = 'none';
     document.getElementById('finalizarOverlay').style.display = 'flex';
 }
 
-function mostrarMotivoRechazo() {
-    document.getElementById('revisionMotivo').style.display = 'block';
+function confirmRechazo() {
+    var revMot = document.getElementById('revisionMotivoContainer');
+    if (revMot.style.display === 'none') {
+        revMot.style.display = 'block';
+        return false;
+    }
+    return true;
 }
 
 function cargarFlashActividades() {
@@ -848,6 +861,7 @@ function cerrarFinalizar() {
     document.getElementById('finalizarOverlay').style.display = 'none';
     document.getElementById('entregableSection').style.display = 'none';
     document.getElementById('entregableSection').querySelector('input[type="file"]').value = '';
+    document.getElementById('revisionMotivoContainer').style.display = 'none';
     finResetSecciones();
 }
 
