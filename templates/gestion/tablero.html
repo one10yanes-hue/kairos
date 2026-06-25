@@ -377,7 +377,14 @@
                             {% for p in planificadas %}
                             <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:0.78rem;">
                                 <input type="radio" name="actividad_id" value="{{ p.actividad_id }}" class="form-check-input mt-0" onclick="document.getElementById('pausaSubareaId').value='{{ p.actividad.subarea_id }}'">
-                                <span>{{ p.nombre_actividad|default:p.actividad.nombre }} <small class="text-muted">({{ p.nombre_tipo|default:p.actividad.tipo_actividad.nombre }})</small></span>
+                                <div>
+                                    <span>{{ p.actividad.nombre }}</span>
+                                    <small class="text-muted d-block" style="font-size:0.6rem;">{{ p.actividad.tipo_actividad.nombre }}</small>
+                                </div>
+                                {% with pd=p.planificacion_detalle %}
+                                {% if pd.fecha_programada %}<small class="text-muted ms-auto" style="font-size:0.55rem;" title="Programada">📅 {{ pd.fecha_programada|date:"d/m" }}</small>{% endif %}
+                                {% if pd.fecha_vencimiento %}<small class="text-muted ms-1" style="font-size:0.55rem;" title="Vence">⏰ {{ pd.fecha_vencimiento|date:"d/m" }}</small>{% endif %}
+                                {% endwith %}
                             </label>
                             {% endfor %}
                         </div>
@@ -441,7 +448,14 @@
                             {% for p in planificadas_todas %}
                             <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:0.78rem;">
                                 <input type="radio" name="reemplazo_actividad" value="{{ p.pk }}" class="form-check-input mt-0">
-                                <span>{{ p.nombre_actividad|default:p.actividad.nombre }} <small class="text-muted">({{ p.nombre_tipo|default:p.actividad.tipo_actividad.nombre }})</small></span>
+                                <div>
+                                    <span>{{ p.actividad.nombre }}</span>
+                                    <small class="text-muted d-block" style="font-size:0.6rem;">{{ p.actividad.tipo_actividad.nombre }}</small>
+                                </div>
+                                {% with pd=p.planificacion_detalle %}
+                                {% if pd.fecha_programada %}<small class="text-muted ms-auto" style="font-size:0.55rem;" title="Programada">📅 {{ pd.fecha_programada|date:"d/m" }}</small>{% endif %}
+                                {% if pd.fecha_vencimiento %}<small class="text-muted ms-1" style="font-size:0.55rem;" title="Vence">⏰ {{ pd.fecha_vencimiento|date:"d/m" }}</small>{% endif %}
+                                {% endwith %}
                             </label>
                             {% endfor %}
                         </div>

@@ -171,8 +171,7 @@ def tablero(request):
     # Todas las planificadas pendientes (sin filtro de fecha) para "Iniciar siguiente"
     planificadas_todas = AsignacionActividad.objects.filter(
         user=request.user, activo=True, estado="Pendiente",
-        planificacion_detalle__isnull=False,
-    ).select_related("actividad__tipo_actividad", "actividad__subarea__area").order_by("planificacion_detalle__fecha_programada", "actividad__nombre")
+    ).select_related("actividad__tipo_actividad", "actividad__subarea__area", "planificacion_detalle").order_by("planificacion_detalle__fecha_programada", "actividad__nombre")
 
     en_curso = asignaciones.filter(estado="EnCurso")
     pausadas = asignaciones.filter(estado="Pausada")
