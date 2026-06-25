@@ -432,6 +432,10 @@
             <div class="mb-3" id="revisionMotivoContainer" style="display:none;">
                 <label class="form-label small fw-semibold text-danger">Motivo del rechazo <span class="text-danger">*</span></label>
                 <textarea name="motivo_rechazo" class="form-control form-control-sm" rows="2" placeholder="Explica por que se rechaza..."></textarea>
+                <div class="form-check mt-2">
+                    <input type="checkbox" name="crear_bug" id="crearBugCheck" class="form-check-input" value="1">
+                    <label class="form-check-label small" for="crearBugCheck" style="font-size:0.75rem;">Crear incidencia de bug al rechazar</label>
+                </div>
             </div>
             <div class="d-flex justify-content-end gap-2">
                 <button type="button" class="btn btn-sm btn-secondary" onclick="cerrarFinalizar()">Cancelar</button>

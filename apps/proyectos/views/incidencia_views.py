@@ -29,6 +29,9 @@ def incidencia_create(request, pk):
             reportado_por=request.user,
             asignado_a_id=request.POST.get("user_id") or None,
         )
+        adjunto_file = request.FILES.get("adjunto")
+        if adjunto_file:
+            inc.adjunto = adjunto_file
         inc.codigo = f"{proyecto.codigo}-INC-{inc.pk:03d}"
         inc.save()
         RegistroAvance.objects.create(proyecto=proyecto, tipo="incidencia_creada",

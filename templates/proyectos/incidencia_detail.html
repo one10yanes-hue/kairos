@@ -77,6 +77,9 @@
                     <div class="d-flex justify-content-between border-bottom py-1"><small class="text-muted" style="font-size:0.6rem;">Tipo</small><span style="font-size:0.68rem;">{{ incidencia.get_tipo_display }}</span></div>
                     <div class="d-flex justify-content-between border-bottom py-1"><small class="text-muted" style="font-size:0.6rem;">Severidad</small><span class="badge {% if incidencia.severidad == 'critica' %}bg-danger{% elif incidencia.severidad == 'alta' %}bg-warning text-dark{% else %}bg-light text-muted{% endif %}" style="font-size:0.5rem;">{{ incidencia.get_severidad_display }}</span></div>
                     <div class="d-flex justify-content-between py-1"><small class="text-muted" style="font-size:0.6rem;">Fecha</small><span style="font-size:0.65rem;">{{ incidencia.fecha_creacion|date:"d/m/Y H:i" }}</span></div>
+                    {% if incidencia.adjunto %}
+                    <div class="d-flex justify-content-between border-top py-1 mt-1"><small class="text-muted" style="font-size:0.6rem;">Adjunto</small><a href="{{ incidencia.adjunto.url }}" target="_blank" class="btn btn-sm btn-outline-primary py-0 px-1" style="font-size:0.6rem;"><i class="bi bi-download"></i> Descargar</a></div>
+                    {% endif %}
                 </div>
             </div>
 

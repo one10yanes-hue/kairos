@@ -380,6 +380,18 @@ def finalizar_actividad(request, pk):
                         nombre_actividad__startswith=f"[Revisar] {tarea.codigo}:",
                         activo=True
                     ).update(activo=False, estado="Cancelada")
+                    if request.POST.get("crear_bug"):
+                        from apps.proyectos.models import Incidencia
+                        inc = Incidencia.objects.create(
+                            proyecto=tarea.proyecto, tarea=tarea, historia=tarea.historia,
+                            titulo=f"Bug: {tarea.titulo}", descripcion=motivo,
+                            tipo="bug", severidad="media", estado="abierta",
+                            reportado_por=request.user,
+                            asignado_a=tarea.asignado_a,
+                        )
+                        inc.codigo = f"{tarea.proyecto.codigo}-INC-{inc.pk:03d}"
+                        inc.save()
+                        messages.info(request, f"Incidencia {inc.codigo} creada.")
                     from apps.proyectos.models import RegistroAvance
                     RegistroAvance.objects.create(
                         proyecto=tarea.proyecto, tipo="comentario",

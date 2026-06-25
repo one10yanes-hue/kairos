@@ -319,6 +319,7 @@ class Incidencia(models.Model):
     reportado_por = models.ForeignKey(User, on_delete=models.PROTECT, related_name="incidencias_reportadas")
     asignado_a = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="incidencias_asignadas")
     activo = models.BooleanField(default=True)
+    adjunto = models.FileField(upload_to="incidencias/", blank=True, null=True, help_text="Archivo adjunto opcional")
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_resolucion = models.DateTimeField(null=True, blank=True)
 
