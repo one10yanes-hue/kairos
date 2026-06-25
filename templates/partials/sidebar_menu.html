@@ -128,3 +128,32 @@
     </a>
 </div>
 {% endif %}
+
+{% if user.rol.nombre == 'Master' or user.rol.nombre == 'Admin' or user.proyectos_miembro.count > 0 %}
+<div class="nav-section collapsed">
+    <div class="nav-section-title">Proyectos <span class="section-arrow">&#9660;</span></div>
+    <a href="{% url 'proyectos:proyecto_list' %}" class="nav-item {% if '/proyectos' in request.path and not proyecto_ctx %}active{% endif %}">
+        <i class="bi bi-kanban"></i><span>Gestión de Proyectos</span>
+    </a>
+    {% if proyecto_ctx %}
+    <a href="{% url 'proyectos:proyecto_detail' proyecto_ctx.pk %}" class="nav-item nav-item-sublink {% if '/proyectos/'|add:proyecto_ctx.pk|stringformat:'s' in request.path and '/backlog' not in request.path and '/sprints' not in request.path and '/tareas' not in request.path and '/incidencias' not in request.path and '/estructura' not in request.path %}active{% endif %}">
+        <i class="bi bi-speedometer2"></i><span>Dashboard</span>
+    </a>
+    <a href="{% url 'proyectos:backlog' proyecto_ctx.pk %}" class="nav-item nav-item-sublink {% if '/backlog' in request.path %}active{% endif %}">
+        <i class="bi bi-list-ul"></i><span>Backlog</span>
+    </a>
+    <a href="{% url 'proyectos:sprint_list' proyecto_ctx.pk %}" class="nav-item nav-item-sublink {% if '/sprints' in request.path %}active{% endif %}">
+        <i class="bi bi-calendar-week"></i><span>Sprints</span>
+    </a>
+    <a href="{% url 'proyectos:tarea_list' proyecto_ctx.pk %}" class="nav-item nav-item-sublink {% if '/tareas' in request.path %}active{% endif %}">
+        <i class="bi bi-check2-square"></i><span>Tareas</span>
+    </a>
+    <a href="{% url 'proyectos:incidencia_list' proyecto_ctx.pk %}" class="nav-item nav-item-sublink {% if '/incidencias' in request.path %}active{% endif %}">
+        <i class="bi bi-bug"></i><span>Incidencias</span>
+    </a>
+    <a href="{% url 'proyectos:proyecto_estructura' proyecto_ctx.pk %}" class="nav-item nav-item-sublink {% if '/estructura' in request.path %}active{% endif %}">
+        <i class="bi bi-diagram-3"></i><span>Estructura</span>
+    </a>
+    {% endif %}
+</div>
+{% endif %}
