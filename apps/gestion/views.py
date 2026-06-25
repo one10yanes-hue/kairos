@@ -367,21 +367,9 @@ def finalizar_actividad(request, pk):
                     if not motivo:
                         messages.error(request, "Debes indicar el motivo del rechazo.")
                         return redirect("gestion:tablero")
-                    tarea.estado = "pendiente"
-                    tarea.save()
-                    if tarea.asignacion:
-                        tarea.asignacion.estado = "Pendiente"
-                        tarea.asignacion.estado_revision = "rechazado"
-                        tarea.asignacion.revision_comentario = motivo
-                        tarea.asignacion.save()
-                    if tarea.historia:
-                        tarea.historia.actualizar_estado()
-                    AsignacionActividad.objects.filter(
-                        nombre_actividad__startswith=f"[Revisar] {tarea.codigo}:",
-                        activo=True
-                    ).update(activo=False, estado="Cancelada")
                     if request.POST.get("crear_bug"):
-                        from apps.proyectos.models import Incidencia
+                        # Crear incidencia + tarea hija (NO devuelve la original)
+                        from apps.proyectos.models import Incidencia, RegistroAvance as RA
                         inc = Incidencia.objects.create(
                             proyecto=tarea.proyecto, tarea=tarea, historia=tarea.historia,
                             titulo=f"Bug: {tarea.titulo}", descripcion=motivo,
@@ -391,7 +379,48 @@ def finalizar_actividad(request, pk):
                         )
                         inc.codigo = f"{tarea.proyecto.codigo}-INC-{inc.pk:03d}"
                         inc.save()
-                        messages.info(request, f"Incidencia {inc.codigo} creada.")
+                        # Crear tarea hija desde la incidencia
+                        from apps.proyectos.models import Tarea as TareaModel
+                        tarea_hija = TareaModel.objects.create(
+                            proyecto=tarea.proyecto,
+                            historia=tarea.historia,
+                            sprint=tarea.sprint,
+                            titulo=f"[Bug] {tarea.titulo}",
+                            descripcion=motivo,
+                            tipo="bug",
+                            asignado_a=tarea.asignado_a,
+                            creador=request.user,
+                            actividad_catalogo=tarea.actividad_catalogo,
+                        )
+                        tarea_hija.codigo = f"{tarea.proyecto.codigo}-T-{tarea_hija.pk:03d}"
+                        tarea_hija.save()
+                        inc.tarea = tarea_hija
+                        inc.save()
+                        from apps.proyectos.signals import crear_asignacion_desde_tarea
+                        crear_asignacion_desde_tarea(tarea_hija)
+                        RA.objects.create(
+                            proyecto=tarea.proyecto, tipo="tarea_creada",
+                            descripcion=f"Bug {inc.codigo} genero tarea {tarea_hija.codigo}: {tarea_hija.titulo[:60]}",
+                            user=request.user, referencia_id=tarea_hija.pk
+                        )
+                        messages.warning(request, f"Tarea {tarea.codigo} rechazada. Bug {inc.codigo} creado y asignado a {tarea.asignado_a.get_full_name()}.")
+                    else:
+                        # Rechazo normal: devolver al ejecutor
+                        tarea.estado = "pendiente"
+                        tarea.save()
+                        if tarea.asignacion:
+                            tarea.asignacion.estado = "Pendiente"
+                            tarea.asignacion.estado_revision = "rechazado"
+                            tarea.asignacion.revision_comentario = motivo
+                            tarea.asignacion.save()
+                        if tarea.historia:
+                            tarea.historia.actualizar_estado()
+                        messages.warning(request, f"Tarea {tarea.codigo} rechazada: {motivo}")
+                    # Cancelar todas las [Revisar] para esta tarea en ambos casos
+                    AsignacionActividad.objects.filter(
+                        nombre_actividad__startswith=f"[Revisar] {tarea.codigo}:",
+                        activo=True
+                    ).update(activo=False, estado="Cancelada")
                     from apps.proyectos.models import RegistroAvance
                     RegistroAvance.objects.create(
                         proyecto=tarea.proyecto, tipo="comentario",
