@@ -374,7 +374,7 @@
                             <span><i class="bi bi-list-check"></i> Actividades Planificadas</span>
                         </label>
                         <div id="pausPlanifContainer" style="display:none;padding-left:1.5rem;max-height:130px;overflow-y:auto;">
-                            {% for p in planificadas %}
+                            {% for p in planificadas_todas %}
                             <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:0.78rem;">
                                 <input type="radio" name="actividad_id" value="{{ p.actividad_id }}" class="form-check-input mt-0" onclick="document.getElementById('pausaSubareaId').value='{{ p.actividad.subarea_id }}'">
                                 <div>
@@ -520,7 +520,7 @@
                             <span><i class="bi bi-list-check"></i> Actividades Planificadas</span>
                         </label>
                         <div id="trasPlanifContainer" style="display:none;padding-left:1.5rem;max-height:130px;overflow-y:auto;">
-                            {% for p in planificadas %}
+                            {% for p in planificadas_todas %}
                             <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:0.78rem;">
                                 <input type="radio" name="traslado_reemplazo" value="{{ p.actividad_id }}" class="form-check-input mt-0" onchange="seleccionarReemplazoTraslado(this)">
                                 <div>
