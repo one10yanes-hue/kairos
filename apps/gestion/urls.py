@@ -14,7 +14,6 @@ urlpatterns = [
     path("actividad/<int:pk>/detalle/", views.detalle_actividad, name="detalle_actividad"),
     path("actividad/no-programada/crear/", views.crear_no_programada, name="crear_no_programada"),
     path("api/usuarios/buscar/", views.buscar_usuarios_traslado, name="buscar_usuarios"),
-    path("api/asignacion/<int:pk>/proyecto/", views.asignacion_proyecto, name="asignacion_proyecto"),
     path("api/actividades/buscar/", views.buscar_actividades_reemplazo, name="buscar_actividades"),
     path("calendario/", views.calendario, name="calendario"),
     path("traslado/<int:pk>/aceptar/", views.aceptar_traslado, name="aceptar_traslado"),

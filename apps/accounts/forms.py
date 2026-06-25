@@ -11,7 +11,7 @@ class LoginForm(forms.Form):
 class UserForm(forms.ModelForm):
     class Meta:
         model = User
-        fields = ["cedula", "fecha_expedicion", "nombre", "apellido", "cargo", "email", "telefono", "rol", "roles_adicionales", "maneja_proyectos"]
+        fields = ["cedula", "fecha_expedicion", "nombre", "apellido", "cargo", "email", "telefono", "rol", "roles_adicionales"]
         widgets = {
             "cedula": forms.TextInput(attrs={"class": "form-control"}),
             "fecha_expedicion": forms.DateInput(attrs={"class": "form-control", "type": "date"}, format="%Y-%m-%d"),
@@ -22,7 +22,6 @@ class UserForm(forms.ModelForm):
             "telefono": forms.TextInput(attrs={"class": "form-control"}),
             "rol": forms.Select(attrs={"class": "form-control"}),
             "roles_adicionales": forms.SelectMultiple(attrs={"class": "form-control", "size": "3"}),
-            "maneja_proyectos": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
 
 

@@ -446,8 +446,9 @@ def finalizar_actividad(request, pk):
             venc = asignacion.planificacion_detalle.fecha_vencimiento
             if venc < timezone.now():
                 asignacion.dias_vencida = ((timezone.now() - venc).days)
-        if requiere_ent and entregable_file:
+        if entregable_file:
             asignacion.entregable = entregable_file
+        if requiere_ent and entregable_file:
             asignacion.estado = "Revision"
             asignacion.estado_revision = "pendiente"
         else:
@@ -901,6 +902,22 @@ def detalle_actividad(request, pk):
     traslados = TrasladoActividad.objects.filter(asignacion_origen=asignacion, activo=True)
     colaboraciones = Colaboracion.objects.filter(asignacion=asignacion, activo=True)
     historial = RevisionHistorial.objects.filter(asignacion=asignacion).select_related("user").order_by("-fecha")
+    # Si es tarea de revision [Revisar], buscar la asignacion original del ejecutor
+    orig_entregable = None
+    orig_asignacion = None
+    try:
+        if asignacion.nombre_actividad and "[Revisar]" in asignacion.nombre_actividad:
+            import re as _re
+            match = _re.match(r'\[Revisar\]\s+(\S+):', asignacion.nombre_actividad)
+            if match:
+                from apps.proyectos.models import Tarea
+                codigo_tarea = match.group(1)
+                tarea_orig = Tarea.objects.filter(codigo=codigo_tarea, activo=True).first()
+                if tarea_orig and tarea_orig.asignacion_id:
+                    orig_asignacion = tarea_orig.asignacion
+                    orig_entregable = orig_asignacion.entregable
+    except Exception:
+        pass
     # Timeline unificado (como tarea_detail)
     timeline = []
     timeline.append({
@@ -919,6 +936,10 @@ def detalle_actividad(request, pk):
     for r in registros:
         icono = {"Inicio":"play-fill","Pausa":"pause-fill","Reanudacion":"arrow-clockwise","Finalizacion":"check-circle-fill","Traslado":"arrow-right-circle"}.get(r.evento,"circle")
         timeline.append({"fecha":r.fecha_hora,"tipo":"registro","icono":icono,"descripcion":f"{r.evento} por {asignacion.user.get_full_name()}{' ('+r.motivo_pausa+')' if r.motivo_pausa else ''}"})
+    if asignacion.entregable:
+        timeline.append({"fecha":asignacion.fecha_update,"tipo":"entregable","icono":"file-earmark-arrow-up","descripcion":f"Entregable adjuntado por {asignacion.user.get_full_name()}"})
+    if orig_entregable and orig_asignacion:
+        timeline.append({"fecha":orig_asignacion.fecha_update,"tipo":"entregable","icono":"file-earmark-arrow-up","descripcion":f"Entregable adjuntado por {orig_asignacion.user.get_full_name()} (ejecutor)"})
     for c in comentarios:
         timeline.append({"fecha":c.fecha_creacion,"tipo":"comentario","icono":"chat-text","descripcion":f"Comentario de {c.user.get_full_name()}: {c.texto[:60]}"})
     for t in traslados:
@@ -959,6 +980,8 @@ def detalle_actividad(request, pk):
         "tiempo_efectivo": asignacion.tiempo_formateado(),
         "timeline": timeline,
         "planificacion": planificacion,
+        "orig_entregable": orig_entregable,
+        "orig_asignacion": orig_asignacion,
     }
     return render(request, "gestion/detalle_actividad.html", context)
 
@@ -1152,6 +1175,9 @@ def revision_aprobar(request, pk):
     if request.user.rol.nombre not in ["Master", "Admin"]:
         return redirect("gestion:revisiones")
     comentario = request.POST.get("comentario", "")
+    entregable_file = request.FILES.get("revision_entregable")
+    if entregable_file:
+        asignacion.revision_entregable = entregable_file
     asignacion.estado = "Finalizada"
     asignacion.estado_revision = "aprobado"
     asignacion.revision_comentario = comentario or None

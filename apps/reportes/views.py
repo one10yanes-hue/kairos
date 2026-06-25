@@ -290,40 +290,6 @@ def exportar_completo(request):
             ws4.cell(row=row_num, column=c, value=v).border = TB
     _auto_width(ws4)
 
-    # ---- SHEET 5: Proyectos ----
-    from apps.proyectos.models import Proyecto
-    ws5 = wb.create_sheet("Proyectos")
-    headers5 = ["Codigo", "Nombre", "Estado", "Manager", "Tareas Total", "Pendientes", "En Curso", "Finalizadas", "Inc. Abiertas", "Inc. Cerradas", "Avance %", "F. Inicio", "F. Fin Est."]
-    _style_header(ws5, headers5)
-    proyectos_qs = Proyecto.objects.filter(activo=True).select_related("manager")
-    for row_num, p in enumerate(proyectos_qs, 2):
-        t_tot = p.tareas.filter(activo=True).count()
-        t_pen = p.tareas.filter(activo=True, estado="pendiente").count()
-        t_cur = p.tareas.filter(activo=True, estado__in=["en_curso","pausada"]).count()
-        t_fin = p.tareas.filter(activo=True, estado="finalizada").count()
-        i_ab = p.incidencias.filter(activo=True, estado__in=["abierta","triaged","en_progreso"]).count()
-        i_ce = p.incidencias.filter(activo=True, estado="cerrada").count()
-        row = [p.codigo, p.nombre, p.get_estado_display(), p.manager.get_full_name(),
-               t_tot, t_pen, t_cur, t_fin, i_ab, i_ce, f"{p.avance}%",
-               str(p.fecha_inicio) if p.fecha_inicio else "-", str(p.fecha_fin_estimada) if p.fecha_fin_estimada else "-"]
-        for c, v in enumerate(row, 1):
-            ws5.cell(row=row_num, column=c, value=v).border = TB
-    _auto_width(ws5)
-
-    # ---- SHEET 6: Tareas por Proyecto ----
-    from apps.proyectos.models import Tarea
-    ws6 = wb.create_sheet("Tareas")
-    headers6 = ["Codigo", "Titulo", "Proyecto", "Tipo", "Estado", "Asignado", "Sprint", "F. Creacion"]
-    _style_header(ws6, headers6)
-    tareas_qs = Tarea.objects.filter(activo=True).select_related("proyecto", "asignado_a", "sprint")
-    for row_num, t in enumerate(tareas_qs, 2):
-        row = [t.codigo, t.titulo, t.proyecto.codigo, t.get_tipo_display(), t.get_estado_display(),
-               t.asignado_a.get_full_name() if t.asignado_a else "-", t.sprint.nombre if t.sprint else "-",
-               t.fecha_creacion.strftime("%Y-%m-%d")]
-        for c, v in enumerate(row, 1):
-            ws6.cell(row=row_num, column=c, value=v).border = TB
-    _auto_width(ws6)
-
     now = timezone.now().strftime("%Y%m%d_%H%M")
     resp = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     resp["Content-Disposition"] = f'attachment; filename="reporte_completo_{now}.xlsx"'

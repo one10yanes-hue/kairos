@@ -20,7 +20,7 @@
         <div class="card-body p-0">
             <table class="table table-hover mb-0" style="font-size:0.78rem;">
                 <thead class="table-light">
-                    <tr><th style="font-size:0.6rem;">Codigo</th><th style="font-size:0.6rem;">Nombre</th><th style="font-size:0.6rem;">SubArea</th><th style="font-size:0.6rem;">Fecha Lim.</th><th style="font-size:0.6rem;">Entregable</th><th style="font-size:0.6rem;">Solo Proyecto</th><th style="font-size:0.6rem;width:70px;">Acciones</th></tr>
+                    <tr><th style="font-size:0.6rem;">Codigo</th><th style="font-size:0.6rem;">Nombre</th><th style="font-size:0.6rem;">SubArea</th><th style="font-size:0.6rem;">Requiere Fecha</th><th style="font-size:0.6rem;">Requiere Entregable</th><th style="font-size:0.6rem;width:70px;">Acciones</th></tr>
                 </thead>
                 <tbody>
                     {% for t in tipos %}
@@ -30,7 +30,6 @@
                         <td><span class="text-muted" style="font-size:0.72rem;">{{ t.subarea.nombre }}</span> <small class="text-muted" style="font-size:0.6rem;">({{ t.subarea.area.nombre }})</small></td>
                         <td>{% if t.requiere_fecha_limite %}<span class="badge bg-success" style="font-size:0.6rem;">Si</span>{% else %}<span class="badge bg-light text-muted" style="font-size:0.6rem;">No</span>{% endif %}</td>
                         <td>{% if t.requiere_entregable %}<span class="badge bg-success" style="font-size:0.6rem;">Si</span>{% else %}<span class="badge bg-light text-muted" style="font-size:0.6rem;">No</span>{% endif %}</td>
-                        <td>{% if t.solo_proyecto %}<span class="badge bg-primary" style="font-size:0.6rem;">Si</span>{% else %}<span class="badge bg-light text-muted" style="font-size:0.6rem;">No</span>{% endif %}</td>
                         <td>
                             <div class="btn-group btn-group-sm" style="gap:2px;">
                                 <a href="{% url 'actividades:tipo_edit' t.pk %}" class="btn btn-outline-secondary py-0 px-1" style="font-size:0.65rem;"><i class="bi bi-pencil"></i></a>
@@ -38,7 +37,7 @@
                             </div>
                         </td>
                     </tr>
-                    {% empty %}<tr><td colspan="7" class="text-center text-muted py-3" style="font-size:0.72rem;">{% if q %}Sin resultados{% else %}No hay tipos de actividad{% endif %}</td></tr>{% endfor %}
+                    {% empty %}<tr><td colspan="6" class="text-center text-muted py-3" style="font-size:0.72rem;">{% if q %}Sin resultados{% else %}No hay tipos de actividad{% endif %}</td></tr>{% endfor %}
                 </tbody>
             </table>
         </div>

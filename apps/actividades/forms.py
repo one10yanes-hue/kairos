@@ -16,14 +16,13 @@ class TipoActividadForm(forms.ModelForm):
 
     class Meta:
         model = TipoActividad
-        fields = ["subarea", "nombre", "descripcion", "requiere_fecha_limite", "requiere_entregable", "es_flash", "solo_proyecto"]
+        fields = ["subarea", "nombre", "descripcion", "requiere_fecha_limite", "requiere_entregable", "es_flash"]
         widgets = {
             "nombre": forms.TextInput(attrs={"class": "form-control", "style": "font-size:0.85rem;"}),
             "descripcion": forms.Textarea(attrs={"class": "form-control", "rows": 3, "style": "font-size:0.85rem;"}),
             "requiere_fecha_limite": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "requiere_entregable": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "es_flash": forms.CheckboxInput(attrs={"class": "form-check-input"}),
-            "solo_proyecto": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
 
 
