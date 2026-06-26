@@ -644,12 +644,12 @@ def planificacion_self_create(request):
                 else:
                     if fecha_programada_value < timezone.localtime(timezone.now()).strftime("%Y-%m-%d"):
                         messages.error(request, "La fecha programada no puede ser anterior a hoy.")
-                        return redirect("planificacion:planificacion_self_create")
+                        return redirect("planificacion_self_create")
                     fecha_programada_str = fecha_programada_value
 
                 if fecha_vencimiento_value and fecha_vencimiento_value < timezone.localtime(timezone.now()).strftime("%Y-%m-%d"):
                     messages.error(request, "La fecha de vencimiento no puede ser anterior a hoy.")
-                    return redirect("planificacion:planificacion_self_create")
+                    return redirect("planificacion_self_create")
 
                 # Convertir strings a datetime timezone-aware
                 try:
@@ -685,7 +685,7 @@ def planificacion_self_create(request):
                     planificacion.activo = False
                     planificacion.save()
                     messages.warning(request, "Todas las actividades ya estaban asignadas para esta fecha.")
-                    return redirect("planificacion:planificacion_self_create")
+                    return redirect("planificacion_self_create")
 
                 for actividad in detalles_creados:
                     detalle = PlanificacionDetalle.objects.create(
@@ -707,7 +707,7 @@ def planificacion_self_create(request):
                         nombre_tipo=actividad.tipo_actividad.nombre,
                     )
                 messages.success(request, f"Planificacion creada con {count} asignacion(es).")
-                return redirect("planificacion:planificacion_self_list")
+                return redirect("planificacion_self_list")
         elif not form.is_valid():
             messages.error(request, f"Revisa los campos del formulario: {', '.join(f'{k}: {v[0]}' for k, v in form.errors.items())}")
         else:
