@@ -637,16 +637,26 @@ def planificacion_self_create(request):
                 messages.error(request, "Una o mas actividades requieren fecha de vencimiento.")
             else:
                 if not fecha_programada_value:
-                    fecha_programada = timezone.localtime(timezone.now()).strftime("%Y-%m-%d")
+                    fecha_programada_str = timezone.localtime(timezone.now()).strftime("%Y-%m-%d")
                 else:
                     if fecha_programada_value < timezone.localtime(timezone.now()).strftime("%Y-%m-%d"):
                         messages.error(request, "La fecha programada no puede ser anterior a hoy.")
                         return redirect("planificacion:planificacion_self_create")
-                    fecha_programada = fecha_programada_value
+                    fecha_programada_str = fecha_programada_value
 
                 if fecha_vencimiento_value and fecha_vencimiento_value < timezone.localtime(timezone.now()).strftime("%Y-%m-%d"):
                     messages.error(request, "La fecha de vencimiento no puede ser anterior a hoy.")
                     return redirect("planificacion:planificacion_self_create")
+
+                # Convertir strings a datetime timezone-aware
+                try:
+                    fecha_programada_dt = timezone.make_aware(datetime.combine(date.fromisoformat(fecha_programada_str), datetime.min.time()))
+                except (ValueError, TypeError):
+                    fecha_programada_dt = None
+                try:
+                    fecha_vencimiento_dt = timezone.make_aware(datetime.combine(date.fromisoformat(fecha_vencimiento_value), datetime.min.time())) if fecha_vencimiento_value else None
+                except (ValueError, TypeError):
+                    fecha_vencimiento_dt = None
 
                 planificacion = form.save(commit=False)
                 planificacion.admin = request.user
@@ -660,9 +670,9 @@ def planificacion_self_create(request):
                         planificacion=planificacion, actividad=actividad, user=request.user, activo=True
                     ).exists():
                         continue
-                    if AsignacionActividad.objects.filter(
+                    if fecha_programada_dt and AsignacionActividad.objects.filter(
                         user=request.user, actividad=actividad, activo=True,
-                        planificacion_detalle__fecha_programada=fecha_programada,
+                        planificacion_detalle__fecha_programada=fecha_programada_dt,
                     ).exclude(estado__in=["Finalizada", "Cancelada", "Trasladada"]).exists():
                         continue
                     detalles_creados.append(actividad)
@@ -680,8 +690,8 @@ def planificacion_self_create(request):
                         actividad=actividad,
                         user=request.user,
                         fecha_asignacion=timezone.now(),
-                        fecha_programada=fecha_programada or None,
-                        fecha_vencimiento=fecha_vencimiento_value or None,
+                        fecha_programada=fecha_programada_dt,
+                        fecha_vencimiento=fecha_vencimiento_dt,
                     )
                     AsignacionActividad.objects.create(
                         planificacion_detalle=detalle,
