@@ -622,7 +622,10 @@ def planificacion_self_create(request):
     if request.method == "POST":
         form = PlanificacionForm(request.POST)
         form.fields["subarea"].queryset = subareas
-        actividad_ids = [x for x in request.POST.getlist("actividades") if x]
+        try:
+            actividad_ids = [int(x) for x in request.POST.getlist("actividades") if x]
+        except (ValueError, TypeError):
+            actividad_ids = []
         fecha_programada_value = request.POST.get("fecha_programada", "")
         fecha_vencimiento_value = request.POST.get("fecha_vencimiento", "")
         nombre_value = request.POST.get("nombre", "")
