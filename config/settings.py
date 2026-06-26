@@ -157,10 +157,3 @@ SESSION_COOKIE_AGE = 28800
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 CSRF_USE_SESSIONS = True
 CSRF_FAILURE_VIEW = "config.views.csrf_failure"
-
-LOGGING = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "handlers": {"file": {"class": "logging.FileHandler", "filename": BASE_DIR / "debug.log", "level": "ERROR"}},
-    "root": {"handlers": ["file"], "level": "ERROR"},
-}
