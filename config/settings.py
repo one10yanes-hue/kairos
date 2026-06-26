@@ -1,4 +1,5 @@
 import os
+import sys
 from pathlib import Path
 import environ
 
@@ -157,3 +158,6 @@ SESSION_COOKIE_AGE = 28800
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 CSRF_USE_SESSIONS = True
 CSRF_FAILURE_VIEW = "config.views.csrf_failure"
+
+import logging as _logging
+_logging.basicConfig(level=_logging.ERROR, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s", stream=sys.stderr)
