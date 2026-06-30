@@ -43,32 +43,38 @@
                                 <span class="fw-semibold">{{ asignacion.actividad.subarea.area.nombre }} &gt; {{ asignacion.actividad.subarea.nombre }}</span>
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <div class="d-flex flex-column">
-                                <small class="text-muted" style="font-size:0.6rem;">TRABAJADO</small>
-                                <span class="fw-bold" style="font-size:0.95rem;">{{ tiempo_efectivo }}</span>
+                        <div class="col-md-2">
+                            <div class="d-flex flex-column text-center">
+                                <small class="text-muted" style="font-size:0.55rem;">TRABAJADO</small>
+                                <span class="fw-bold" style="font-size:0.85rem;">{{ tiempo_efectivo }}</span>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="d-flex flex-column text-center">
+                                <small class="text-muted" style="font-size:0.55rem;">EN PAUSA</small>
+                                <span class="fw-bold" style="font-size:0.85rem;">{{ tiempo_pausado }}</span>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="d-flex flex-column text-center">
+                                <small class="text-muted" style="font-size:0.55rem;">GLOBAL</small>
+                                <span class="fw-bold" style="font-size:0.85rem;">{{ tiempo_global }}</span>
                             </div>
                         </div>
                         <div class="col-md-4">
-                            <div class="d-flex flex-column">
-                                <small class="text-muted" style="font-size:0.6rem;">EN PAUSA</small>
-                                <span class="fw-bold" style="font-size:0.95rem;">{{ tiempo_pausado }}</span>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="d-flex flex-column">
-                                <small class="text-muted" style="font-size:0.6rem;">TIEMPO GLOBAL</small>
-                                <span class="fw-bold" style="font-size:0.95rem;">{{ tiempo_global }}</span>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
                             <div class="d-flex flex-column">
                                 <small class="text-muted" style="font-size:0.6rem;">CREACION</small>
                                 <span><i class="bi bi-calendar3"></i> {{ asignacion.fecha_asignacion|date:"d/m/Y H:i" }}</span>
                             </div>
                         </div>
+                        <div class="col-md-4">
+                            <div class="d-flex flex-column">
+                                <small class="text-muted" style="font-size:0.6rem;">CIERRE</small>
+                                <span><i class="bi bi-calendar-check"></i> {{ asignacion.fecha_update|date:"d/m/Y H:i" }}</span>
+                            </div>
+                        </div>
                         {% if asignacion.planificacion_detalle.fecha_programada %}
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <div class="d-flex flex-column">
                                 <small class="text-muted" style="font-size:0.6rem;">PROGRAMADA</small>
                                 <span><i class="bi bi-calendar-event"></i> {{ asignacion.planificacion_detalle.fecha_programada|date:"d/m/Y" }}</span>
@@ -76,9 +82,9 @@
                         </div>
                         {% endif %}
                         {% if asignacion.actividad.tipo_actividad.requiere_fecha_limite and asignacion.planificacion_detalle.fecha_vencimiento %}
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <div class="d-flex flex-column">
-                                <small class="text-muted" style="font-size:0.6rem;">FECHA LIMITE / VENCE</small>
+                                <small class="text-muted" style="font-size:0.6rem;">VENCE</small>
                                 <span><i class="bi bi-clock"></i> {{ asignacion.planificacion_detalle.fecha_vencimiento|date:"d/m/Y" }}</span>
                             </div>
                         </div>
