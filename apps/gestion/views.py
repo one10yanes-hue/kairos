@@ -400,6 +400,10 @@ def crear_no_programada(request):
 
         actividad = get_object_or_404(Actividad, pk=actividad_id, subarea_id=subarea_id, activo=True)
 
+        if not actividad.tipo_actividad.es_flash:
+            messages.error(request, f"'{actividad.nombre}' no es un evento flash. Selecciona una actividad flash.")
+            return redirect("gestion:crear_no_programada")
+
         duplicada = AsignacionActividad.objects.filter(
             user=request.user, actividad=actividad, activo=True
         ).exclude(estado__in=["Finalizada", "Cancelada", "Trasladada"]).exists()
