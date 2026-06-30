@@ -43,10 +43,22 @@
                                 <span class="fw-semibold">{{ asignacion.actividad.subarea.area.nombre }} &gt; {{ asignacion.actividad.subarea.nombre }}</span>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <div class="d-flex flex-column">
-                                <small class="text-muted" style="font-size:0.6rem;">TIEMPO TRANSCURRIDO</small>
+                                <small class="text-muted" style="font-size:0.6rem;">TRABAJADO</small>
                                 <span class="fw-bold" style="font-size:0.95rem;">{{ tiempo_efectivo }}</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="d-flex flex-column">
+                                <small class="text-muted" style="font-size:0.6rem;">EN PAUSA</small>
+                                <span class="fw-bold" style="font-size:0.95rem;">{{ tiempo_pausado }}</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="d-flex flex-column">
+                                <small class="text-muted" style="font-size:0.6rem;">TIEMPO GLOBAL</small>
+                                <span class="fw-bold" style="font-size:0.95rem;">{{ tiempo_global }}</span>
                             </div>
                         </div>
                         <div class="col-md-6">

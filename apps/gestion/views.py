@@ -751,6 +751,8 @@ def detalle_actividad(request, pk):
         "colaboraciones": colaboraciones,
         "historial": historial,
         "tiempo_efectivo": asignacion.tiempo_formateado(),
+        "tiempo_pausado": asignacion.tiempo_pausado_formateado(),
+        "tiempo_global": asignacion._fmt(int((asignacion.fecha_update - asignacion.fecha_asignacion).total_seconds())),
         "planificacion": planificacion,
         "timeline": timeline,
     }
