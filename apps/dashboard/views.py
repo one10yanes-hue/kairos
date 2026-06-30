@@ -56,7 +56,7 @@ def dashboard_admin(request):
 
     asignaciones = AsignacionActividad.objects.filter(
         actividad__subarea__in=subareas, activo=True
-    )
+    ).filter(user__activo=True)
 
     # Todas las asignaciones (inclusive inactivas) para calcular tiempo real
     asignaciones_tiempo = AsignacionActividad.objects.filter(
@@ -76,7 +76,7 @@ def dashboard_admin(request):
 
     registros_base = RegistroTiempo.objects.filter(
         asignacion__actividad__subarea__in=subareas, activo=True
-    )
+    ).filter(asignacion__user__activo=True)
     if user_id:
         registros_base = registros_base.filter(asignacion__user_id=user_id)
     if fecha_desde:
@@ -282,7 +282,7 @@ def progreso(request):
 
     asignaciones = AsignacionActividad.objects.filter(
         actividad__subarea__in=subareas, activo=True
-    ).select_related(
+    ).filter(user__activo=True).select_related(
         "user", "actividad", "actividad__tipo_actividad",
         "actividad__subarea__area",
         "planificacion_detalle__planificacion",
@@ -336,7 +336,7 @@ def progreso(request):
     # Resumen
     total_qs = AsignacionActividad.objects.filter(
         actividad__subarea__in=subareas, activo=True
-    )
+    ).filter(user__activo=True)
     if subarea_id:
         total_qs = total_qs.filter(actividad__subarea__in=subareas)
     resumen_total = total_qs.count()
@@ -407,7 +407,7 @@ def linea_tiempo(request):
 
     asignaciones = AsignacionActividad.objects.filter(
         actividad__subarea__in=subareas, activo=True
-    )
+    ).filter(user__activo=True)
     if user_filter:
         asignaciones = asignaciones.filter(user_id=user_filter)
     if subarea_filter:

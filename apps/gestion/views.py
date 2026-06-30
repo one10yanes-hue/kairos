@@ -903,7 +903,7 @@ def revisiones_list(request):
         actividad__subarea__in=subareas,
         actividad__tipo_actividad__requiere_entregable=True,
         activo=True,
-    ).select_related(
+    ).filter(user__activo=True).select_related(
         "user", "actividad__tipo_actividad", "actividad__subarea__area"
     ).prefetch_related("comentarios").order_by("-fecha_asignacion")
 

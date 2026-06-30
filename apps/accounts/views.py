@@ -159,6 +159,13 @@ def master_usuario_delete(request, pk):
     usuario.activo = False
     usuario.is_active = False
     usuario.save()
+    # Cascada: cancelar asignaciones activas, planificaciones y desvincular subareas
+    from apps.gestion.models import AsignacionActividad
+    from apps.planificacion.models import PlanificacionDetalle
+    from apps.estructura.models import UserSubArea
+    AsignacionActividad.objects.filter(user=usuario, activo=True).update(activo=False, estado="Cancelada")
+    PlanificacionDetalle.objects.filter(user=usuario, activo=True).update(activo=False)
+    UserSubArea.objects.filter(user=usuario, activo=True).update(activo=False)
     messages.success(request, "Usuario inactivado exitosamente.")
     return redirect("accounts:master_usuarios")
 
