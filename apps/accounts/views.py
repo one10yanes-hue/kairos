@@ -111,7 +111,7 @@ def master_usuario_create(request):
 def master_usuario_edit(request, pk):
     if request.user.rol.nombre != "Master":
         return redirect("root")
-    usuario = get_object_or_404(User, pk=pk, activo=True)
+    usuario = get_object_or_404(User, pk=pk)
     empresas = Empresa.objects.filter(activo=True)
     subareas = SubArea.objects.filter(activo=True)
     user_empresas = list(UserEmpresa.objects.filter(user=usuario, activo=True).values_list("empresa_id", flat=True))
