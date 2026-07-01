@@ -62,12 +62,22 @@
                         </select>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;">Asignado a</label>
+                        <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;">Asignado a (Ejecutor)</label>
                         <select name="user_id" class="form-select" style="font-size:0.85rem;">
                             <option value="">Sin asignar</option>
                             {% for m in miembros %}<option value="{{ m.user.pk }}" {% if editando and tarea.asignado_a_id == m.user.pk %}selected{% endif %}>{{ m.user.get_full_name }}</option>{% endfor %}
                         </select>
                         <small style="font-size:0.6rem;color:var(--slate-400);">Al asignar un ejecutor, la tarea aparece en su tablero Kanban personal</small>
+                    </div>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;">Revisor / QA</label>
+                        <select name="revisor_id" class="form-select" style="font-size:0.85rem;">
+                            <option value="">Sin asignar</option>
+                            {% for m in revisores %}<option value="{{ m.user.pk }}" {% if editando and tarea.revisor_id == m.user.pk %}selected{% endif %}>{{ m.user.get_full_name }}</option>{% endfor %}
+                        </select>
+                        <small style="font-size:0.6rem;color:var(--slate-400);">Al asignar un revisor, la card [Revisar] solo llega a el</small>
                     </div>
                 </div>
 

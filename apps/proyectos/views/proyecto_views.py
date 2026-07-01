@@ -3,15 +3,19 @@ from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.paginator import Paginator
-from ..models import Proyecto, MiembroProyecto, WorkflowConfig, RegistroAvance
+from ..models import Proyecto, MiembroProyecto, WorkflowConfig, RegistroAvance, Tarea, HistoriaUsuario, Incidencia
 from ..decorators import miembro_requerido, ROLES_ADMIN, ROLES_EDICION
+from ..workflow_presets import PRESETS, ROLES_POR_PRESET, ROLES_REQUERIDOS
 from apps.accounts.models import User
 from apps.estructura.models import SubArea, Area, Empresa
 
 
 def _get_subareas(user):
-    if user.rol.nombre == "Master":
+    from apps.estructura.utils import get_admin_subareas
+    if user.rol and user.rol.nombre == "Master":
         return SubArea.objects.filter(activo=True)
+    if user.rol and user.rol.nombre == "Admin":
+        return get_admin_subareas(user)
     return SubArea.objects.filter(usuarios__user=user, activo=True)
 
 
@@ -235,6 +239,38 @@ def proyecto_create(request):
             proyecto.subareas.set(subarea_ids)
 
         MiembroProyecto.objects.update_or_create(proyecto=proyecto, user=manager, defaults={"rol": "lider", "activo": True})
+
+        # Onboarding: aplicar preset de flujo
+        preset = request.POST.get("preset", "revision")
+        if preset in PRESETS:
+            for ent, transiciones in PRESETS[preset].items():
+                for origen, destino in transiciones:
+                    WorkflowConfig.objects.get_or_create(
+                        proyecto=proyecto, entidad=ent,
+                        estado_origen=origen, estado_destino=destino,
+                        defaults={"activo": True}
+                    )
+
+        # Onboarding: agregar miembros del equipo
+        roles_miembros = [
+            ("ejecutores", "ejecutor"),
+            ("revisores", "revisor"),
+            ("aprobadores", "aprobador"),
+            ("otros_roles", None),
+        ]
+        for field_name, default_rol in roles_miembros:
+            uids = request.POST.getlist(field_name)
+            for uid in uids:
+                if not uid:
+                    continue
+                rol = default_rol
+                if field_name == "otros_roles":
+                    rol = request.POST.get("rol_otros", "observador")
+                MiembroProyecto.objects.update_or_create(
+                    proyecto=proyecto, user_id=uid,
+                    defaults={"rol": rol, "activo": True}
+                )
+
         from ..models import RegistroAvance
         RegistroAvance.objects.create(proyecto=proyecto, tipo="comentario",
             descripcion=f"Proyecto creado por {request.user.get_full_name()}", user=request.user)
@@ -579,10 +615,40 @@ def proyecto_estructura(request, pk):
     proyecto = request.proyecto
     sprints = proyecto.sprints.filter(activo=True).order_by("numero")
     tareas_sin = proyecto.tareas.filter(activo=True, historia__isnull=True, sprint__isnull=True).select_related("asignado_a")
+
+    if request.method == "POST" and request.user.rol.nombre in ("Master", "Admin"):
+        subarea_ids = request.POST.getlist("subareas")
+        from ..models import MiembroProyecto
+        if request.user.rol.nombre == "Admin":
+            from apps.estructura.utils import get_admin_subareas
+            admin_subareas = get_admin_subareas(request.user)
+            allowed = [s.pk for s in admin_subareas]
+            subarea_ids = [s for s in subarea_ids if int(s) in allowed]
+        subareas_a_quitar = proyecto.subareas.exclude(pk__in=subarea_ids)
+        from ..models import Tarea
+        tareas_activas = Tarea.objects.filter(
+            proyecto=proyecto, actividad_catalogo__subarea__in=subareas_a_quitar,
+            estado__in=["pendiente", "en_curso", "pausada", "bloqueada", "revision"],
+            activo=True
+        )
+        if tareas_activas.exists():
+            messages.error(request, f"No se pueden remover subareas con {tareas_activas.count()} tareas activas.")
+            return redirect("proyectos:proyecto_estructura", pk=proyecto.pk)
+        proyecto.subareas.set(subarea_ids)
+        messages.success(request, "Subareas actualizadas.")
+        return redirect("proyectos:proyecto_estructura", pk=proyecto.pk)
+
+    from apps.estructura.models import SubArea
+    subareas_disponibles = SubArea.objects.filter(activo=True).select_related("area")
+    if request.user.rol.nombre == "Admin":
+        from apps.estructura.utils import get_admin_subareas
+        subareas_disponibles = get_admin_subareas(request.user)
+
     return render(request, "proyectos/proyecto_estructura.html", {
         "proyecto": proyecto,
         "sprints": sprints,
         "tareas_sin": tareas_sin,
+        "subareas_disponibles": subareas_disponibles,
     })
 
 
@@ -593,6 +659,12 @@ def proyecto_toggle_activo(request, pk):
     if request.method == "POST":
         proyecto.activo = not proyecto.activo
         proyecto.save()
+        from ..models import RegistroAvance
+        RegistroAvance.objects.create(
+            proyecto=proyecto, tipo="comentario",
+            descripcion=f"Proyecto {'activado' if proyecto.activo else 'desactivado'} por {request.user.get_full_name()}",
+            user=request.user, referencia_id=proyecto.pk
+        )
         estado = "activado" if proyecto.activo else "desactivado"
         messages.success(request, f"Proyecto {proyecto.codigo} {estado}.")
     return redirect("proyectos:proyecto_list")
@@ -603,29 +675,15 @@ def proyecto_workflow(request, pk):
     from django.db.models import Q
     proyecto = request.proyecto
 
-    ROLES_POR_PRESET = {
-        "simple": ["lider", "ejecutor"],
-        "revision": ["lider", "responsable", "ejecutor", "revisor", "aprobador"],
-        "completo": ["lider", "responsable", "ejecutor", "revisor", "aprobador", "observador"],
-    }
-    presets = {
-        "simple": {
-            "tarea": [("pendiente","en_curso"),("en_curso","finalizada"),("en_curso","cancelada")],
-            "historia": [("backlog","sprint_backlog"),("sprint_backlog","en_progreso"),("en_progreso","done")],
-            "incidencia": [("abierta","en_progreso"),("en_progreso","resuelta"),("resuelta","cerrada")],
-        },
-        "revision": {
-            "tarea": [("pendiente","en_curso"),("en_curso","finalizada"),("finalizada","revision"),("en_curso","cancelada"),("revision","finalizada"),("revision","pendiente")],
-            "historia": [("backlog","sprint_backlog"),("sprint_backlog","en_progreso"),("en_progreso","revision"),("revision","done"),("revision","en_progreso")],
-            "incidencia": [("abierta","en_progreso"),("abierta","cerrada"),("en_progreso","resuelta"),("resuelta","cerrada"),("cerrada","abierta")],
-        },
-    }
-
     if request.method == "POST":
         accion = request.POST.get("accion")
         if accion == "actualizar":
+            if proyecto.workflow_bloqueado and request.user.rol.nombre != "Master":
+                messages.error(request, "La plantilla de flujo esta bloqueada. Solo un Master puede desbloquearla.")
+                return redirect("proyectos:proyecto_workflow", pk=proyecto.pk)
+
             preset = request.POST.get("preset")
-            if preset not in presets and preset != "completo":
+            if preset not in PRESETS and preset != "completo":
                 messages.error(request, "Plantilla invalida.")
                 return redirect("proyectos:proyecto_workflow", pk=proyecto.pk)
 
@@ -634,6 +692,12 @@ def proyecto_workflow(request, pk):
             roles_actuales_set = set(miembros_activos.values_list("rol", flat=True))
             roles_sobran = [r for r in roles_actuales_set if r not in roles_necesarios]
 
+            # Item 20: Validar roles minimos requeridos
+            for rol in ROLES_REQUERIDOS.get(preset, []):
+                if not miembros_activos.filter(rol=rol).exists():
+                    messages.error(request, f"Se requiere al menos 1 '{rol}' para el flujo '{preset}'. Agrega miembros con ese rol primero.")
+                    return redirect(f"{reverse('proyectos:proyecto_workflow', args=[proyecto.pk])}?preset={preset}")
+
             if roles_sobran:
                 sobrantes = miembros_activos.filter(rol__in=roles_sobran)
                 nombres = ", ".join(m.user.get_full_name() for m in sobrantes)
@@ -641,11 +705,11 @@ def proyecto_workflow(request, pk):
                 return redirect(f"{reverse('proyectos:proyecto_workflow', args=[proyecto.pk])}?preset={preset}")
 
             # Aplicar preset a todas las entidades
-            if preset in presets:
+            if preset in PRESETS:
                 for ent in ["tarea", "historia", "incidencia"]:
-                    if ent in presets[preset]:
+                    if ent in PRESETS[preset]:
                         WorkflowConfig.objects.filter(proyecto=proyecto, entidad=ent).delete()
-                        for origen, destino in presets[preset][ent]:
+                        for origen, destino in PRESETS[preset][ent]:
                             WorkflowConfig.objects.get_or_create(proyecto=proyecto, entidad=ent, estado_origen=origen, estado_destino=destino, defaults={"activo": True})
             else:
                 WorkflowConfig.objects.filter(proyecto=proyecto).delete()
@@ -681,10 +745,51 @@ def proyecto_workflow(request, pk):
                 RegistroAvance.objects.create(proyecto=proyecto, tipo="miembro_removido",
                     descripcion=f"{nombre} removido del equipo por {request.user.get_full_name()}", user=request.user)
                 messages.success(request, "Miembro removido del equipo.")
+        elif accion == "toggle_bloqueo":
+            if request.user.rol.nombre == "Master":
+                proyecto.workflow_bloqueado = not proyecto.workflow_bloqueado
+                proyecto.save(update_fields=["workflow_bloqueado"])
+                estado = "bloqueado" if proyecto.workflow_bloqueado else "desbloqueado"
+                messages.success(request, f"Flujo {estado}.")
+            else:
+                messages.error(request, "Solo Master puede cambiar el bloqueo del flujo.")
+        elif accion == "agregar_transicion":
+            if proyecto.workflow_bloqueado and request.user.rol.nombre != "Master":
+                messages.error(request, "La plantilla de flujo esta bloqueada. Solo un Master puede modificarla.")
+                return redirect("proyectos:proyecto_workflow", pk=proyecto.pk)
+            entidad = request.POST.get("entidad")
+            origen = request.POST.get("estado_origen", "").strip()
+            destino = request.POST.get("estado_destino", "").strip()
+            ESTADOS_VALIDOS = {
+                "tarea": set(dict(Tarea.ESTADOS)),
+                "historia": set(dict(HistoriaUsuario.ESTADOS)),
+                "incidencia": set(dict(Incidencia.ESTADOS)),
+            }
+            if entidad in ESTADOS_VALIDOS:
+                if origen not in ESTADOS_VALIDOS[entidad] or destino not in ESTADOS_VALIDOS[entidad]:
+                    messages.error(request, f"Estado invalido para {entidad}.")
+                    return redirect("proyectos:proyecto_workflow", pk=proyecto.pk)
+            if entidad and origen and destino:
+                WorkflowConfig.objects.get_or_create(
+                    proyecto=proyecto, entidad=entidad,
+                    estado_origen=origen, estado_destino=destino,
+                    defaults={"activo": True}
+                )
+                messages.success(request, f"Transicion '{origen} → {destino}' agregada para {entidad}.")
+            return redirect("proyectos:proyecto_workflow", pk=proyecto.pk)
+        elif accion == "remover_transicion":
+            if proyecto.workflow_bloqueado and request.user.rol.nombre != "Master":
+                messages.error(request, "La plantilla de flujo esta bloqueada. Solo un Master puede modificarla.")
+                return redirect("proyectos:proyecto_workflow", pk=proyecto.pk)
+            tc_id = request.POST.get("transicion_id")
+            if tc_id:
+                WorkflowConfig.objects.filter(pk=tc_id, proyecto=proyecto).delete()
+                messages.success(request, "Transicion eliminada.")
+            return redirect("proyectos:proyecto_workflow", pk=proyecto.pk)
 
     from ..models import HARDCODED_TAREA, HARDCODED_HISTORIA, HARDCODED_INCIDENCIA, _get_transiciones as gtrans
 
-    workflows_all = WorkflowConfig.objects.filter(proyecto=proyecto, activo=True)
+    workflows_all = WorkflowConfig.objects.filter(proyecto=proyecto, activo=True).order_by("entidad")
     flujos = {}
     for ent in ["tarea", "historia", "incidencia"]:
         flujos[ent] = gtrans(proyecto, ent)
@@ -710,9 +815,9 @@ def proyecto_workflow(request, pk):
 
     # Preset en preview (GET param)
     preset_preview = request.GET.get("preset")
-    if preset_preview and preset_preview in presets:
+    if preset_preview and preset_preview in PRESETS:
         flujos_preview = {}
-        for ent, transitions in presets[preset_preview].items():
+        for ent, transitions in PRESETS[preset_preview].items():
             d = {}
             for o, d2 in transitions:
                 d.setdefault(o, []).append(d2)
@@ -744,5 +849,7 @@ def proyecto_workflow(request, pk):
         "roles_faltantes": roles_faltantes,
         "roles_sobran": roles_sobran,
         "preset_activo": preset_activo,
-        "mostrar_actualizar": bool(preset_preview),
+        "mostrar_actualizar": bool(preset_preview) and not proyecto.workflow_bloqueado,
+        "workflow_bloqueado": proyecto.workflow_bloqueado,
+        "transiciones_personalizadas": workflows_all,
     })

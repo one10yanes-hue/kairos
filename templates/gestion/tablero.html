@@ -153,7 +153,7 @@
                                         {% csrf_token %}
                                         <button type="submit" class="btn btn-sm py-0 px-1 btn-success" style="font-size:0.6rem;" title="Iniciar"><i class="bi bi-play-fill"></i></button>
                                     </form>
-                                    <button type="button" class="btn btn-sm py-0 px-1 btn-outline-info" style="font-size:0.6rem;" title="Trasladar" onclick="abrirTraslado({{ a.pk }}, '{{ a.actividad.nombre|escapejs }}', {{ a.actividad_id }})"><i class="bi bi-arrow-right-circle"></i></button>
+                                    <button type="button" class="btn btn-sm py-0 px-1 btn-outline-info" style="font-size:0.6rem;" title="Trasladar" onclick="abrirTraslado({{ a.pk }}, '{{ a.actividad.nombre|escapejs }}', {{ a.actividad_id }}, '{{ a.nombre_actividad|default:''|escapejs }}', {{ a.tarea_proyecto.proyecto_id|default:'null' }})"><i class="bi bi-arrow-right-circle"></i></button>
                                 </div>
                             </div>
                     </div>
@@ -195,8 +195,8 @@
                             </div>
                             <div class="d-flex gap-1" style="margin-top:0.25rem;">
                                 <button type="button" class="btn btn-sm py-0 px-1 btn-warning" style="font-size:0.6rem;" title="Pausar" onclick="abrirPausa({{ a.pk }}, '{{ a.actividad.nombre|escapejs }}')"><i class="bi bi-pause-fill"></i></button>
-                                <button type="button" class="btn btn-sm py-0 px-1 btn-success" style="font-size:0.6rem;" title="Finalizar" onclick="abrirFinalizar({{ a.pk }}, '{{ a.actividad.nombre|escapejs }}', {{ a.actividad.subarea_id }}, {{ a.actividad.tipo_actividad.requiere_entregable|lower }}, '{{ a.origen|default:'' }}')"><i class="bi bi-check-circle-fill"></i></button>
-                                <button type="button" class="btn btn-sm py-0 px-1 btn-outline-info" style="font-size:0.6rem;" title="Trasladar" onclick="abrirTraslado({{ a.pk }}, '{{ a.actividad.nombre|escapejs }}', {{ a.actividad_id }})"><i class="bi bi-arrow-right-circle"></i></button>
+                                <button type="button" class="btn btn-sm py-0 px-1 btn-success" style="font-size:0.6rem;" title="Finalizar" onclick="abrirFinalizar({{ a.pk }}, '{{ a.actividad.nombre|escapejs }}', {{ a.actividad.subarea_id }}, {{ a.actividad.tipo_actividad.requiere_entregable|lower }}, '{{ a.origen|default:'' }}', '{{ a.nombre_actividad|default:''|escapejs }}')"><i class="bi bi-check-circle-fill"></i></button>
+                                <button type="button" class="btn btn-sm py-0 px-1 btn-outline-info" style="font-size:0.6rem;" title="Trasladar" onclick="abrirTraslado({{ a.pk }}, '{{ a.actividad.nombre|escapejs }}', {{ a.actividad_id }}, '{{ a.nombre_actividad|default:''|escapejs }}', {{ a.tarea_proyecto.proyecto_id|default:'null' }})"><i class="bi bi-arrow-right-circle"></i></button>
                                 <button type="button" class="btn btn-sm py-0 px-1 btn-outline-secondary" style="font-size:0.6rem;" title="Detalle" onclick="location.href='{% url 'gestion:detalle_actividad' a.pk %}'"><i class="bi bi-eye"></i></button>
                             </div>
                         </div>
@@ -242,8 +242,8 @@
                                     {% csrf_token %}
                                     <button type="submit" class="btn btn-sm py-0 px-1 btn-success" style="font-size:0.6rem;" title="Reanudar"><i class="bi bi-play-fill"></i></button>
                                 </form>
-                                <button type="button" class="btn btn-sm py-0 px-1 btn-success" style="font-size:0.6rem;" title="Finalizar" onclick="abrirFinalizar({{ a.pk }}, '{{ a.actividad.nombre|escapejs }}', {{ a.actividad.subarea_id }}, {{ a.actividad.tipo_actividad.requiere_entregable|lower }}, '{{ a.origen|default:'' }}')"><i class="bi bi-check-circle-fill"></i></button>
-                                <button type="button" class="btn btn-sm py-0 px-1 btn-outline-info" style="font-size:0.6rem;" title="Trasladar" onclick="abrirTraslado({{ a.pk }}, '{{ a.actividad.nombre|escapejs }}', {{ a.actividad_id }})"><i class="bi bi-arrow-right-circle"></i></button>
+                                <button type="button" class="btn btn-sm py-0 px-1 btn-success" style="font-size:0.6rem;" title="Finalizar" onclick="abrirFinalizar({{ a.pk }}, '{{ a.actividad.nombre|escapejs }}', {{ a.actividad.subarea_id }}, {{ a.actividad.tipo_actividad.requiere_entregable|lower }}, '{{ a.origen|default:'' }}', '{{ a.nombre_actividad|default:''|escapejs }}')"><i class="bi bi-check-circle-fill"></i></button>
+                                <button type="button" class="btn btn-sm py-0 px-1 btn-outline-info" style="font-size:0.6rem;" title="Trasladar" onclick="abrirTraslado({{ a.pk }}, '{{ a.actividad.nombre|escapejs }}', {{ a.actividad_id }}, '{{ a.nombre_actividad|default:''|escapejs }}', {{ a.tarea_proyecto.proyecto_id|default:'null' }})"><i class="bi bi-arrow-right-circle"></i></button>
                                 <button type="button" class="btn btn-sm py-0 px-1 btn-outline-secondary" style="font-size:0.6rem;" title="Detalle" onclick="location.href='{% url 'gestion:detalle_actividad' a.pk %}'"><i class="bi bi-eye"></i></button>
                             </div>
                         </div>
@@ -522,8 +522,12 @@
 var currentAsignacionId = null;
 var currentActividadId = null;
 var timeoutBusqueda = null;
+var currentAsignacionId = null;
+var currentActividadId = null;
+var currentProyectoId = null;
+var currentNombreCompleto = '';
 
-function abrirTraslado(asignacionId, nombreActividad, actividadId) {
+function abrirTraslado(asignacionId, nombreActividad, actividadId, nombreCompleto, proyectoId) {
     document.getElementById('pausaOverlay').style.display = 'none';
     document.getElementById('finalizarOverlay').style.display = 'none';
     var to = document.getElementById('trasladoOverlay');
@@ -533,6 +537,8 @@ function abrirTraslado(asignacionId, nombreActividad, actividadId) {
     to.style.zIndex = '99999';
     currentAsignacionId = asignacionId;
     currentActividadId = actividadId;
+    currentProyectoId = proyectoId || null;
+    currentNombreCompleto = nombreCompleto || '';
     document.getElementById('trasladoNombreActividad').textContent = nombreActividad;
     document.getElementById('trasladoForm').action = '/usuario/actividad/' + asignacionId + '/trasladar/';
     limpiarUsuario();
@@ -578,7 +584,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (q.length < 1) { limpiarUsuario(); return; }
         clearTimeout(timeoutBusqueda);
         timeoutBusqueda = setTimeout(function() {
-            fetch('/usuario/api/usuarios/buscar/?q=' + encodeURIComponent(q), { headers: {'X-Requested-With':'XMLHttpRequest'} })
+            var url = '/usuario/api/usuarios/buscar/?q=' + encodeURIComponent(q);
+            if (currentProyectoId) url += '&proyecto_id=' + currentProyectoId;
+            if (currentNombreCompleto.indexOf('[Revisar]') !== -1) url += '&tipo_traslado=revision';
+            else if (currentNombreCompleto.indexOf('[Aprobar]') !== -1) url += '&tipo_traslado=aprobar';
+            else if (currentAsignacionId) url += '&tipo_traslado=ejecutar';
+            fetch(url, { headers: {'X-Requested-With':'XMLHttpRequest'} })
             .then(function(r){return r.json()})
             .then(function(d){
                 var h = '';
@@ -732,7 +743,7 @@ function cerrarPausa() {
 
 var finalizarSubareaId = null;
 
-function abrirFinalizar(actividadId, nombre, subareaId, requiereEntregable, origen) {
+function abrirFinalizar(actividadId, nombre, subareaId, requiereEntregable, origen, currentNombreCompleto) {
     document.getElementById('pausaOverlay').style.display = 'none';
     document.getElementById('trasladoOverlay').style.display = 'none';
     finalizarSubareaId = subareaId;
@@ -742,7 +753,7 @@ function abrirFinalizar(actividadId, nombre, subareaId, requiereEntregable, orig
     document.getElementById('siguienteError').style.display = 'none';
     finResetSecciones();
     var entSection = document.getElementById('entregableSection');
-    if (origen === 'Revision') {
+    if (origen === 'Revision' || (currentNombreCompleto && currentNombreCompleto.indexOf('[Aprobar]') !== -1) || (currentNombreCompleto && currentNombreCompleto.indexOf('[Revisar]') !== -1)) {
         document.getElementById('btnFinalizar').style.display = 'none';
         document.getElementById('btnAprobar').style.display = 'inline-block';
         document.getElementById('btnRechazar').style.display = 'inline-block';

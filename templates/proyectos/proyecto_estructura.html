@@ -56,6 +56,37 @@
         </div>
     </div>
 
+    <!-- Subareas -->
+    <div class="card shadow-sm mb-3">
+        <div class="card-header py-1 px-2 d-flex justify-content-between align-items-center">
+            <small class="fw-semibold" style="font-size:0.68rem;">Subareas del proyecto</small>
+            <span class="badge bg-light text-muted" style="font-size:0.55rem;">{{ proyecto.subareas.count }}</span>
+        </div>
+        <div class="card-body p-2">
+            {% if request.user.rol.nombre in "Master,Admin" %}
+            <form method="POST" class="d-flex flex-wrap gap-1 align-items-center">{% csrf_token %}
+                <div style="display:flex;flex-wrap:wrap;gap:4px;flex:1;">
+                    {% for s in subareas_disponibles %}
+                    <label class="d-flex align-items-center gap-1 px-2 py-1" style="font-size:0.7rem;cursor:pointer;border:1px solid var(--slate-200);border-radius:4px;{% if s in proyecto.subareas.all %}background:#e8eaf0;border-color:var(--accent);{% endif %}">
+                        <input type="checkbox" name="subareas" value="{{ s.pk }}" {% if s in proyecto.subareas.all %}checked{% endif %} class="form-check-input mt-0" style="width:12px;height:12px;">
+                        {{ s.area.nombre }} &gt; {{ s.nombre }}
+                    </label>
+                    {% endfor %}
+                </div>
+                <button class="btn btn-primary btn-sm" style="font-size:0.65rem;padding:0.2rem 0.6rem;">Guardar</button>
+            </form>
+            {% else %}
+            <div style="font-size:0.75rem;">
+                {% for s in proyecto.subareas.all %}
+                <span class="badge bg-light text-dark border me-1" style="font-size:0.6rem;">{{ s.area.nombre }} &gt; {{ s.nombre }}</span>
+                {% empty %}
+                <span class="text-muted" style="font-size:0.65rem;">Sin subareas asignadas</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
     <div class="estr-search mb-2">
         <i class="bi bi-search"></i>
         <input type="text" id="estrSearch" placeholder="Buscar tarea, historia o persona..." oninput="filtrarArbol(this.value)">

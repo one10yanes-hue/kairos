@@ -10,5 +10,6 @@ urlpatterns = [
     path("master/usuarios/crear/", views.master_usuario_create, name="master_usuario_create"),
     path("master/usuarios/<int:pk>/editar/", views.master_usuario_edit, name="master_usuario_edit"),
     path("master/usuarios/<int:pk>/inactivar/", views.master_usuario_delete, name="master_usuario_delete"),
+    path("master/usuarios/<int:pk>/reactivar/", views.master_usuario_reactivar, name="master_usuario_reactivar"),
     path("switch-role/", views.switch_role, name="switch_role"),
 ]

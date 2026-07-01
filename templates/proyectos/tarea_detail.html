@@ -123,6 +123,21 @@
                             <button class="btn btn-primary btn-sm">Enviar</button>
                         </div>
                     </form>
+                    {% endif %}
+                    {% for c in comentarios %}
+                    <div class="border-bottom pb-2 mb-2">
+                        <div class="d-flex justify-content-between">
+                            <strong style="font-size:0.7rem;">{{ c.user.get_full_name }}</strong>
+                            <small class="text-muted" style="font-size:0.6rem;">{{ c.fecha_creacion|date:"d/m H:i" }}</small>
+                        </div>
+                        <div style="font-size:0.72rem;margin-top:2px;">{{ c.texto }}</div>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted small text-center mb-0">Sin comentarios</p>
+                    {% endfor %}
+                </div>
+            </div>
+
             {% if tarea.bloquea_a.exists or tarea.bloqueada_por.exists %}
             <div class="card shadow-sm mb-3">
                 <div class="card-header">Dependencias</div>
@@ -144,20 +159,6 @@
                 </div>
             </div>
             {% endif %}
-            {% endif %}
-                    {% for c in comentarios %}
-                    <div class="border-bottom pb-2 mb-2">
-                        <div class="d-flex justify-content-between">
-                            <strong style="font-size:0.7rem;">{{ c.user.get_full_name }}</strong>
-                            <small class="text-muted" style="font-size:0.6rem;">{{ c.fecha_creacion|date:"d/m H:i" }}</small>
-                        </div>
-                        <div style="font-size:0.72rem;margin-top:2px;">{{ c.texto }}</div>
-                    </div>
-                    {% empty %}
-                    <p class="text-muted small text-center mb-0">Sin comentarios</p>
-                    {% endfor %}
-                </div>
-            </div>
 
             {% if traslados %}
             <div class="card shadow-sm mb-3">
@@ -189,7 +190,6 @@
         </div>
     </div>
 </div>
-{% endblock %}
 
 {% if tarea.estado == 'revision' %}
 <div id="rechazoDetalleModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:9999;align-items:center;justify-content:center;">
@@ -210,3 +210,6 @@
     </div>
 </div>
 {% endif %}
+{% endblock %}
+
+

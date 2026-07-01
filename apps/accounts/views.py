@@ -40,9 +40,14 @@ def master_usuarios(request):
     rol_filter = request.GET.get("rol", "")
     area_filter = request.GET.get("area", "")
     subarea_filter = request.GET.get("subarea", "")
-    usuarios = User.objects.filter(activo=True).select_related("rol").prefetch_related(
+    estado_filter = request.GET.get("estado", "activo")
+    usuarios = User.objects.all().select_related("rol").prefetch_related(
         "empresas__empresa",
     )
+    if estado_filter == "activo":
+        usuarios = usuarios.filter(activo=True)
+    elif estado_filter == "inactivo":
+        usuarios = usuarios.filter(activo=False)
     if q:
         usuarios = usuarios.filter(
             Q(cedula__icontains=q) | Q(nombre__icontains=q) | Q(apellido__icontains=q) | Q(email__icontains=q)
@@ -67,6 +72,7 @@ def master_usuarios(request):
         "q": q, "rol_filter": rol_filter,
         "area_filter": int(area_filter) if area_filter else "",
         "subarea_filter": int(subarea_filter) if subarea_filter else "",
+        "estado_filter": estado_filter,
     })
 
 
@@ -105,7 +111,7 @@ def master_usuario_create(request):
 def master_usuario_edit(request, pk):
     if request.user.rol.nombre != "Master":
         return redirect("root")
-    usuario = get_object_or_404(User, pk=pk, activo=True)
+    usuario = get_object_or_404(User, pk=pk)
     empresas = Empresa.objects.filter(activo=True)
     subareas = SubArea.objects.filter(activo=True)
     user_empresas = list(UserEmpresa.objects.filter(user=usuario, activo=True).values_list("empresa_id", flat=True))
@@ -159,7 +165,26 @@ def master_usuario_delete(request, pk):
     usuario.activo = False
     usuario.is_active = False
     usuario.save()
+    # Cascada: cancelar asignaciones activas, planificaciones y desvincular subareas
+    from apps.gestion.models import AsignacionActividad
+    from apps.planificacion.models import PlanificacionDetalle
+    from apps.estructura.models import UserSubArea
+    AsignacionActividad.objects.filter(user=usuario, activo=True).update(activo=False, estado="Cancelada")
+    PlanificacionDetalle.objects.filter(user=usuario, activo=True).update(activo=False)
+    UserSubArea.objects.filter(user=usuario, activo=True).update(activo=False)
     messages.success(request, "Usuario inactivado exitosamente.")
+    return redirect("accounts:master_usuarios")
+
+
+@login_required
+def master_usuario_reactivar(request, pk):
+    if request.user.rol.nombre != "Master":
+        return redirect("root")
+    usuario = get_object_or_404(User, pk=pk)
+    usuario.activo = True
+    usuario.is_active = True
+    usuario.save()
+    messages.success(request, f"Usuario {usuario.get_full_name()} reactivado.")
     return redirect("accounts:master_usuarios")
 
 

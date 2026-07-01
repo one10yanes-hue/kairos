@@ -1,7 +1,8 @@
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.db.models import Count, Sum, Q, Avg, F
+from django.db.models import Count, Sum, Q, Avg, F, OuterRef, Subquery, Max
+from django.core.cache import cache
 from collections import OrderedDict
 from django.utils import timezone
 from datetime import date, timedelta
@@ -56,7 +57,7 @@ def dashboard_admin(request):
 
     asignaciones = AsignacionActividad.objects.filter(
         actividad__subarea__in=subareas, activo=True
-    )
+    ).filter(user__activo=True)
 
     # Todas las asignaciones (inclusive inactivas) para calcular tiempo real
     asignaciones_tiempo = AsignacionActividad.objects.filter(
@@ -76,7 +77,7 @@ def dashboard_admin(request):
 
     registros_base = RegistroTiempo.objects.filter(
         asignacion__actividad__subarea__in=subareas, activo=True
-    )
+    ).filter(asignacion__user__activo=True)
     if user_id:
         registros_base = registros_base.filter(asignacion__user_id=user_id)
     if fecha_desde:
@@ -84,12 +85,18 @@ def dashboard_admin(request):
     if fecha_hasta:
         registros_base = registros_base.filter(fecha_hora__date__lte=fecha_hasta)
 
+    # Cache key para KPIs agregados
+    cache_key = f"dash_kpi_{request.user.pk}_{subarea_id}_{fecha_desde}_{fecha_hasta}_{empresa_id}"
+    kpi_cached = cache.get(cache_key)
+    if kpi_cached:
+        return render(request, "dashboard/dashboard_admin.html", kpi_cached)
+
     total_actividades = asignaciones.count()
     actividades_curso = asignaciones.filter(estado="EnCurso").count()
     actividades_finalizadas = asignaciones.filter(estado__in=["Finalizada", "Trasladada"]).count()
     actividades_pausadas = asignaciones.filter(estado="Pausada").count()
     actividades_pendientes = asignaciones.filter(estado="Pendiente").count()
-    prorrogas_total = sum(asignaciones.filter(prorroga_count__gt=0).values_list("prorroga_count", flat=True))
+    prorrogas_total = asignaciones.aggregate(total=Sum("prorroga_count"))["total"] or 0
     vencidas_total = asignaciones.filter(
         planificacion_detalle__fecha_vencimiento__lt=timezone.now(),
         actividad__tipo_actividad__requiere_fecha_limite=True,
@@ -104,12 +111,23 @@ def dashboard_admin(request):
         "planificacion_detalle__fecha_vencimiento"
     )[:10]
 
-    # Tiempo total trabajado: incluye asignaciones inactivas/canceladas
-    tiempo_total_seg = sum(a.tiempo_efectivo() for a in asignaciones_tiempo)
+    # Tiempo total trabajado: usa cache en BD (Sum) en vez de iterar tiempo_efectivo()
+    tiempo_total_seg = asignaciones_tiempo.aggregate(total=Sum("tiempo_total_segundos"))["total"] or 0
+    # Sumar tiempo extra para actividades EnCurso (ultimo segmento sin cerrar)
+    en_curso_ids = list(asignaciones_tiempo.filter(estado="EnCurso").values_list("pk", flat=True))
+    if en_curso_ids:
+        ultimos = RegistroTiempo.objects.filter(
+            asignacion_id__in=en_curso_ids, activo=True,
+            evento__in=["Inicio", "Reanudacion"]
+        ).values("asignacion_id").annotate(ultima=Max("fecha_hora"))
+        ahora = timezone.now()
+        for u in ultimos:
+            tiempo_total_seg += int((ahora - u["ultima"]).total_seconds())
+
     horas_total = int(tiempo_total_seg // 3600)
     mins_total = int((tiempo_total_seg % 3600) // 60)
 
-    # Tiempo promedio por actividad: nro de items finalizados (calculo en Python, es CharField)
+    # Tiempo promedio por actividad: nro de items finalizados
     nro_values = registros_base.filter(
         evento="Finalizacion", nro_actividad__isnull=False
     ).values_list("nro_actividad", flat=True)
@@ -133,91 +151,136 @@ def dashboard_admin(request):
         evento="Finalizacion", fecha_hora__date=hoy
     ).count()
 
-    def _dead_time(usuario):
+    def _dead_time_sum(usuario_ids):
+        """Calcula dead time para MULTIPLES usuarios en 1 query."""
+        from collections import defaultdict
         regs = list(RegistroTiempo.objects.filter(
             asignacion__actividad__subarea__in=subareas,
-            asignacion__user=usuario, activo=True,
+            asignacion__user_id__in=usuario_ids, activo=True,
             evento__in=["Inicio", "Reanudacion", "Finalizacion", "Traslado"],
-        ))
+        ).values("asignacion__user_id", "evento", "fecha_hora").order_by("asignacion__user_id", "fecha_hora"))
         if fecha_desde:
-            regs = [r for r in regs if r.fecha_hora.date() >= date.fromisoformat(fecha_desde)]
+            fd = date.fromisoformat(fecha_desde)
+            regs = [r for r in regs if r["fecha_hora"].date() >= fd]
         if fecha_hasta:
-            regs = [r for r in regs if r.fecha_hora.date() <= date.fromisoformat(fecha_hasta)]
-        regs.sort(key=lambda r: r.fecha_hora)
-        dead = 0
-        for i in range(len(regs) - 1):
-            r1, r2 = regs[i], regs[i + 1]
-            if r1.fecha_hora.date() != r2.fecha_hora.date():
-                continue
-            if r1.evento in ("Finalizacion", "Traslado") and r2.evento in ("Inicio", "Reanudacion"):
-                gap = (r2.fecha_hora - r1.fecha_hora).total_seconds()
-                if gap > 0:
-                    dead += gap
-        return dead
+            fh = date.fromisoformat(fecha_hasta)
+            regs = [r for r in regs if r["fecha_hora"].date() <= fh]
+        muertos = defaultdict(int)
+        uid_actual = None
+        anterior = None
+        for r in regs:
+            if r["asignacion__user_id"] != uid_actual:
+                uid_actual = r["asignacion__user_id"]
+                anterior = None
+            if anterior and r["fecha_hora"].date() == anterior["fecha_hora"].date():
+                if anterior["evento"] in ("Finalizacion", "Traslado") and r["evento"] in ("Inicio", "Reanudacion"):
+                    gap = (r["fecha_hora"] - anterior["fecha_hora"]).total_seconds()
+                    if gap > 0:
+                        muertos[uid_actual] += gap
+            anterior = r
+        return muertos
+
+    user_pks = [u.pk for u in usuarios]
+    mostrar_todos = request.GET.get("todos") == "1"
+
+    # Batch: tiempo agregado por usuario en 1 query
+    tiempo_por_user = defaultdict(lambda: {"activo": 0, "pausado": 0})
+    agg_tiempo = asignaciones_tiempo.filter(user_id__in=user_pks).values("user_id").annotate(
+        total_activo=Sum("tiempo_total_segundos"),
+        total_pausado=Sum("tiempo_pausado_segundos"),
+    )
+    ahora = timezone.now()
+    for row in agg_tiempo:
+        uid = row["user_id"]
+        tiempo_por_user[uid]["activo"] = row["total_activo"] or 0
+        tiempo_por_user[uid]["pausado"] = row["total_pausado"] or 0
+
+    # Sumar tiempo extra para EnCurso (batch, 1 query)
+    en_curso_ids = list(asignaciones_tiempo.filter(
+        user_id__in=user_pks, estado="EnCurso"
+    ).values_list("pk", "user_id"))
+    if en_curso_ids:
+        ids_asig = [e[0] for e in en_curso_ids]
+        ultimos = RegistroTiempo.objects.filter(
+            asignacion_id__in=ids_asig, activo=True,
+            evento__in=["Inicio", "Reanudacion"]
+        ).values("asignacion_id").annotate(ultima=Max("fecha_hora"))
+        asig_uid = {e[0]: e[1] for e in en_curso_ids}
+        for u in ultimos:
+            uid = asig_uid.get(u["asignacion_id"])
+            if uid:
+                tiempo_por_user[uid]["activo"] += int((ahora - u["ultima"]).total_seconds())
+
+    # Batch _dead_time (1 query)
+    muertos = _dead_time_sum(user_pks)
+
+    # nro_actividad batch por usuario
+    nro_batch = defaultdict(int)
+    nro_rows = registros_base.filter(
+        asignacion__user_id__in=user_pks,
+        evento="Finalizacion", nro_actividad__isnull=False
+    ).values_list("asignacion__user_id", "nro_actividad")
+    for uid, val in nro_rows:
+        if isinstance(val, str) and val.strip().isdigit():
+            nro_batch[uid] += int(val)
+
+    # Contar estados por usuario en 1 query
+    estados_agg = asignaciones.filter(user_id__in=user_pks).values("user_id", "estado").annotate(cnt=Count("pk"))
+    estados_por_user = defaultdict(dict)
+    for row in estados_agg:
+        estados_por_user[row["user_id"]][row["estado"]] = row["cnt"]
+
+    count_por_user = dict(asignaciones.filter(user_id__in=user_pks).values("user_id").annotate(total=Count("pk")).values_list("user_id", "total"))
+
+    prorroga_por_user = dict(asignaciones.filter(user_id__in=user_pks, prorroga_count__gt=0).values("user_id").annotate(total=Sum("prorroga_count")).values_list("user_id", "total"))
+
+    vencidas_por_user = dict(asignaciones.filter(
+        user_id__in=user_pks,
+        planificacion_detalle__fecha_vencimiento__lt=timezone.now(),
+        actividad__tipo_actividad__requiere_fecha_limite=True,
+        estado__in=["Pendiente", "Pausada"]
+    ).values("user_id").annotate(total=Count("pk")).values_list("user_id", "total"))
 
     usuarios_stats = []
     for usuario in usuarios:
-        user_asignaciones = asignaciones.filter(user=usuario)
-        user_asignaciones_tiempo = asignaciones_tiempo.filter(user=usuario)
-        user_finalizadas = user_asignaciones.filter(estado__in=["Finalizada", "Trasladada"]).count()
-        user_curso = user_asignaciones.filter(estado="EnCurso").count()
-        user_pausadas = user_asignaciones.filter(estado="Pausada").count()
-        user_pendientes = user_asignaciones.filter(estado="Pendiente").count()
-        user_prorrogas = sum(user_asignaciones.filter(prorroga_count__gt=0).values_list("prorroga_count", flat=True))
-        user_vencidas = user_asignaciones.filter(
-            planificacion_detalle__fecha_vencimiento__lt=timezone.now(),
-            estado__in=["Pendiente", "Pausada"]
-        ).count()
-        total_tiempo = sum(a.tiempo_efectivo() for a in user_asignaciones_tiempo)
-        total_pausado = sum(a.tiempo_pausado() for a in user_asignaciones_tiempo)
-        horas = int(total_tiempo // 3600)
-        minutos = int((total_tiempo % 3600) // 60)
-        horas_p = int(total_pausado // 3600)
-        mins_p = int((total_pausado % 3600) // 60)
-        total_muerto = _dead_time(usuario)
-        horas_m = int(total_muerto // 3600)
-        mins_m = int((total_muerto % 3600) // 60)
-        # Nro de items finalizados por este usuario
-        nro_vals = registros_base.filter(
-            asignacion__user=usuario, evento="Finalizacion", nro_actividad__isnull=False
-        ).values_list("nro_actividad", flat=True)
-        nro_user = sum(int(v) for v in nro_vals if v.strip().isdigit())
-        if nro_user and total_tiempo > 0:
-            prom_user_seg = total_tiempo / nro_user
-            prom = f"{int(prom_user_seg//60)}:{int(prom_user_seg%60):02d}"
-        else:
-            prom = "--"
-        total_user = user_asignaciones.count()
+        uid = usuario.pk
+        estados = estados_por_user.get(uid, {})
+        u_total = count_por_user.get(uid, 0)
+        u_fin = estados.get("Finalizada", 0) + estados.get("Trasladada", 0)
+        u_curso = estados.get("EnCurso", 0)
+        u_pausa = estados.get("Pausada", 0)
+        u_pen = estados.get("Pendiente", 0)
+        u_ven = vencidas_por_user.get(uid, 0)
+        u_prr = prorroga_por_user.get(uid, 0)
+        t_activo = tiempo_por_user[uid]["activo"]
+        t_pausado = tiempo_por_user[uid]["pausado"]
+        t_muerto = muertos.get(uid, 0)
+        nro_items = nro_batch.get(uid, 0)
+        prom = f"{int(t_activo//60//60)}:{int((t_activo//60)%60):02d}" if nro_items and t_activo > 0 else "--"
+        if nro_items and t_activo > 0:
+            prom_seg = t_activo / nro_items
+            prom = f"{int(prom_seg//60)}:{int(prom_seg%60):02d}"
         usuarios_stats.append({
             "usuario": usuario,
-            "total": total_user,
-            "finalizadas": user_finalizadas,
-            "en_curso": user_curso,
-            "pausadas": user_pausadas,
-            "pendientes": user_pendientes,
-            "vencidas": user_vencidas,
-            "prorrogas": user_prorrogas,
-            "tiempo": f"{horas:02d}:{minutos:02d}",
-            "tiempo_pausado": f"{horas_p:02d}:{mins_p:02d}",
-            "tiempo_inactividad": f"{horas_m:02d}:{mins_m:02d}",
-            "nro_items": nro_user,
+            "total": u_total,
+            "finalizadas": u_fin,
+            "en_curso": u_curso,
+            "pausadas": u_pausa,
+            "pendientes": u_pen,
+            "vencidas": u_ven,
+            "prorrogas": u_prr,
+            "tiempo": f"{t_activo//3600:02d}:{(t_activo%3600)//60:02d}",
+            "tiempo_pausado": f"{t_pausado//3600:02d}:{(t_pausado%3600)//60:02d}",
+            "tiempo_inactividad": f"{t_muerto//3600:02d}:{(t_muerto%3600)//60:02d}",
+            "nro_items": nro_items,
             "promedio": prom,
-            "productividad": round((user_finalizadas / total_user * 100) if total_user > 0 else 0, 1),
+            "productividad": round((u_fin / u_total * 100) if u_total > 0 else 0, 1),
         })
 
-    # Default: solo usuarios con actividad asignada (total > 0)
-    mostrar_todos = request.GET.get("todos") == "1"
     if not mostrar_todos:
         usuarios_stats = [u for u in usuarios_stats if u["total"] > 0]
 
-    tm_total = 0
-    for u in usuarios_stats:
-        h, m = u["tiempo_inactividad"].split(":")
-        tm_total += int(h) * 3600 + int(m) * 60
-
-    paginator = Paginator(usuarios_stats, 10)
-    page = request.GET.get("page", 1)
-    usuarios_page = paginator.get_page(page)
+    tm_total = sum(muertos.values())
 
     context = {
         "subareas": subareas,
@@ -244,14 +307,14 @@ def dashboard_admin(request):
         "nro_total_items": nro_total,
         "promedio_item": promedio_item,
         "finalizadas_hoy": finalizadas_hoy,
-        "usuarios_stats": usuarios_page,
+        "usuarios_stats": usuarios_stats,
         "mostrar_todos": mostrar_todos,
-        "page_obj": usuarios_page,
         "subarea_id": int(subarea_id) if subarea_id else None,
         "user_id": int(user_id) if user_id else None,
         "fecha_desde": fecha_desde or "",
         "fecha_hasta": fecha_hasta or "",
     }
+    cache.set(cache_key, context, 30)
     return render(request, "dashboard/dashboard_admin.html", context)
 
 
@@ -282,7 +345,7 @@ def progreso(request):
 
     asignaciones = AsignacionActividad.objects.filter(
         actividad__subarea__in=subareas, activo=True
-    ).select_related(
+    ).filter(user__activo=True).select_related(
         "user", "actividad", "actividad__tipo_actividad",
         "actividad__subarea__area",
         "planificacion_detalle__planificacion",
@@ -336,7 +399,7 @@ def progreso(request):
     # Resumen
     total_qs = AsignacionActividad.objects.filter(
         actividad__subarea__in=subareas, activo=True
-    )
+    ).filter(user__activo=True)
     if subarea_id:
         total_qs = total_qs.filter(actividad__subarea__in=subareas)
     resumen_total = total_qs.count()
@@ -407,7 +470,7 @@ def linea_tiempo(request):
 
     asignaciones = AsignacionActividad.objects.filter(
         actividad__subarea__in=subareas, activo=True
-    )
+    ).filter(user__activo=True)
     if user_filter:
         asignaciones = asignaciones.filter(user_id=user_filter)
     if subarea_filter:

@@ -1,6 +1,8 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.views.decorators.http import require_POST
+from django.db import transaction
 from django.db.models import Q, Count, Sum
 from django.http import JsonResponse
 from django.utils import timezone
@@ -9,6 +11,7 @@ from ..decorators import miembro_requerido, ROLES_EDICION, ROLES_REVISION
 import json
 
 
+@require_POST
 @miembro_requerido(ROLES_REVISION)
 def historia_aprobar(request, pk, hid):
     proyecto = request.proyecto
@@ -132,23 +135,27 @@ def historia_create(request, pk):
         if not titulo:
             messages.error(request, "El titulo es obligatorio.")
             return redirect("proyectos:backlog", pk=proyecto.pk)
-        historia = HistoriaUsuario.objects.create(
-            proyecto=proyecto,
-            titulo=titulo,
-            descripcion=request.POST.get("descripcion", ""),
-            criterios_aceptacion=request.POST.get("criterios", ""),
-            prioridad=request.POST.get("prioridad", "should"),
-            puntos_historia=int(request.POST.get("puntos", 0) or 0),
-            creador=request.user,
-        )
-        historia.codigo = f"{proyecto.codigo}-US-{historia.pk:03d}"
-        historia.full_clean()
-        historia.save()
-        RegistroAvance.objects.create(proyecto=proyecto, tipo="comentario",
-            descripcion=f"Historia {historia.codigo} creada: {historia.titulo[:60]}", user=request.user)
-        messages.success(request, f"Historia {historia.codigo} creada.")
+        with transaction.atomic():
+            historia = HistoriaUsuario.objects.create(
+                proyecto=proyecto,
+                titulo=titulo,
+                descripcion=request.POST.get("descripcion", ""),
+                criterios_aceptacion=request.POST.get("criterios", ""),
+                prioridad=request.POST.get("prioridad", "should"),
+                puntos_historia=int(request.POST.get("puntos", 0) or 0),
+                creador=request.user,
+                aprobador_id=request.POST.get("aprobador_id") or None,
+            )
+            historia.codigo = f"{proyecto.codigo}-US-{historia.pk:03d}"
+            historia.full_clean()
+            historia.save()
+            RegistroAvance.objects.create(proyecto=proyecto, tipo="comentario",
+                descripcion=f"Historia {historia.codigo} creada: {historia.titulo[:60]}", user=request.user)
+            messages.success(request, f"Historia {historia.codigo} creada.")
         return redirect("proyectos:backlog", pk=proyecto.pk)
-    return render(request, "proyectos/historia_form.html", {"proyecto": proyecto})
+    from ..models import MiembroProyecto
+    aprobadores = MiembroProyecto.objects.filter(proyecto=proyecto, activo=True, rol="aprobador").select_related("user")
+    return render(request, "proyectos/historia_form.html", {"proyecto": proyecto, "aprobadores": aprobadores})
 
 
 @miembro_requerido(ROLES_EDICION)
@@ -161,6 +168,7 @@ def historia_edit(request, pk, hid):
         historia.criterios_aceptacion = request.POST.get("criterios", historia.criterios_aceptacion)
         historia.prioridad = request.POST.get("prioridad", historia.prioridad)
         historia.puntos_historia = int(request.POST.get("puntos", 0) or 0)
+        historia.aprobador_id = request.POST.get("aprobador_id") or None
         historia.estado = request.POST.get("estado", historia.estado)
         sprint_id = request.POST.get("sprint_id")
         if sprint_id:
@@ -178,7 +186,9 @@ def historia_edit(request, pk, hid):
             descripcion=f"Historia {historia.codigo} editada por {request.user.get_full_name()}", user=request.user)
         messages.success(request, "Historia actualizada.")
         return redirect("proyectos:backlog", pk=proyecto.pk)
-    return render(request, "proyectos/historia_form.html", {"proyecto": proyecto, "historia": historia, "editando": True})
+    from ..models import MiembroProyecto
+    aprobadores = MiembroProyecto.objects.filter(proyecto=proyecto, activo=True, rol="aprobador").select_related("user")
+    return render(request, "proyectos/historia_form.html", {"proyecto": proyecto, "historia": historia, "editando": True, "aprobadores": aprobadores})
 
 
 @miembro_requerido()

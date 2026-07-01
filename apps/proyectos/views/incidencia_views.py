@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.db import transaction
 from ..models import Proyecto, Incidencia, Tarea, RegistroAvance
 from ..decorators import miembro_requerido, ROLES_EDICION
 
@@ -20,29 +21,30 @@ def incidencia_create(request, pk):
         if not titulo:
             messages.error(request, "El titulo es obligatorio.")
             return redirect("proyectos:incidencia_list", pk=proyecto.pk)
-        inc = Incidencia.objects.create(
-            proyecto=proyecto,
-            titulo=titulo,
-            descripcion=request.POST.get("descripcion", ""),
-            tipo=request.POST.get("tipo", "bug"),
-            severidad=request.POST.get("severidad", "media"),
-            reportado_por=request.user,
-            asignado_a_id=request.POST.get("user_id") or None,
-        )
-        adjunto_file = request.FILES.get("adjunto")
-        if adjunto_file:
-            inc.adjunto = adjunto_file
-        inc.codigo = f"{proyecto.codigo}-INC-{inc.pk:03d}"
-        inc.save()
-        RegistroAvance.objects.create(proyecto=proyecto, tipo="incidencia_creada",
-            descripcion=f"Incidencia {inc.codigo} reportada: {inc.titulo[:60]}", user=request.user)
-        # Notificar a lider y responsable del proyecto
-        from apps.gestion.views import _notificar_usuario
-        for m in proyecto.membresias.filter(activo=True, rol__in=["lider","responsable"]):
-            _notificar_usuario(m.user_id, "incidencia_reportada", {
-                "codigo": inc.codigo, "titulo": inc.titulo
-            })
-        messages.success(request, f"Incidencia {inc.codigo} reportada.")
+        with transaction.atomic():
+            inc = Incidencia.objects.create(
+                proyecto=proyecto,
+                titulo=titulo,
+                descripcion=request.POST.get("descripcion", ""),
+                tipo=request.POST.get("tipo", "bug"),
+                severidad=request.POST.get("severidad", "media"),
+                reportado_por=request.user,
+                asignado_a_id=request.POST.get("user_id") or None,
+            )
+            adjunto_file = request.FILES.get("adjunto")
+            if adjunto_file:
+                inc.adjunto = adjunto_file
+            inc.codigo = f"{proyecto.codigo}-INC-{inc.pk:03d}"
+            inc.save()
+            RegistroAvance.objects.create(proyecto=proyecto, tipo="incidencia_creada",
+                descripcion=f"Incidencia {inc.codigo} reportada: {inc.titulo[:60]}", user=request.user)
+            # Notificar a lider y responsable del proyecto
+            from apps.gestion.views import _notificar_usuario
+            for m in proyecto.membresias.filter(activo=True, rol__in=["lider","responsable"]):
+                _notificar_usuario(m.user_id, "incidencia_reportada", {
+                    "codigo": inc.codigo, "titulo": inc.titulo
+                })
+            messages.success(request, f"Incidencia {inc.codigo} reportada.")
         return redirect("proyectos:incidencia_list", pk=proyecto.pk)
     miembros = proyecto.membresias.filter(activo=True).select_related("user")
     return render(request, "proyectos/incidencia_form.html", {"proyecto": proyecto, "miembros": miembros})
@@ -55,27 +57,28 @@ def incidencia_convertir(request, pk, iid):
     if request.method == "POST":
         from ..models import Tarea
         from ..signals import crear_asignacion_desde_tarea
-        tarea = Tarea.objects.create(
-            proyecto=proyecto,
-            titulo=incidencia.titulo,
-            descripcion=incidencia.descripcion,
-            tipo="bug" if incidencia.tipo == "bug" else "mejora",
-            asignado_a=incidencia.asignado_a,
-            creador=request.user,
-        )
-        tarea.codigo = f"{proyecto.codigo}-T-{tarea.pk:03d}"
-        tarea.full_clean()
-        tarea.save()
-        incidencia.tarea = tarea
-        incidencia.estado = "en_progreso"
-        incidencia.full_clean()
-        incidencia.save()
-        RegistroAvance.objects.create(proyecto=proyecto, tipo="comentario",
-            descripcion=f"Incidencia {incidencia.codigo} convertida a Tarea {tarea.codigo} por {request.user.get_full_name()}",
-            user=request.user, referencia_id=tarea.pk)
-        if tarea.asignado_a:
-            crear_asignacion_desde_tarea(tarea)
-        messages.success(request, f"Incidencia {incidencia.codigo} convertida a Tarea {tarea.codigo}.")
+        with transaction.atomic():
+            tarea = Tarea.objects.create(
+                proyecto=proyecto,
+                titulo=incidencia.titulo,
+                descripcion=incidencia.descripcion,
+                tipo="bug" if incidencia.tipo == "bug" else "mejora",
+                asignado_a=incidencia.asignado_a,
+                creador=request.user,
+            )
+            tarea.codigo = f"{proyecto.codigo}-T-{tarea.pk:03d}"
+            tarea.full_clean()
+            tarea.save()
+            incidencia.tarea = tarea
+            incidencia.estado = "en_progreso"
+            incidencia.full_clean()
+            incidencia.save()
+            RegistroAvance.objects.create(proyecto=proyecto, tipo="comentario",
+                descripcion=f"Incidencia {incidencia.codigo} convertida a Tarea {tarea.codigo} por {request.user.get_full_name()}",
+                user=request.user, referencia_id=tarea.pk)
+            if tarea.asignado_a:
+                crear_asignacion_desde_tarea(tarea)
+            messages.success(request, f"Incidencia {incidencia.codigo} convertida a Tarea {tarea.codigo}.")
         return redirect("proyectos:incidencia_detail", pk=proyecto.pk, iid=incidencia.pk)
 
 
@@ -91,6 +94,11 @@ def incidencia_detail(request, pk, iid):
             if membresia and membresia.rol == "observador":
                 messages.error(request, "Los observadores no pueden cambiar estados.")
             else:
+                from apps.proyectos.models import _get_transiciones
+                transiciones = _get_transiciones(incidencia.proyecto, "incidencia")
+                if nuevo_estado not in transiciones.get(incidencia.estado, []):
+                    messages.error(request, f"Transicion {incidencia.estado} -> {nuevo_estado} no permitida.")
+                    return redirect("proyectos:incidencia_detail", pk=pk, iid=iid)
                 incidencia.estado = nuevo_estado
                 if nuevo_estado in ["cerrada", "resuelta"]:
                     from django.utils import timezone

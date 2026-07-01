@@ -70,7 +70,7 @@ def reporte_list(request):
             Q(rol__nombre="Usuario") | Q(roles_adicionales__nombre="Usuario")
         ).distinct()
 
-    qs = AsignacionActividad.objects.filter(actividad__subarea__in=subareas, activo=True)
+    qs = AsignacionActividad.objects.filter(actividad__subarea__in=subareas, activo=True).filter(user__activo=True)
     return render(request, "reportes/reporte_list.html", {
         "subareas": subareas, "empresas": empresas, "areas": areas, "users": users,
         "total_act": qs.count(),
@@ -96,10 +96,10 @@ def exportar_completo(request):
 
     asignaciones = AsignacionActividad.objects.filter(
         actividad__subarea__in=subareas, activo=True
-    )
+    ).filter(user__activo=True)
     asignaciones_tiempo = AsignacionActividad.objects.filter(
         actividad__subarea__in=subareas
-    )
+    ).filter(user__activo=True)
     asignaciones = asignaciones.select_related(
         "user", "actividad", "actividad__tipo_actividad",
         "actividad__subarea", "actividad__subarea__area",
@@ -200,7 +200,7 @@ def exportar_completo(request):
 
     registros = RegistroTiempo.objects.filter(
         asignacion__actividad__subarea__in=subareas, activo=True
-    ).select_related(
+    ).filter(asignacion__user__activo=True).select_related(
         "asignacion__user", "asignacion__actividad",
     ).order_by("-fecha_hora")
 
@@ -274,7 +274,7 @@ def exportar_completo(request):
     ws4 = wb.create_sheet("Tiempos Inactividad")
     headers4 = ["ID", "Usuario", "Cedula", "Fecha", "Inicio", "Fin", "Duracion (min)", "Estado"]
     _style_header(ws4, headers4)
-    tiempos_qs = TiempoInactividad.objects.all().select_related("user").order_by("-fecha", "-inicio")
+    tiempos_qs = TiempoInactividad.objects.all().filter(user__activo=True).select_related("user").order_by("-fecha", "-inicio")
     if fecha_desde:
         tiempos_qs = tiempos_qs.filter(fecha__gte=fecha_desde)
     if fecha_hasta:

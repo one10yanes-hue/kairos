@@ -38,3 +38,9 @@ build/
 # Local stray files
 logo KAIROS.png
 static/img/1.png
+
+# Docs and junk (not needed in production)
+*.md
+.dockerignore
+docs/
+test/

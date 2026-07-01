@@ -23,7 +23,18 @@
     <!-- Plantilla de Flujo -->
     <div class="mb-2">
         <small class="fw-semibold text-uppercase" style="color:var(--slate-500);font-size:0.68rem;">Plantilla de Flujo</small>
+        {% if workflow_bloqueado %}
+        <span class="badge bg-danger" style="font-size:0.55rem;vertical-align:middle;"><i class="bi bi-lock-fill"></i> Bloqueado</span>
+        {% if request.user.rol.nombre == "Master" %}
+        <form method="POST" class="d-inline ms-1">{% csrf_token %}<input type="hidden" name="accion" value="toggle_bloqueo"><button class="btn btn-sm btn-outline-danger py-0 px-1" style="font-size:0.55rem;">Desbloquear</button></form>
+        {% endif %}
+        <small class="text-muted d-block" style="font-size:0.55rem;">La plantilla fue bloqueada. Solo un Master puede cambiarla.</small>
+        {% else %}
         <small class="text-muted" style="font-size:0.55rem;"> &mdash; Selecciona una y revisa el equipo antes de aplicar</small>
+        {% if request.user.rol.nombre == "Master" %}
+        <form method="POST" class="d-inline ms-1">{% csrf_token %}<input type="hidden" name="accion" value="toggle_bloqueo"><button class="btn btn-sm btn-outline-secondary py-0 px-1" style="font-size:0.55rem;" onclick="return confirm('Bloquear el flujo? No se podra cambiar la plantilla.')"><i class="bi bi-lock"></i> Bloquear</button></form>
+        {% endif %}
+        {% endif %}
     </div>
     <div class="row g-1 mb-2">
         <div class="col-md-4">
@@ -113,6 +124,90 @@
             </div>
         </div>
     </div>
+
+    <!-- Transiciones Personalizadas -->
+    {% if not workflow_bloqueado or request.user.rol.nombre == "Master" %}
+    <div class="mb-2 mt-2">
+        <small class="fw-semibold text-uppercase" style="color:var(--slate-500);font-size:0.68rem;">Transiciones Personalizadas</small>
+        <small class="text-muted" style="font-size:0.55rem;"> &mdash; Agrega transiciones adicionales al flujo actual</small>
+    </div>
+    <div class="card shadow-sm mb-3">
+        <div class="card-body p-2">
+            <form method="POST" class="d-flex gap-2 align-items-center flex-wrap">{% csrf_token %}
+                <input type="hidden" name="accion" value="agregar_transicion">
+                <select name="entidad" class="form-select form-select-sm" style="width:120px;font-size:0.7rem;" required>
+                    <option value="tarea">Tarea</option>
+                    <option value="historia">Historia</option>
+                    <option value="incidencia">Incidencia</option>
+                </select>
+                <select name="estado_origen" class="form-select form-select-sm" style="width:130px;font-size:0.7rem;" required>
+                    <option value="">Origen...</option>
+                    <option value="pendiente">Pendiente</option>
+                    <option value="en_curso">En Curso</option>
+                    <option value="pausada">Pausada</option>
+                    <option value="bloqueada">Bloqueada</option>
+                    <option value="revision">En Revision</option>
+                    <option value="finalizada">Finalizada</option>
+                    <option value="cancelada">Cancelada</option>
+                    <option value="backlog">Backlog</option>
+                    <option value="sprint_backlog">Sprint Backlog</option>
+                    <option value="en_progreso">En Progreso</option>
+                    <option value="done">Done</option>
+                    <option value="abierta">Abierta</option>
+                    <option value="en_progreso">En Progreso</option>
+                    <option value="resuelta">Resuelta</option>
+                    <option value="cerrada">Cerrada</option>
+                    <option value="duplicada">Duplicada</option>
+                </select>
+                <i class="bi bi-arrow-right" style="font-size:0.7rem;color:var(--slate-400);"></i>
+                <select name="estado_destino" class="form-select form-select-sm" style="width:130px;font-size:0.7rem;" required>
+                    <option value="">Destino...</option>
+                    <option value="pendiente">Pendiente</option>
+                    <option value="en_curso">En Curso</option>
+                    <option value="pausada">Pausada</option>
+                    <option value="bloqueada">Bloqueada</option>
+                    <option value="revision">En Revision</option>
+                    <option value="finalizada">Finalizada</option>
+                    <option value="cancelada">Cancelada</option>
+                    <option value="backlog">Backlog</option>
+                    <option value="sprint_backlog">Sprint Backlog</option>
+                    <option value="en_progreso">En Progreso</option>
+                    <option value="done">Done</option>
+                    <option value="abierta">Abierta</option>
+                    <option value="en_progreso">En Progreso</option>
+                    <option value="resuelta">Resuelta</option>
+                    <option value="cerrada">Cerrada</option>
+                    <option value="duplicada">Duplicada</option>
+                </select>
+                <button class="btn btn-sm btn-outline-primary" style="font-size:0.65rem;">+ Agregar</button>
+            </form>
+            {% regroup transiciones_personalizadas by entidad as trans_por_entidad %}
+            <div class="mt-2" style="font-size:0.65rem;">
+                {% for grupo in trans_por_entidad %}
+                <div class="d-inline-flex flex-wrap gap-1 align-items-center me-3 mb-1">
+                    <span class="badge bg-light text-dark border me-1" style="font-size:0.55rem;">{{ grupo.grouper|title }}</span>
+                    {% for tc in grupo.list %}
+                    <span class="d-inline-flex align-items-center gap-1 px-2 py-0" style="border:1px solid var(--slate-200);border-radius:3px;">
+                        <span class="badge bg-light text-dark border" style="font-size:0.5rem;">{{ tc.estado_origen }}</span>
+                        <span style="font-size:0.5rem;">&rarr;</span>
+                        <span class="badge bg-light text-dark border" style="font-size:0.5rem;">{{ tc.estado_destino }}</span>
+                        {% if not workflow_bloqueado or request.user.rol.nombre == "Master" %}
+                        <form method="POST" class="d-inline">{% csrf_token %}
+                            <input type="hidden" name="accion" value="remover_transicion">
+                            <input type="hidden" name="transicion_id" value="{{ tc.pk }}">
+                            <button class="btn btn-sm py-0 px-1 text-danger" style="font-size:0.5rem;border:none;background:none;" title="Eliminar">&times;</button>
+                        </form>
+                        {% endif %}
+                    </span>
+                    {% empty %}
+                    <span class="text-muted" style="font-size:0.55rem;">Ninguna</span>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Revision y Aprobacion -->
     <div class="mb-2">

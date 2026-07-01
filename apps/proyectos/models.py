@@ -25,6 +25,7 @@ class Proyecto(models.Model):
     fecha_fin_real = models.DateField(null=True, blank=True)
 
     activo = models.BooleanField(default=True)
+    workflow_bloqueado = models.BooleanField(default=False, help_text="Si True, no se puede cambiar la plantilla de flujo")
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_update = models.DateTimeField(auto_now=True)
 
@@ -40,7 +41,7 @@ class Proyecto(models.Model):
         total = self.tareas.filter(activo=True).count()
         if total == 0:
             return 0
-        completadas = self.tareas.filter(activo=True, estado__in=["finalizada", "cancelada"]).count()
+        completadas = self.tareas.filter(activo=True, estado__in=["finalizada", "revision", "cancelada"]).count()
         return int(completadas / total * 100)
 
     def clean(self):
@@ -102,6 +103,7 @@ class Sprint(models.Model):
     fecha_fin = models.DateField(null=True, blank=True)
     activo = models.BooleanField(default=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_update = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = "sprint"
@@ -114,7 +116,7 @@ class Sprint(models.Model):
     @property
     def velocidad(self):
         """Tareas completadas en el sprint (metrica Kanban)."""
-        return self.tareas.filter(activo=True, estado="finalizada").count()
+        return self.tareas.filter(activo=True, estado__in=["finalizada", "revision"]).count()
 
     @property
     def puntos_comprometidos(self):
@@ -127,7 +129,7 @@ class Sprint(models.Model):
         total = self.tareas.filter(activo=True).count()
         if total == 0:
             return 0
-        return int(self.tareas.filter(activo=True, estado="finalizada").count() / total * 100)
+        return int(self.tareas.filter(activo=True, estado__in=["finalizada", "revision"]).count() / total * 100)
 
     def clean(self):
         from django.core.exceptions import ValidationError
@@ -161,8 +163,10 @@ class HistoriaUsuario(models.Model):
     estado = models.CharField(max_length=20, choices=ESTADOS, default="backlog")
     orden = models.IntegerField(default=0)
     creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="historias_creadas")
+    aprobador = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="historias_aprobadas")
     activo = models.BooleanField(default=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_update = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = "historia_usuario"
@@ -176,26 +180,30 @@ class HistoriaUsuario(models.Model):
         total = self.tareas.filter(activo=True).count()
         if total == 0:
             return 0
-        return int(self.tareas.filter(activo=True, estado="finalizada").count() / total * 100)
+        return int(self.tareas.filter(activo=True, estado__in=["finalizada", "revision"]).count() / total * 100)
 
     def actualizar_estado(self):
         tareas = self.tareas.filter(activo=True).exclude(estado="cancelada")
         if not tareas.exists():
-            # Sin tareas o todas canceladas: segun sprint
-            self.estado = "sprint_backlog" if self.sprint else "backlog"
-            self.save(update_fields=["estado"])
+            if self.estado not in ("done", "revision"):
+                self.estado = "sprint_backlog" if self.sprint else "backlog"
+                self.save(update_fields=["estado"])
             return
         estados = set(tareas.values_list("estado", flat=True))
-        if estados == {"finalizada"}:
-            self.estado = "revision"
+        estados_cerrados = estados <= {"finalizada", "revision"}
+        if estados_cerrados and estados:
+            if self.estado != "done":
+                self.estado = "revision"
+                self.save(update_fields=["estado"])
+            return
         elif "en_curso" in estados or "pausada" in estados or "bloqueada" in estados:
             self.estado = "en_progreso"
-        elif "revision" in estados:
-            self.estado = "revision"
-        elif "pendiente" in estados and "finalizada" in estados:
+        elif "pendiente" in estados and ("finalizada" in estados or "revision" in estados):
             self.estado = "en_progreso"
         elif estados == {"pendiente"}:
             self.estado = "sprint_backlog" if self.sprint else "backlog"
+        else:
+            self.estado = "en_progreso"
         self.save(update_fields=["estado"])
 
     def clean(self):
@@ -235,7 +243,7 @@ class Tarea(models.Model):
         ("wont", "Won't Have"),
     ]
     proyecto = models.ForeignKey(Proyecto, on_delete=models.CASCADE, related_name="tareas")
-    historia = models.ForeignKey(HistoriaUsuario, on_delete=models.CASCADE, null=True, blank=True, related_name="tareas")
+    historia = models.ForeignKey(HistoriaUsuario, on_delete=models.SET_NULL, null=True, blank=True, related_name="tareas")
     sprint = models.ForeignKey(Sprint, on_delete=models.SET_NULL, null=True, blank=True, related_name="tareas")
     etiquetas = models.ManyToManyField(Etiqueta, blank=True)
     bloqueada_por = models.ManyToManyField("self", symmetrical=False, blank=True, related_name="bloquea_a")
@@ -248,6 +256,7 @@ class Tarea(models.Model):
     prioridad = models.CharField(max_length=10, choices=PRIORIDADES, default="should")
     estado = models.CharField(max_length=20, choices=ESTADOS, default="pendiente")
     asignado_a = models.ForeignKey(User, on_delete=models.PROTECT, null=True, blank=True, related_name="tareas_asignadas")
+    revisor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="tareas_revisadas")
     creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="tareas_creadas")
     fecha_limite = models.DateField(null=True, blank=True, verbose_name="Fecha limite")
     estimacion_horas = models.DecimalField(max_digits=6, decimal_places=1, null=True, blank=True)
@@ -279,6 +288,21 @@ class Tarea(models.Model):
                     raise ValidationError(
                         f"Transicion invalida: '{old.get_estado_display()}' -> '{self.get_estado_display()}'"
                     )
+                from apps.proyectos.models import WorkflowConfig
+                wf = WorkflowConfig.objects.filter(
+                    proyecto=self.proyecto, entidad="tarea",
+                    estado_origen=old.estado, estado_destino=self.estado,
+                    activo=True
+                ).first()
+                if wf and wf.requiere_rol and hasattr(Tarea, '_current_user'):
+                    from apps.proyectos.models import MiembroProyecto
+                    if not MiembroProyecto.objects.filter(
+                        proyecto=self.proyecto, user=Tarea._current_user,
+                        rol=wf.requiere_rol, activo=True
+                    ).exists():
+                        raise ValidationError(
+                            f"Se requiere rol '{wf.requiere_rol}' para la transicion {old.estado} -> {self.estado}"
+                        )
             except Tarea.DoesNotExist:
                 pass
 
@@ -397,7 +421,7 @@ HARDCODED_TAREA = {
     "en_curso": ["pausada", "finalizada", "cancelada", "bloqueada"],
     "pausada": ["en_curso", "finalizada", "cancelada", "bloqueada"],
     "bloqueada": ["en_curso", "cancelada"],
-    "finalizada": [],
+    "finalizada": ["revision"],
     "revision": ["finalizada", "pendiente"],
     "cancelada": [],
 }
@@ -421,19 +445,21 @@ HARDCODED_INCIDENCIA = {
 
 
 def _get_transiciones(proyecto, entidad):
-    """Devuelve {estado_origen: [estados_destino]} desde WorkflowConfig o hardcodeado."""
+    """Devuelve {estado_origen: [estados_destino]} combinando hardcoded + WorkflowConfig."""
+    if entidad == "tarea":
+        base = HARDCODED_TAREA
+    elif entidad == "historia":
+        base = HARDCODED_HISTORIA
+    elif entidad == "incidencia":
+        base = HARDCODED_INCIDENCIA
+    else:
+        base = {}
+    trans = {k: list(v) for k, v in base.items()}
     configs = WorkflowConfig.objects.filter(proyecto=proyecto, entidad=entidad, activo=True)
-    if not configs.exists():
-        if entidad == "tarea":
-            return HARDCODED_TAREA
-        elif entidad == "historia":
-            return HARDCODED_HISTORIA
-        elif entidad == "incidencia":
-            return HARDCODED_INCIDENCIA
-        return {}
-    trans = {}
     for cfg in configs:
-        trans.setdefault(cfg.estado_origen, []).append(cfg.estado_destino)
+        trans.setdefault(cfg.estado_origen, [])
+        if cfg.estado_destino not in trans[cfg.estado_origen]:
+            trans[cfg.estado_origen].append(cfg.estado_destino)
     return trans
 
 

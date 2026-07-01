@@ -28,7 +28,7 @@
 
                 <div class="mb-3">
                     <label class="form-label fw-semibold" style="font-size:0.82rem;">Actividad a realizar</label>
-                    <input type="text" class="form-control form-control-sm mb-2" id="filtroActividades" placeholder="Buscar actividades..." onkeyup="filtrarActividades()" style="font-size:0.85rem;">
+                     <input type="text" class="form-control form-control-sm mb-2" id="filtroActividades" placeholder="Buscar actividades..." onkeyup="buscarActividades()" style="font-size:0.85rem;">
                     <div id="actividadesContainer" class="border rounded" style="max-height:200px;overflow-y:auto;font-size:0.85rem;">
                         <p class="text-muted text-center py-3 mb-0">Primero selecciona una subarea</p>
                     </div>
@@ -58,11 +58,13 @@ function filtrarSubareas() {
     });
 }
 
-function cargarActividades(subareaId) {
+function cargarActividades(subareaId, query) {
     var container = document.getElementById('actividadesContainer');
     if (!subareaId) { container.innerHTML = '<p class="text-muted text-center py-3 mb-0">Primero selecciona una subarea</p>'; return; }
     container.innerHTML = '<p class="text-muted text-center py-3 mb-0">Cargando...</p>';
-    fetch('/master/api/buscar/actividad/?subarea_id=' + subareaId + '&es_flash=1&_=' + Date.now(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+    var url = '/master/api/buscar/actividad/?subarea_id=' + subareaId + '&es_flash=1&limite=50&_=' + Date.now();
+    if (query) url += '&q=' + encodeURIComponent(query);
+    fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
         .then(function(r) { return r.json(); })
         .then(function(data) {
             if (!data.length) { container.innerHTML = '<p class="text-muted text-center py-3 mb-0">No hay actividades no programadas en esta subarea</p>'; return; }
@@ -76,11 +78,14 @@ function cargarActividades(subareaId) {
         });
 }
 
-function filtrarActividades() {
-    var f = document.getElementById('filtroActividades').value.toLowerCase();
-    document.querySelectorAll('.act-item').forEach(function(e) {
-        e.style.display = e.textContent.toLowerCase().includes(f) ? '' : 'none';
-    });
+var timeoutActividades;
+function buscarActividades() {
+    clearTimeout(timeoutActividades);
+    timeoutActividades = setTimeout(function() {
+        var subareaId = document.getElementById('subareaSelect').value;
+        var q = document.getElementById('filtroActividades').value.trim();
+        cargarActividades(subareaId, q);
+    }, 250);
 }
 </script>
 {% endblock %}

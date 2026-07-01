@@ -30,9 +30,16 @@
                 {% for r in roles %}<option value="{{ r.pk }}" {% if rol_filter == r.pk|stringformat:'s' %}selected{% endif %}>{{ r.nombre }}</option>{% endfor %}
             </select>
         </div>
+        <div class="col-md-1">
+            <select name="estado" class="form-select form-select-sm" style="font-size:0.75rem;" onchange="this.form.submit()">
+                <option value="activo" {% if estado_filter == 'activo' %}selected{% endif %}>Activos</option>
+                <option value="inactivo" {% if estado_filter == 'inactivo' %}selected{% endif %}>Inactivos</option>
+                <option value="todos" {% if estado_filter == 'todos' %}selected{% endif %}>Todos</option>
+            </select>
+        </div>
         <div class="col-auto">
             <button class="btn btn-outline-secondary btn-sm" type="submit" style="font-size:0.7rem;">Filtrar</button>
-            {% if q or rol_filter or area_filter or subarea_filter %}<a href="{% url 'accounts:master_usuarios' %}" class="btn btn-outline-danger btn-sm" style="font-size:0.7rem;">Limpiar</a>{% endif %}
+            {% if q or rol_filter or area_filter or subarea_filter or estado_filter != 'activo' %}<a href="{% url 'accounts:master_usuarios' %}" class="btn btn-outline-danger btn-sm" style="font-size:0.7rem;">Limpiar</a>{% endif %}
         </div>
     </form>
 
@@ -45,19 +52,23 @@
                     </thead>
                     <tbody>
                         {% for u in usuarios %}
-                        <tr>
+                        <tr{% if not u.activo %} class="table-secondary"{% endif %}>
                             <td class="fw-semibold" style="font-size:0.75rem;">{{ u.cedula }}</td>
                             <td>{{ u.nombre }}</td>
                             <td>{{ u.apellido }}</td>
                             <td class="text-muted" style="font-size:0.72rem;">{{ u.cargo|default:"-" }}</td>
-                            <td><span class="badge bg-light text-muted" style="font-size:0.6rem;">{{ u.rol.nombre|default:"Sin rol" }}</span></td>
+                            <td><span class="badge bg-light text-muted" style="font-size:0.6rem;">{{ u.rol.nombre|default:"Sin rol" }}</span>{% if not u.activo %} <span class="badge bg-danger" style="font-size:0.55rem;">Inactivo</span>{% endif %}</td>
                             <td style="font-size:0.7rem;">{% for ue in u.empresas.all %}{% if ue.activo %}<span class="badge bg-light text-muted me-1" style="font-size:0.55rem;">{{ ue.empresa.nombre|truncatechars:15 }}</span>{% endif %}{% empty %}<span class="text-muted">-</span>{% endfor %}</td>
                             <td style="font-size:0.7rem;">{% for usa in u.subareas.all %}{% if usa.activo %}<span class="badge bg-light text-muted me-1" style="font-size:0.55rem;">{{ usa.subarea.nombre|truncatechars:12 }}</span>{% endif %}{% empty %}<span class="text-muted">-</span>{% endfor %}</td>
                             <td class="text-muted" style="font-size:0.7rem;">{{ u.email|default:"-"|truncatechars:20 }}</td>
                             <td>
                                 <div class="btn-group btn-group-sm" style="gap:2px;">
                                     <a href="{% url 'accounts:master_usuario_edit' u.pk %}" class="btn btn-outline-secondary py-0 px-1" style="font-size:0.65rem;" title="Editar"><i class="bi bi-pencil"></i></a>
+                                    {% if u.activo %}
                                     <a href="{% url 'accounts:master_usuario_delete' u.pk %}" class="btn btn-outline-danger py-0 px-1" style="font-size:0.65rem;" title="Inactivar" onclick="return confirm('Inactivar?')"><i class="bi bi-trash"></i></a>
+                                    {% else %}
+                                    <a href="{% url 'accounts:master_usuario_reactivar' u.pk %}" class="btn btn-outline-success py-0 px-1" style="font-size:0.65rem;" title="Reactivar" onclick="return confirm('Reactivar?')"><i class="bi bi-arrow-counterclockwise"></i></a>
+                                    {% endif %}
                                 </div>
                             </td>
                         </tr>

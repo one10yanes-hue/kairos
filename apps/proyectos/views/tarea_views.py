@@ -1,11 +1,14 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
 from django.contrib import messages
+from django.db import transaction
 from django.utils import timezone
 from ..models import Proyecto, Sprint, HistoriaUsuario, Tarea
-from ..signals import crear_asignacion_desde_tarea
+from ..signals import crear_asignacion_desde_tarea, _crear_cards_revision_tarea
 from ..decorators import miembro_requerido, ROLES_EDICION, ROLES_MOVER, ROLES_REVISION
 from apps.actividades.models import Actividad, TipoActividad
+from apps.accounts.models import User
 
 
 def _tipo_to_tarea(tipo_nombre):
@@ -70,34 +73,43 @@ def tarea_create(request, pk):
             except TipoActividad.DoesNotExist:
                 pass
 
-        tarea = Tarea.objects.create(
-            proyecto=proyecto,
-            titulo=titulo,
-            descripcion=request.POST.get("descripcion", ""),
-            tipo=tipo_nombre,
-            prioridad=request.POST.get("prioridad", "should"),
-            asignado_a_id=request.POST.get("user_id") or None,
-            actividad_catalogo_id=request.POST.get("actividad_id") or None,
-            historia_id=request.POST.get("historia_id") or None,
-            sprint_id=request.POST.get("sprint_id") or None,
-            fecha_limite=request.POST.get("fecha_limite") or None,
-            creador=request.user,
-        )
-        tarea.codigo = f"{proyecto.codigo}-T-{tarea.pk:03d}"
-        tarea.save()
-        from ..models import RegistroAvance
-        RegistroAvance.objects.create(proyecto=proyecto, tipo="tarea_creada",
-            descripcion=f"Tarea {tarea.codigo} creada: {tarea.titulo[:60]}", user=request.user, referencia_id=tarea.pk)
-        if tarea.asignado_a:
-            asignacion = crear_asignacion_desde_tarea(tarea)
-            if asignacion:
-                from apps.gestion.views import _notificar_usuario
-                _notificar_usuario(tarea.asignado_a.pk, "nueva_asignacion", {"actividad": tarea.titulo})
-                messages.success(request, f"Tarea {tarea.codigo} creada y asignada a {tarea.asignado_a.get_full_name()}. Aparecera en su tablero Kanban.")
+        historia_id = request.POST.get("historia_id") or None
+        if historia_id:
+            historia = HistoriaUsuario.objects.filter(pk=historia_id, activo=True).first()
+            if historia and historia.estado in ("revision", "done"):
+                messages.error(request, f"No se pueden agregar tareas a una historia en estado '{historia.get_estado_display()}'.")
+                return redirect("proyectos:tarea_list", pk=proyecto.pk)
+
+        with transaction.atomic():
+            tarea = Tarea.objects.create(
+                proyecto=proyecto,
+                titulo=titulo,
+                descripcion=request.POST.get("descripcion", ""),
+                tipo=tipo_nombre,
+                prioridad=request.POST.get("prioridad", "should"),
+                asignado_a_id=request.POST.get("user_id") or None,
+                actividad_catalogo_id=request.POST.get("actividad_id") or None,
+                historia_id=historia_id,
+                sprint_id=request.POST.get("sprint_id") or None,
+                fecha_limite=request.POST.get("fecha_limite") or None,
+                revisor_id=request.POST.get("revisor_id") or None,
+                creador=request.user,
+            )
+            tarea.codigo = f"{proyecto.codigo}-T-{tarea.pk:03d}"
+            tarea.save()
+            from ..models import RegistroAvance
+            RegistroAvance.objects.create(proyecto=proyecto, tipo="tarea_creada",
+                descripcion=f"Tarea {tarea.codigo} creada: {tarea.titulo[:60]}", user=request.user, referencia_id=tarea.pk)
+            if tarea.asignado_a:
+                asignacion = crear_asignacion_desde_tarea(tarea)
+                if asignacion:
+                    from apps.gestion.views import _notificar_usuario
+                    _notificar_usuario(tarea.asignado_a.pk, "nueva_asignacion", {"actividad": tarea.titulo})
+                    messages.success(request, f"Tarea {tarea.codigo} creada y asignada a {tarea.asignado_a.get_full_name()}. Aparecera en su tablero Kanban.")
+                else:
+                    messages.success(request, f"Tarea {tarea.codigo} creada.")
             else:
-                messages.success(request, f"Tarea {tarea.codigo} creada.")
-        else:
-            messages.success(request, f"Tarea {tarea.codigo} creada (sin asignar). Asignala para que aparezca en el tablero Kanban.")
+                messages.success(request, f"Tarea {tarea.codigo} creada (sin asignar). Asignala para que aparezca en el tablero Kanban.")
         return redirect("proyectos:tarea_list", pk=proyecto.pk)
 
     historias = proyecto.historias.filter(activo=True)
@@ -115,8 +127,12 @@ def tarea_create(request, pk):
         sel_sprint = sel_historia.sprint
         tareas_historia = sel_historia.tareas.filter(activo=True)
 
+    from ..models import MiembroProyecto
+    revisores = MiembroProyecto.objects.filter(proyecto=proyecto, activo=True, rol="revisor").select_related("user")
+
     return render(request, "proyectos/tarea_form.html", {
         "proyecto": proyecto, "historias": historias, "sprints": sprints, "miembros": miembros,
+        "revisores": revisores,
         "tipos_actividad": tipos_actividad, "actividades": actividades,
         "selected_historia_id": sel_historia_id,
         "sel_historia": sel_historia,
@@ -125,6 +141,7 @@ def tarea_create(request, pk):
     })
 
 
+@require_POST
 @miembro_requerido(ROLES_REVISION)
 def tarea_aprobar(request, pk, tid):
     tarea = get_object_or_404(Tarea, pk=tid, proyecto=request.proyecto, activo=True)
@@ -222,7 +239,13 @@ def tarea_mover(request, pk, tid):
             data = json.loads(request.body)
             nuevo = data.get("estado")
             if nuevo in dict(Tarea.ESTADOS):
+                # Validar transicion con WorkflowConfig
+                from apps.proyectos.models import _get_transiciones
+                transiciones = _get_transiciones(proyecto, "tarea")
+                if nuevo not in transiciones.get(tarea.estado, []):
+                    return JsonResponse({"ok": False, "error": f"Transicion {tarea.estado} -> {nuevo} no permitida"}, status=400)
                 tarea.estado = nuevo
+                tarea._current_user = request.user
                 tarea.full_clean()
                 tarea.save()
                 # Sincronizar AsignacionActividad del Ejecutor
@@ -240,43 +263,9 @@ def tarea_mover(request, pk, tid):
                     evento_map = {"en_curso": "Inicio", "pausada": "Pausa", "finalizada": "Finalizacion"}
                     if nuevo in evento_map and old_ga != ga_estado:
                         RegistroTiempo.objects.create(asignacion=tarea.asignacion, evento=evento_map[nuevo], fecha_hora=timezone.now())
-                    # Cuando tarea entra en revision, crear AsignacionActividad para cada Revisor/Aprobador
+                    # Cuando tarea entra en revision, crear AsignacionActividad para Revisor/QA
                     if nuevo == "revision":
-                        from ..models import MiembroProyecto
-                        from ..decorators import ROLES_REVISION
-                        from apps.actividades.models import Actividad, TipoActividad
-                        from apps.gestion.models import AsignacionActividad
-                        from apps.gestion.views import _notificar_usuario
-                        subarea = proyecto.subareas.first()
-                        if subarea:
-                            tipo_rev, _ = TipoActividad.objects.get_or_create(
-                                subarea=subarea, nombre="Revision de Proyecto",
-                                defaults={"requiere_fecha_limite": False, "requiere_entregable": False, "es_flash": False}
-                            )
-                            act_rev, _ = Actividad.objects.get_or_create(
-                                subarea=subarea, tipo_actividad=tipo_rev,
-                                defaults={"nombre": f"Revision de Proyecto - {proyecto.codigo}"}
-                            )
-                            revisores = MiembroProyecto.objects.filter(
-                                proyecto=proyecto, activo=True, rol__in=ROLES_REVISION
-                            )
-                            for m in revisores:
-                                AsignacionActividad.objects.get_or_create(
-                                    user=m.user,
-                                    nombre_actividad=f"[Revisar] {tarea.codigo}: {tarea.titulo[:80]}",
-                                    origen="Revision",
-                                    activo=True,
-                                    defaults={
-                                        "actividad": act_rev,
-                                        "estado": "Pendiente",
-                                        "origen_user": tarea.asignado_a or tarea.creador,
-                                        "nombre_tipo": "Revision de Tarea",
-                                    }
-                                )
-                                _notificar_usuario(m.user_id, "nueva_revision", {
-                                    "tarea": tarea.titulo, "codigo": tarea.codigo,
-                                    "proyecto": proyecto.codigo,
-                                })
+                        _crear_cards_revision_tarea(tarea)
                 return JsonResponse({"ok": True})
         except Exception as e:
             import logging
@@ -300,7 +289,21 @@ def tarea_edit(request, pk, tid):
         tarea.prioridad = request.POST.get("prioridad", tarea.prioridad)
         tarea.asignado_a_id = request.POST.get("user_id") or None
         tarea.historia_id = request.POST.get("historia_id") or None
+        if tarea.historia_id:
+            historia_obj = HistoriaUsuario.objects.filter(pk=tarea.historia_id, activo=True).first()
+            if historia_obj and historia_obj.estado in ("revision", "done"):
+                messages.error(request, f"No se puede asignar la tarea a una historia en estado '{historia_obj.get_estado_display()}'.")
+                return redirect("proyectos:tarea_edit", pk=proyecto.pk, tid=tarea.pk)
         tarea.sprint_id = request.POST.get("sprint_id") or None
+        tarea.revisor_id = request.POST.get("revisor_id") or None
+        if tarea.revisor_id:
+            from ..models import MiembroProyecto
+            es_revisor = MiembroProyecto.objects.filter(
+                proyecto=proyecto, activo=True, rol="revisor", user_id=tarea.revisor_id
+            ).exists()
+            if not es_revisor:
+                messages.error(request, "El revisor seleccionado no es un miembro revisor del proyecto.")
+                return redirect("proyectos:tarea_edit", pk=proyecto.pk, tid=tarea.pk)
         tarea.actividad_catalogo_id = request.POST.get("actividad_id") or None
         tarea.fecha_limite = request.POST.get("fecha_limite") or None
         tid = request.POST.get("tipo_actividad_id") or None
@@ -316,6 +319,7 @@ def tarea_edit(request, pk, tid):
         nuevo_estado = request.POST.get("estado")
         if nuevo_estado and nuevo_estado != tarea.estado and tarea.estado not in ["finalizada", "cancelada"]:
             tarea.estado = nuevo_estado
+            tarea._current_user = request.user
         tarea.save()
 
         # Bitacora de cambios
@@ -337,7 +341,6 @@ def tarea_edit(request, pk, tid):
                 tarea.asignacion.save()
                 tarea.asignacion = None
                 tarea.save(update_fields=["asignacion"])
-            from ..signals import crear_asignacion_desde_tarea
             crear_asignacion_desde_tarea(tarea)
 
         messages.success(request, "Tarea actualizada.")
@@ -347,9 +350,12 @@ def tarea_edit(request, pk, tid):
     miembros = _miembros_asignables(proyecto, request)
     tipos_actividad = TipoActividad.objects.filter(subarea__in=proyecto.subareas.all(), activo=True, solo_proyecto=True).distinct().order_by("nombre")
     actividades = Actividad.objects.filter(subarea__in=proyecto.subareas.all(), activo=True).select_related("tipo_actividad")
+    from ..models import MiembroProyecto
+    revisores = MiembroProyecto.objects.filter(proyecto=proyecto, activo=True, rol="revisor").select_related("user")
     return render(request, "proyectos/tarea_form.html", {
         "proyecto": proyecto, "tarea": tarea, "editando": True,
         "historias": historias, "sprints": sprints, "miembros": miembros,
+        "revisores": revisores,
         "tipos_actividad": tipos_actividad, "actividades": actividades,
         "selected_historia": str(tarea.historia_id or ""),
         "selected_sprint": str(tarea.sprint_id or ""),

@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.db import transaction
 from ..models import Proyecto, Sprint
 from ..decorators import miembro_requerido, ROLES_EDICION
 
@@ -39,23 +40,24 @@ def sprint_create(request, pk):
             messages.warning(request, f"El sprint termina despues del proyecto ({proyecto.fecha_fin_estimada}).")
         from django.db.models import Max
         ultimo = Sprint.objects.filter(proyecto=proyecto).aggregate(m=Max("numero"))["m"] or 0
-        sprint = Sprint(
-            proyecto=proyecto,
-            nombre=nombre,
-            objetivo=request.POST.get("objetivo", ""),
-            numero=ultimo + 1,
-            fecha_inicio=fi,
-            fecha_fin=ff,
-        )
-        sprint.full_clean()
-        sprint.save()
-        historias_ids = request.POST.getlist("historias")
-        if historias_ids:
-            proyecto.historias.filter(pk__in=historias_ids).update(sprint=sprint, estado="sprint_backlog")
-        from ..models import RegistroAvance
-        RegistroAvance.objects.create(proyecto=proyecto, tipo="sprint_creado",
-            descripcion=f"Sprint {sprint.numero} creado por {request.user.get_full_name()}", user=request.user, referencia_id=sprint.pk)
-        messages.success(request, f"Sprint {sprint.numero} creado.")
+        with transaction.atomic():
+            sprint = Sprint(
+                proyecto=proyecto,
+                nombre=nombre,
+                objetivo=request.POST.get("objetivo", ""),
+                numero=ultimo + 1,
+                fecha_inicio=fi,
+                fecha_fin=ff,
+            )
+            sprint.full_clean()
+            sprint.save()
+            historias_ids = request.POST.getlist("historias")
+            if historias_ids:
+                proyecto.historias.filter(pk__in=historias_ids).update(sprint=sprint, estado="sprint_backlog")
+            from ..models import RegistroAvance
+            RegistroAvance.objects.create(proyecto=proyecto, tipo="sprint_creado",
+                descripcion=f"Sprint {sprint.numero} creado por {request.user.get_full_name()}", user=request.user, referencia_id=sprint.pk)
+            messages.success(request, f"Sprint {sprint.numero} creado.")
         return redirect("proyectos:sprint_list", pk=proyecto.pk)
     historias = proyecto.historias.filter(activo=True, estado="backlog")
     return render(request, "proyectos/sprint_form.html", {"proyecto": proyecto, "historias": historias})
@@ -187,6 +189,9 @@ def sprint_finalizar(request, pk, spk):
 def sprint_iniciar(request, pk, spk):
     proyecto = get_object_or_404(Proyecto, pk=pk, activo=True)
     sprint = get_object_or_404(Sprint, pk=spk, proyecto=proyecto)
+    if not sprint.historias.filter(activo=True).exists() and not sprint.tareas.filter(activo=True).exists():
+        messages.error(request, "No se puede iniciar un sprint sin historias ni tareas.")
+        return redirect("proyectos:sprint_board", pk=pk, spk=spk)
     if sprint.estado != "planificado":
         messages.error(request, "Solo se pueden iniciar sprints planificados.")
         return redirect("proyectos:sprint_board", pk=proyecto.pk, spk=sprint.pk)
@@ -237,6 +242,10 @@ def sprint_cancelar(request, pk, spk):
         return redirect("proyectos:sprint_board", pk=proyecto.pk, spk=sprint.pk)
     if request.method == "POST":
         sprint.estado = "cancelado"
+        for h in sprint.historias.filter(activo=True, estado="sprint_backlog"):
+            h.estado = "backlog"
+            h.sprint = None
+            h.save()
         sprint.save()
         sprint.tareas.filter(activo=True).exclude(estado__in=["finalizada","cancelada"]).update(estado="cancelada", activo=False)
         from ..models import RegistroAvance

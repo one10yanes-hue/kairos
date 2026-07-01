@@ -362,7 +362,7 @@ def planificacion_detail(request, pk):
         "pendientes": AsignacionActividad.objects.filter(
             planificacion_detalle__planificacion=planificacion,
             activo=True, estado__in=["Pendiente", "Pausada"]
-        ).select_related("user", "actividad", "planificacion_detalle"),
+        ).filter(user__activo=True).select_related("user", "actividad", "planificacion_detalle"),
         "actividades_disponibles": Actividad.objects.filter(subarea=subarea, activo=True).select_related("tipo_actividad"),
         "usuarios_disponibles": User.objects.filter(
             id__in=UserSubArea.objects.filter(subarea=subarea, activo=True).values_list("user_id", flat=True),

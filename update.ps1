@@ -6,10 +6,17 @@ if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 
 Set-Location C:\inetpub\kairos
 
+<<<<<<< HEAD
 # --- Crear .env SOLO si no existe (NUNCA sobrescribir uno existente) ---
 if (-not (Test-Path .env)) {
     Write-Host "Creando .env por primera vez..." -ForegroundColor Yellow
     $envContent = @"
+=======
+# --- Crear .env SOLO si no existe (NUNCA sobrescribir) ---
+if (-not (Test-Path .env)) {
+    Write-Host "Creando .env por primera vez..." -ForegroundColor Yellow
+    @"
+>>>>>>> origin/produccion
 SECRET_KEY=Kairos2026SuperSeguroClaveAleatoriaLarga50chars!!
 DEBUG=False
 ALLOWED_HOSTS=localhost,127.0.0.1,192.168.200.93,kairos.viva1a.com.co
@@ -19,6 +26,7 @@ DB_USER=root
 DB_PASSWORD=Viva2026
 DB_HOST=localhost
 DB_PORT=3306
+<<<<<<< HEAD
 "@
     Set-Content -Path .env -Value $envContent -Encoding ASCII
     Write-Host ".env creado. Revisalo y ajusta si es necesario." -ForegroundColor Green
@@ -32,17 +40,44 @@ Get-ChildItem .git\objects\pack\*.pack -ErrorAction SilentlyContinue | Remove-It
 
 # Recuperar del remoto
 git fetch origin
+=======
+"@ | Set-Content -Path .env -Encoding ASCII
+    Write-Host ".env creado. Ajustalo si es necesario." -ForegroundColor Green
+}
+
+# --- PyMySQL bridge (por si no existe) ---
+if (-not (Test-Path config\__init__.py)) {
+    Write-Host "Creando config\__init__.py con PyMySQL bridge..." -ForegroundColor Yellow
+    @"
+import pymysql
+pymysql.install_as_MySQLdb()
+"@ | Set-Content -Path config\__init__.py -Encoding ASCII
+}
+
+# Limpiar locks y procesos
+taskkill /F /IM git.exe 2>$null
+taskkill /F /IM python.exe 2>$null
+Remove-Item -Force .git\index.lock -ErrorAction SilentlyContinue
+Start-Sleep -Seconds 1
+>>>>>>> origin/produccion
 
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "  KAIROS - Actualizar desde GitHub" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
+<<<<<<< HEAD
+=======
+# Fetch fresco
+git fetch origin produccion 2>$null
+
+>>>>>>> origin/produccion
 # Mostrar rama actual
 $currentBranch = git branch --show-current
 Write-Host "Rama actual: $currentBranch" -ForegroundColor Yellow
 Write-Host ""
 
+<<<<<<< HEAD
 # Si la rama local no existe en remoto, usar main
 if (-not (git branch -r | Select-String "origin/$currentBranch")) {
     $currentBranch = "main"
@@ -70,6 +105,19 @@ git reset --hard "origin/$rama"
 
 Write-Host "Instalando dependencias..." -ForegroundColor Cyan
 .\venv\Scripts\python.exe -m pip install -r requirements.txt
+=======
+# Siempre usar produccion
+$rama = "produccion"
+Write-Host "Actualizando desde origin/$rama..." -ForegroundColor Cyan
+
+# Reset al estado exacto del remoto
+git fetch origin $rama
+git checkout -B $rama origin/$rama 2>$null
+git reset --hard origin/$rama
+
+Write-Host "Instalando dependencias..." -ForegroundColor Cyan
+.\venv\Scripts\python.exe -m pip install -r requirements.txt PyMySQL --quiet
+>>>>>>> origin/produccion
 
 Write-Host "Migrando base de datos..." -ForegroundColor Cyan
 .\venv\Scripts\python.exe manage.py migrate
@@ -77,10 +125,15 @@ Write-Host "Migrando base de datos..." -ForegroundColor Cyan
 
 Write-Host "Reiniciando uvicorn..." -ForegroundColor Cyan
 taskkill /F /IM python.exe 2>$null
+<<<<<<< HEAD
 taskkill /F /IM git.exe 2>$null
 Start-Sleep -Seconds 2
 
 # Limpiar locks
+=======
+Start-Sleep -Seconds 2
+
+>>>>>>> origin/produccion
 Remove-Item -Force .git\index.lock -ErrorAction SilentlyContinue
 git gc --auto 2>$null
 
@@ -88,6 +141,10 @@ schtasks /Run /TN "Kairos"
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Green
+<<<<<<< HEAD
 Write-Host "  Actualizacion completada desde $rama" -ForegroundColor Green
+=======
+Write-Host "  Kairos v4.2.x actualizado desde $rama" -ForegroundColor Green
+>>>>>>> origin/produccion
 Write-Host "========================================" -ForegroundColor Green
 Start-Sleep -Seconds 3
