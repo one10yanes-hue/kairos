@@ -158,11 +158,6 @@ def planificacion_create(request):
                             planificacion=planificacion, actividad=actividad, user=usuario, activo=True
                         ).exists():
                             continue
-                        if AsignacionActividad.objects.filter(
-                            user=usuario, actividad=actividad, activo=True,
-                            planificacion_detalle__fecha_programada=fecha_programada,
-                        ).exclude(estado__in=["Finalizada", "Cancelada", "Trasladada"]).exists():
-                            continue
                         detalles_creados.append((actividad, usuario))
                         count += 1
 
@@ -437,12 +432,6 @@ def reprogramar_pendiente(request, pk):
         timezone.datetime.combine(nueva_fecha, timezone.datetime.min.time())
     )
     # Validar que no exista otra asignacion igual en la nueva fecha
-    if AsignacionActividad.objects.filter(
-        user=asignacion.user, actividad=asignacion.actividad, activo=True,
-        planificacion_detalle__fecha_programada=nueva_fecha,
-    ).exclude(pk=asignacion.pk).exclude(estado__in=["Finalizada", "Cancelada", "Trasladada"]).exists():
-        messages.error(request, f"'{asignacion.actividad.nombre}' ya esta asignada a {asignacion.user.get_full_name()} en la fecha {nueva_fecha.strftime('%d/%m/%Y')}.")
-        return redirect("planificacion:planificacion_detail", pk=asignacion.planificacion_detalle.planificacion_id)
     detalle.fecha_programada = nueva_dt
     detalle.fecha_vencimiento = nueva_dt
     detalle.save(update_fields=["fecha_programada", "fecha_vencimiento"])
@@ -468,15 +457,6 @@ def reasignar_pendiente(request, pk):
         messages.error(request, "Selecciona un usuario destino.")
         return redirect("planificacion:planificacion_detail", pk=asignacion.planificacion_detalle.planificacion_id)
     nuevo_user = get_object_or_404(User, pk=nuevo_user_id, activo=True)
-
-    # Validar que no exista otra asignacion igual para el nuevo usuario en la misma fecha
-    fecha_prog = asignacion.planificacion_detalle.fecha_programada if asignacion.planificacion_detalle else None
-    if fecha_prog and AsignacionActividad.objects.filter(
-        user=nuevo_user, actividad=asignacion.actividad, activo=True,
-        planificacion_detalle__fecha_programada=fecha_prog,
-    ).exclude(pk=asignacion.pk).exclude(estado__in=["Finalizada", "Cancelada", "Trasladada"]).exists():
-        messages.error(request, f"'{asignacion.actividad.nombre}' ya esta asignada a {nuevo_user.get_full_name()} en la misma fecha.")
-        return redirect("planificacion:planificacion_detail", pk=asignacion.planificacion_detalle.planificacion_id)
 
     old_user = asignacion.user
     asignacion.user = nuevo_user
@@ -672,11 +652,6 @@ def planificacion_self_create(request):
                     if PlanificacionDetalle.objects.filter(
                         planificacion=planificacion, actividad=actividad, user=request.user, activo=True
                     ).exists():
-                        continue
-                    if fecha_programada_dt and AsignacionActividad.objects.filter(
-                        user=request.user, actividad=actividad, activo=True,
-                        planificacion_detalle__fecha_programada=fecha_programada_dt,
-                    ).exclude(estado__in=["Finalizada", "Cancelada", "Trasladada"]).exists():
                         continue
                     detalles_creados.append(actividad)
                     count += 1
