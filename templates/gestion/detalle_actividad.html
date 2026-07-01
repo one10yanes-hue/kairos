@@ -157,6 +157,39 @@
                     {% endfor %}
                 </div>
             </div>
+
+{% if historia_aprobacion and tareas_historia %}
+            <div class="card shadow-sm mb-3">
+                <div class="card-header py-1 px-2 d-flex justify-content-between align-items-center">
+                    <small class="fw-semibold"><i class="bi bi-list-task"></i> Tareas de {{ historia_aprobacion.codigo }}</small>
+                    <span class="badge bg-light text-muted" style="font-size:0.5rem;">{{ tareas_historia|length }} tareas</span>
+                </div>
+                <div class="card-body p-2" style="max-height:400px;overflow-y:auto;">
+                    {% for item in tareas_historia %}
+                    <div class="border-bottom mb-2 pb-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="fw-semibold" style="font-size:0.78rem;">{{ item.tarea.codigo }}: {{ item.tarea.titulo|truncatechars:60 }}</span>
+                            <span class="badge {% if item.tarea.estado == 'finalizada' %}bg-success{% elif item.tarea.estado == 'revision' %}bg-warning text-dark{% elif item.tarea.estado == 'pendiente' %}bg-light text-muted{% elif item.tarea.estado == 'en_curso' %}bg-info text-dark{% else %}bg-secondary{% endif %}" style="font-size:0.55rem;">{{ item.estado }}</span>
+                        </div>
+                        <div style="font-size:0.7rem;">
+                            <span class="text-muted"><i class="bi bi-person"></i> {{ item.user.get_full_name|default:"—" }}</span>
+                            <span class="text-muted ms-2"><i class="bi bi-clock"></i> {{ item.tiempo }}</span>
+                            {% if item.tarea.asignacion and item.tarea.asignacion.entregable %}
+                            <span class="ms-2"><a href="{{ item.tarea.asignacion.entregable.url }}" target="_blank" class="text-primary"><i class="bi bi-file-earmark-arrow-up"></i> Entregable</a></span>
+                            {% endif %}
+                        </div>
+                        {% if item.incidencias %}
+                        <div style="font-size:0.65rem;">
+                            {% for inc in item.incidencias %}
+                            <span class="text-danger me-2"><i class="bi bi-bug"></i> {{ inc.codigo }}: {{ inc.titulo|truncatechars:40 }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+{% endif %}
         </div>
 
         <div class="col-lg-4">

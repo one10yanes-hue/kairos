@@ -350,7 +350,12 @@ def finalizar_actividad(request, pk):
                     tarea.estado = "finalizada"
                     tarea.save()
                     if tarea.historia:
+                        old_h = tarea.historia.estado
                         tarea.historia.actualizar_estado()
+                        # Si la historia entra en revision, crear [Aprobar] cards
+                        if tarea.historia.estado == "revision" and old_h != "revision":
+                            from apps.proyectos.signals import _crear_cards_aprobar_historia
+                            _crear_cards_aprobar_historia(tarea.historia, tarea.asignado_a or tarea.creador)
                     AsignacionActividad.objects.filter(
                         nombre_actividad__startswith=f"[Revisar] {tarea.codigo}:",
                         activo=True
@@ -430,7 +435,7 @@ def finalizar_actividad(request, pk):
                     messages.warning(request, f"Tarea {tarea.codigo} rechazada.")
             return redirect("gestion:tablero")
 
-        # Formato historia: "[Revision] US-019: Recuperar contraseña"
+        # Formato historia: "[Aprobar] US-019: Recuperar contraseña"
         historia_codigo = nombre.split("] ")[1].split(":")[0].strip() if "] " in nombre else ""
         from apps.proyectos.models import HistoriaUsuario
         historia = HistoriaUsuario.objects.filter(codigo=historia_codigo, activo=True).first()
@@ -451,7 +456,7 @@ def finalizar_actividad(request, pk):
                     messages.error(request, "Debes indicar el motivo del rechazo.")
                     return redirect("gestion:tablero")
                 # Devolver todas las tareas de la historia a pendiente
-                for t in historia.tareas.filter(activo=True, estado="finalizada"):
+                for t in historia.tareas.filter(activo=True, estado__in=["finalizada", "revision"]):
                     t.estado = "pendiente"
                     t.save()
                     if t.asignacion:
@@ -459,11 +464,34 @@ def finalizar_actividad(request, pk):
                         t.asignacion.estado_revision = "rechazado"
                         t.asignacion.revision_comentario = motivo
                         t.asignacion.save()
+                    # Cancelar [Revisar] cards de esta tarea
+                    AsignacionActividad.objects.filter(
+                        nombre_actividad__startswith=f"[Revisar] {t.codigo}:",
+                        activo=True
+                    ).update(activo=False, estado="Cancelada")
+                from apps.proyectos.models import Incidencia, RegistroAvance as RA
+                if request.POST.get("crear_bug"):
+                    inc = Incidencia.objects.create(
+                        proyecto=historia.proyecto, historia=historia,
+                        titulo=f"Bug en historia: {historia.titulo}", descripcion=motivo,
+                        tipo="bug", severidad="media", estado="abierta",
+                        reportado_por=request.user,
+                        asignado_a=historia.creador,
+                    )
+                    inc.codigo = f"{historia.proyecto.codigo}-INC-{inc.pk:03d}"
+                    inc.save()
+                    RA.objects.create(
+                        proyecto=historia.proyecto, tipo="incidencia_creada",
+                        descripcion=f"Bug {inc.codigo} creado al rechazar historia {historia.codigo}: {motivo[:60]}",
+                        user=request.user, referencia_id=inc.pk
+                    )
+                    messages.warning(request, f"Historia {historia.codigo} rechazada. Bug {inc.codigo} creado.")
+                else:
+                    messages.warning(request, f"Historia {historia.codigo} rechazada. Tareas devueltas al Ejecutor.")
                 historia.actualizar_estado()
-                messages.warning(request, f"Historia {historia.codigo} rechazada. Tareas devueltas al Ejecutor.")
             # Cerrar todas las AsignacionActividad de revision para esta historia
             AsignacionActividad.objects.filter(
-                nombre_actividad__startswith=f"[Revision] {historia.codigo}:",
+                nombre_actividad__startswith=f"[Aprobar] {historia.codigo}:",
                 activo=True
             ).update(activo=False, estado="Finalizada")
         return redirect("gestion:tablero")
@@ -579,6 +607,10 @@ def crear_no_programada(request):
 
         actividad = get_object_or_404(Actividad, pk=actividad_id, subarea_id=subarea_id, activo=True)
 
+        if not actividad.tipo_actividad.es_flash:
+            messages.error(request, f"'{actividad.nombre}' no es un evento flash. Selecciona una actividad flash.")
+            return redirect("gestion:crear_no_programada")
+
         duplicada = AsignacionActividad.objects.filter(
             user=request.user, actividad=actividad, activo=True
         ).exclude(estado__in=["Finalizada", "Cancelada", "Trasladada"]).exists()
@@ -641,18 +673,21 @@ def trasladar_actividad(request, pk):
         return redirect("gestion:tablero")
 
     user_destino = get_object_or_404(User, pk=user_destino_id, activo=True)
-    # Si la actividad pertenece a un proyecto, validar que el destino sea miembro Ejecutor
-    try:
-        tarea_proyecto = asignacion.tarea_proyecto
-        if tarea_proyecto:
-            from apps.proyectos.models import MiembroProyecto
-            if not MiembroProyecto.objects.filter(
-                proyecto=tarea_proyecto.proyecto, user=user_destino, activo=True, rol="ejecutor"
-            ).exists():
-                messages.error(request, "El usuario destino debe ser miembro Ejecutor del proyecto.")
-                return redirect("gestion:tablero")
-    except:
-        pass
+    # Si la actividad pertenece a un proyecto, validar el rol segun tipo de card
+    nombre = asignacion.nombre_actividad or ""
+    if nombre.startswith("[Revisar] "):
+        rol_requerido = "revisor"
+    elif nombre.startswith("[Aprobar] "):
+        rol_requerido = "aprobador"
+    else:
+        rol_requerido = "ejecutor"
+    if hasattr(asignacion, 'tarea_proyecto') and asignacion.tarea_proyecto:
+        from apps.proyectos.models import MiembroProyecto
+        if not MiembroProyecto.objects.filter(
+            proyecto=asignacion.tarea_proyecto.proyecto, user=user_destino, activo=True, rol=rol_requerido
+        ).exists():
+            messages.error(request, f"El usuario destino debe ser miembro '{rol_requerido}' del proyecto.")
+            return redirect("gestion:tablero")
     actividad_reemplazo = None
     if actividad_reemplazo_id:
         actividad_reemplazo = get_object_or_404(Actividad, pk=actividad_reemplazo_id, activo=True)
@@ -824,11 +859,12 @@ def buscar_usuarios_traslado(request):
         query = request.GET.get("q", "")
         subarea_id = request.GET.get("subarea_id")
         proyecto_id = request.GET.get("proyecto_id")
+        tipo_traslado = request.GET.get("tipo_traslado", "ejecutar")
         usuarios = User.objects.filter(
             activo=True, is_active=True
         ).exclude(id=request.user.id)
 
-        # Si es tarea de proyecto, filtrar solo Ejecutores del proyecto
+        # Si es tarea de proyecto, filtrar por rol segun tipo de card
         if proyecto_id:
             from apps.proyectos.models import MiembroProyecto
             # Verificar que el Admin tiene acceso a las subareas del proyecto
@@ -839,8 +875,9 @@ def buscar_usuarios_traslado(request):
                 proyecto = Proyecto.objects.filter(pk=proyecto_id, subareas__in=admin_subareas).first()
                 if not proyecto:
                     return JsonResponse([], safe=False)
+            rol_traslado = {"revision": "revisor", "aprobar": "aprobador", "ejecutar": "ejecutor"}.get(tipo_traslado, "ejecutor")
             miembros_ids = MiembroProyecto.objects.filter(
-                proyecto_id=proyecto_id, activo=True, rol="ejecutor"
+                proyecto_id=proyecto_id, activo=True, rol=rol_traslado
             ).values_list("user_id", flat=True)
             usuarios = usuarios.filter(id__in=miembros_ids)
         else:
@@ -945,6 +982,8 @@ def detalle_actividad(request, pk):
     # Si es tarea de revision [Revisar], buscar la asignacion original del ejecutor
     orig_entregable = None
     orig_asignacion = None
+    historia_aprobacion = None
+    tareas_historia = []
     try:
         if asignacion.nombre_actividad and "[Revisar]" in asignacion.nombre_actividad:
             import re as _re
@@ -956,6 +995,24 @@ def detalle_actividad(request, pk):
                 if tarea_orig and tarea_orig.asignacion_id:
                     orig_asignacion = tarea_orig.asignacion
                     orig_entregable = orig_asignacion.entregable
+        elif asignacion.nombre_actividad and "[Aprobar]" in asignacion.nombre_actividad:
+            import re as _re
+            match = _re.match(r'\[Aprobar\]\s+(\S+):', asignacion.nombre_actividad)
+            if match:
+                from apps.proyectos.models import HistoriaUsuario, Tarea, Incidencia
+                codigo_hist = match.group(1)
+                historia_aprobacion = HistoriaUsuario.objects.filter(codigo=codigo_hist, activo=True).first()
+                if historia_aprobacion:
+                    for t in historia_aprobacion.tareas.filter(activo=True).select_related("asignacion", "asignado_a", "sprint"):
+                        info = {
+                            "tarea": t,
+                            "asignacion": t.asignacion,
+                            "user": t.asignado_a,
+                            "estado": t.get_estado_display(),
+                            "incidencias": list(t.incidencias.filter(activo=True)),
+                            "tiempo": t.asignacion.tiempo_formateado() if t.asignacion else "—",
+                        }
+                        tareas_historia.append(info)
     except Exception:
         pass
     # Timeline unificado (como tarea_detail)
@@ -1022,6 +1079,8 @@ def detalle_actividad(request, pk):
         "planificacion": planificacion,
         "orig_entregable": orig_entregable,
         "orig_asignacion": orig_asignacion,
+        "historia_aprobacion": historia_aprobacion,
+        "tareas_historia": tareas_historia,
     }
     return render(request, "gestion/detalle_actividad.html", context)
 

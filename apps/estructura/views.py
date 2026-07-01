@@ -337,7 +337,7 @@ def api_buscar(request, modelo):
         if request.GET.get("es_flash"):
             qs = qs.filter(tipo_actividad__es_flash=True)
         limite_default = int(request.GET.get("limite", 0))
-        limite = limite_default if limite_default else (20 if q else 5)
+        limite = limite_default if limite_default else (20 if q else 50 if request.GET.get("es_flash") else 5)
         for o in qs[:limite]:
             results.append({
                 "id": o.pk,
