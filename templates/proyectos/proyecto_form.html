@@ -145,13 +145,13 @@
                             <th style="font-size:0.6rem;font-weight:600;text-align:center;border-bottom:2px solid var(--slate-200);width:70px;">Observ.</th>
                         </tr></thead><tbody>
                             {% for u in usuarios %}
-                            <tr data-search="{{ u.get_full_name|lower }}">
+                            <tr data-search="{{ u.get_full_name|lower }}" data-area-ids="{% for us in u.subareas.all %}{% if us.activo %}{{ us.subarea.area_id }},{% endif %}{% endfor %}">
                                 <td class="fw-semibold" style="font-size:0.75rem;">{{ u.get_full_name }}</td>
-                                <td style="text-align:center;"><input type="radio" name="rol_{{ u.pk }}" value="ejecutor" class="form-check-input mt-0" style="cursor:pointer;"></td>
-                                <td style="text-align:center;"><input type="radio" name="rol_{{ u.pk }}" value="revisor" class="form-check-input mt-0" style="cursor:pointer;"></td>
-                                <td style="text-align:center;"><input type="radio" name="rol_{{ u.pk }}" value="aprobador" class="form-check-input mt-0" style="cursor:pointer;"></td>
-                                <td style="text-align:center;"><input type="radio" name="rol_{{ u.pk }}" value="responsable" class="form-check-input mt-0" style="cursor:pointer;"></td>
-                                <td style="text-align:center;"><input type="radio" name="rol_{{ u.pk }}" value="observador" class="form-check-input mt-0" style="cursor:pointer;"></td>
+                                <td style="text-align:center;"><input type="radio" name="rol_{{ u.pk }}" value="ejecutor" class="form-check-input mt-0" style="cursor:pointer;min-width:14px;min-height:14px;"></td>
+                                <td style="text-align:center;"><input type="radio" name="rol_{{ u.pk }}" value="revisor" class="form-check-input mt-0" style="cursor:pointer;min-width:14px;min-height:14px;"></td>
+                                <td style="text-align:center;"><input type="radio" name="rol_{{ u.pk }}" value="aprobador" class="form-check-input mt-0" style="cursor:pointer;min-width:14px;min-height:14px;"></td>
+                                <td style="text-align:center;"><input type="radio" name="rol_{{ u.pk }}" value="responsable" class="form-check-input mt-0" style="cursor:pointer;min-width:14px;min-height:14px;"></td>
+                                <td style="text-align:center;"><input type="radio" name="rol_{{ u.pk }}" value="observador" class="form-check-input mt-0" style="cursor:pointer;min-width:14px;min-height:14px;"></td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -248,9 +248,15 @@ function obtenerUsuariosPorRol(rolBuscado) {
 }
 function filtrarEquipo() {
     var f = document.getElementById('filtroEquipo').value.toLowerCase();
+    var areaCheck = document.querySelectorAll('.area-check:checked');
+    var areas = []; areaCheck.forEach(function(c){ areas.push(c.value); });
     var count = 0, total = 0;
     document.querySelectorAll('tr[data-search]').forEach(function(r){
+        if (r.style.display === 'none') return; // oculto por area
         total++;
+        var rids = (r.getAttribute('data-area-ids')||'').split(',').filter(function(x){return x});
+        var inArea = !areas.length || rids.some(function(id){return areas.indexOf(id)>=0});
+        if (!inArea) { r.style.display = 'none'; return; }
         var match = r.getAttribute('data-search').indexOf(f) >= 0;
         r.style.display = match ? '' : 'none';
         if (match) count++;
@@ -353,11 +359,22 @@ function actualizarResumen() {
 }
 function filtrarSubareas() {
     var c = document.querySelectorAll('.area-check:checked'), a = []; for (var i=0;i<c.length;i++) a.push(c[i].value);
+    // Filtrar subareas
     document.querySelectorAll('.subarea-group').forEach(function(g){
         var v = a.indexOf(g.getAttribute('data-area-id'))>=0; g.style.display = v?'':'none';
         if (!v) g.querySelectorAll('input[type=checkbox]').forEach(function(cb){cb.checked=false;});
     });
     document.getElementById('subareasPlaceholder').style.display = a.length?'none':'block';
+    // Filtrar tabla de equipo por areas seleccionadas
+    var total = 0;
+    document.querySelectorAll('tr[data-area-ids]').forEach(function(r){
+        var rids = (r.getAttribute('data-area-ids')||'').split(',').filter(function(x){return x});
+        var match = !a.length || rids.some(function(id){return a.indexOf(id)>=0});
+        r.style.display = match ? '' : 'none';
+        if (match) total++;
+    });
+    var eqEl = document.getElementById('equipoCount');
+    if (eqEl) eqEl.textContent = total + ' miembros';
     filtrarManagers();
 }
 function filtrarManagers() {
