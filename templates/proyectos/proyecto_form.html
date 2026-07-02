@@ -123,18 +123,31 @@
 
                 <!-- STEP 3 -->
                 <div class="wizard-step" data-step="3">
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6"><label class="form-label small fw-semibold mb-1">Ejecutores <span class="text-danger">*</span></label>
-                            <select name="ejecutores" class="form-select" multiple style="min-height:100px;font-size:0.78rem;">{% for u in usuarios %}<option value="{{ u.pk }}">{{ u.get_full_name }}</option>{% endfor %}</select></div>
-                        <div class="col-md-6" id="revisoresGroup"><label class="form-label small fw-semibold mb-1">Revisores / QA</label>
-                            <select name="revisores" class="form-select" multiple style="min-height:100px;font-size:0.78rem;">{% for u in usuarios %}<option value="{{ u.pk }}">{{ u.get_full_name }}</option>{% endfor %}</select></div>
-                    </div>
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6" id="aprobadoresGroup"><label class="form-label small fw-semibold mb-1">Aprobadores</label>
-                            <select name="aprobadores" class="form-select" multiple style="min-height:100px;font-size:0.78rem;">{% for u in usuarios %}<option value="{{ u.pk }}">{{ u.get_full_name }}</option>{% endfor %}</select></div>
-                        <div class="col-md-6"><label class="form-label small fw-semibold mb-1">Resp. / Observadores</label>
-                            <select name="otros_roles" class="form-select" multiple style="min-height:80px;font-size:0.78rem;">{% for u in usuarios %}<option value="{{ u.pk }}">{{ u.get_full_name }}</option>{% endfor %}</select>
-                            <select name="rol_otros" class="form-select form-select-sm mt-1" style="font-size:0.7rem;"><option value="responsable">Responsable</option><option value="observador" selected>Observador</option></select></div>
+                    <p class="text-muted mb-2" style="font-size:0.75rem;">Asigna un rol a cada miembro del equipo. El Manager ya es <strong>Lider</strong> automaticamente.</p>
+                    <div class="border rounded" style="max-height:320px;overflow-y:auto;">
+                        <table class="table table-hover table-sm mb-0" style="font-size:0.8rem;">
+                            <thead class="table-light"><tr>
+                                <th style="font-size:0.6rem;font-weight:600;">Miembro</th>
+                                <th style="font-size:0.6rem;font-weight:600;width:90px;">Cedula</th>
+                                <th style="font-size:0.6rem;font-weight:600;width:120px;">Rol en el proyecto</th>
+                            </tr></thead><tbody>
+                                {% for u in usuarios %}
+                                <tr>
+                                    <td class="fw-semibold">{{ u.get_full_name }}</td>
+                                    <td style="font-size:0.72rem;">{{ u.cedula }}</td>
+                                    <td>
+                                        <select name="rol_{{ u.pk }}" class="form-select form-select-sm" style="font-size:0.68rem;">
+                                            <option value="ejecutor">Ejecutor</option>
+                                            <option value="revisor">Revisor / QA</option>
+                                            <option value="aprobador">Aprobador</option>
+                                            <option value="responsable">Responsable</option>
+                                            <option value="observador">Observador</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
                     </div>
                     <div id="pasosBuilder" style="display:none;">
                         <hr><label class="form-label small fw-semibold mb-2">Pasos de Revision Personalizados</label>
@@ -199,17 +212,31 @@ function validarPaso(n) {
         if (!document.querySelector('[name="manager"]').value) { alert('Selecciona Manager.'); return false; }
     }
     if (n===2) { if (!document.getElementById('presetInput').value) { alert('Selecciona plantilla.'); return false; } }
-    if (n===3) { if (!document.querySelector('[name="ejecutores"]').selectedOptions.length) { alert('Asigna al menos 1 Ejecutor.'); return false; } }
+    if (n===3) {
+        var hayEjec = false;
+        document.querySelectorAll('[name^="rol_"]').forEach(function(s){ if(s.value==='ejecutor') hayEjec=true; });
+        if (!hayEjec) { alert('Debes asignar al menos 1 Ejecutor.'); return false; }
+    }
     return true;
 }
 function seleccionarPreset(el) {
     document.querySelectorAll('.preset-card').forEach(function(c){ c.classList.remove('selected'); });
     el.classList.add('selected');
     document.getElementById('presetInput').value = el.getAttribute('data-preset');
-    var p = el.getAttribute('data-preset'), rG = document.getElementById('revisoresGroup'), aG = document.getElementById('aprobadoresGroup'), pB = document.getElementById('pasosBuilder');
-    rG.style.display = (p==='simple'?'none':'block');
-    aG.style.display = (p==='simple'?'none':'block');
+    var p = el.getAttribute('data-preset'), pB = document.getElementById('pasosBuilder');
     pB.style.display = (p==='personalizado'?'block':'none');
+}
+
+function obtenerUsuariosPorRol(rolBuscado) {
+    var res = [];
+    document.querySelectorAll('[name^="rol_"]').forEach(function(s){
+        if (s.value === rolBuscado) {
+            var pk = parseInt(s.getAttribute('name').replace('rol_',''));
+            var nombre = s.closest('tr').querySelector('td').textContent.trim();
+            res.push({id:pk, name:nombre});
+        }
+    });
+    return res;
 }
 function agregarPaso() { pasos.push({orden:pasos.length+1,etiqueta:'',rol:'revisor',user_ids:[],tipo:'revision'}); renderPasos(); }
 function eliminarPaso(i) { pasos.splice(i,1); pasos.forEach(function(p,j){p.orden=j+1;}); renderPasos(); }
@@ -222,10 +249,9 @@ function renderPasos() {
         h += '<option value="revisor"'+(p.rol==='revisor'?' selected':'')+'>Revisor</option>';
         h += '<option value="aprobador"'+(p.rol==='aprobador'?' selected':'')+'>Aprobador</option></select>';
         h += ' <select class="form-select form-select-sm d-inline" style="width:auto;font-size:0.65rem;" multiple onchange="pasos['+i+'].user_ids=Array.from(this.selectedOptions).map(function(o){return parseInt(o.value)});actualizarJsonPasos()">';
-        [].forEach.call(document.querySelectorAll('[name="revisores"] option, [name="aprobadores"] option'),function(o){
-            if (o.parentElement.selectedOptions && Array.from(o.parentElement.selectedOptions).indexOf(o)>=0) {
-                h += '<option value="'+o.value+'"'+(p.user_ids.indexOf(parseInt(o.value))>=0?' selected':'')+'>'+o.text+'</option>';
-            }
+        var relevantes = obtenerUsuariosPorRol(p.rol);
+        relevantes.forEach(function(u){
+            h += '<option value="'+u.id+'"'+(p.user_ids.indexOf(u.id)>=0?' selected':'')+'>'+u.name+'</option>';
         });
         h += '</select></div></div>';
         h += '<button type="button" class="p-del" onclick="eliminarPaso('+i+')" title="Eliminar"><i class="bi bi-x-lg"></i></button></div>';
@@ -236,8 +262,8 @@ function renderPasos() {
 function actualizarJsonPasos() { document.getElementById('pasosJson').value = JSON.stringify(pasos); }
 function actualizarPasos() {
     if (document.getElementById('presetInput').value === 'personalizado' && pasos.length === 0) {
-        var revs = [].map.call(document.querySelector('[name="revisores"]').selectedOptions,function(o){return{id:parseInt(o.value),name:o.text};});
-        var aprs = [].map.call(document.querySelector('[name="aprobadores"]').selectedOptions,function(o){return{id:parseInt(o.value),name:o.text};});
+        var revs = obtenerUsuariosPorRol('revisor');
+        var aprs = obtenerUsuariosPorRol('aprobador');
         pasos = [];
         if (revs.length) pasos.push({orden:1,etiqueta:'Revision'+(revs.length>1?' ('+revs.length+' revisores)':''),rol:'revisor',user_ids:revs.map(function(u){return u.id;}),tipo:'revision'});
         if (aprs.length) pasos.push({orden:pasos.length+1,etiqueta:'Aprobacion'+(aprs.length>1?' ('+aprs.length+' aprobadores)':''),rol:'aprobador',user_ids:aprs.map(function(u){return u.id;}),tipo:'aprobacion'});
@@ -251,13 +277,18 @@ function actualizarResumen() {
     document.getElementById('resSubareas').textContent = s.join(', ')||'--';
     document.getElementById('resFlujo').textContent = document.getElementById('presetInput').value.charAt(0).toUpperCase() + document.getElementById('presetInput').value.slice(1);
     var eq = [];
-    function addRol(n, sel) { var o = document.querySelector('[name="'+sel+'"]'); if (o && o.selectedOptions.length) eq.push('<b>'+n+':</b> '+[].map.call(o.selectedOptions,function(x){return x.text;}).join(', ')); }
-    addRol('Ejecutores','ejecutores'); addRol('Revisores','revisores'); addRol('Aprobadores','aprobadores');
+    document.querySelectorAll('[name^="rol_"]').forEach(function(sel){
+        var n = sel.closest('tr').querySelector('td').textContent.trim();
+        eq.push('<b>'+sel.value.charAt(0).toUpperCase()+sel.value.slice(1)+':</b> '+n);
+    });
     document.getElementById('resEquipo').innerHTML = eq.join('<br>')||'--';
     var ch = document.getElementById('chainContainer'), cd = document.getElementById('resChain');
     if (document.getElementById('presetInput').value === 'personalizado' && pasos.length) {
         cd.style.display = 'block'; var h = ''; var au = {};
-        [].forEach.call(document.querySelectorAll('[name="revisores"] option, [name="aprobadores"] option'),function(o){au[o.value]=o.text;});
+        document.querySelectorAll('[name^="rol_"]').forEach(function(sel){
+            var pk = sel.getAttribute('name').replace('rol_','');
+            au[pk] = sel.closest('tr').querySelector('td').textContent.trim();
+        });
         pasos.forEach(function(p,i){
             var n = p.user_ids.map(function(id){return au[id]||'ID '+id;});
             h += '<div class="chain-node"><div class="r">'+(p.tipo==='aprobacion'?'Aprobacion':'Revision')+' '+(i+1)+'</div><div class="u">'+(p.etiqueta||p.rol)+'</div><div class="u" style="font-size:0.52rem;">'+n.join(', ')+'</div></div>';

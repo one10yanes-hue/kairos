@@ -251,25 +251,17 @@ def proyecto_create(request):
                         defaults={"activo": True}
                     )
 
-        # Onboarding: agregar miembros del equipo
-        roles_miembros = [
-            ("ejecutores", "ejecutor"),
-            ("revisores", "revisor"),
-            ("aprobadores", "aprobador"),
-            ("otros_roles", None),
-        ]
-        for field_name, default_rol in roles_miembros:
-            uids = request.POST.getlist(field_name)
-            for uid in uids:
-                if not uid:
-                    continue
-                rol = default_rol
-                if field_name == "otros_roles":
-                    rol = request.POST.get("rol_otros", "observador")
-                MiembroProyecto.objects.update_or_create(
-                    proyecto=proyecto, user_id=uid,
-                    defaults={"rol": rol, "activo": True}
-                )
+        # Onboarding: agregar miembros del equipo (rol_X format)
+        for key, value in request.POST.items():
+            if key.startswith("rol_") and value:
+                try:
+                    uid = int(key.replace("rol_", ""))
+                    MiembroProyecto.objects.update_or_create(
+                        proyecto=proyecto, user_id=uid,
+                        defaults={"rol": value, "activo": True}
+                    )
+                except (ValueError, TypeError):
+                    pass
 
         # Personalizado: generar pasos o guardar custom
         if preset == "personalizado":
