@@ -44,5 +44,6 @@ urlpatterns = [
     path("<int:pk>/gantt/", proyecto_views.proyecto_gantt, name="proyecto_gantt"),
     path("<int:pk>/estructura/", proyecto_views.proyecto_estructura, name="proyecto_estructura"),
     path("<int:pk>/workflow/", proyecto_views.proyecto_workflow, name="proyecto_workflow"),
+    path("<int:pk>/flujo/", proyecto_views.proyecto_flujo_personalizado, name="proyecto_flujo"),
     path("<int:pk>/toggle/", proyecto_views.proyecto_toggle_activo, name="proyecto_toggle_activo"),
 ]

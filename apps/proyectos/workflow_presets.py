@@ -66,3 +66,36 @@ ROLES_REQUERIDOS = {
     "revision": ["lider", "ejecutor", "revisor", "aprobador"],
     "completo": ["lider", "ejecutor", "revisor", "aprobador"],
 }
+
+
+def generar_pasos_auto(proyecto):
+    """Genera FlujoPersonalizado automaticamente segun los miembros del proyecto.
+    Revisores van primero (paralelo), luego aprobadores (paralelo).
+    """
+    from apps.proyectos.models import MiembroProyecto, FlujoPersonalizado
+    pasos = []
+    revisores = MiembroProyecto.objects.filter(proyecto=proyecto, activo=True, rol="revisor")
+    if revisores.exists():
+        pasos.append({
+            "orden": 1,
+            "etiqueta": "Revision",
+            "rol": "revisor",
+            "user_ids": [m.user_id for m in revisores],
+            "tipo": "revision",
+        })
+    aprobadores = MiembroProyecto.objects.filter(proyecto=proyecto, activo=True, rol="aprobador")
+    if aprobadores.exists():
+        pasos.append({
+            "orden": len(pasos) + 1,
+            "etiqueta": "Aprobacion",
+            "rol": "aprobador",
+            "user_ids": [m.user_id for m in aprobadores],
+            "tipo": "aprobacion",
+        })
+    if pasos:
+        FlujoPersonalizado.objects.update_or_create(
+            proyecto=proyecto,
+            defaults={"pasos": pasos, "activo": True}
+        )
+        return True
+    return False

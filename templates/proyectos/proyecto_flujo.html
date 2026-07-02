@@ -1,0 +1,75 @@
+{% extends "base.html" %}{% load static %}{% block content %}
+<style>
+.paso-card { border:1px solid var(--slate-200); border-radius:0.5rem; padding:0.75rem; margin-bottom:0.5rem; background:#fff; transition:all 0.12s; }
+.paso-card:hover { box-shadow:0 2px 8px rgba(5,5,60,0.06); }
+.paso-num { width:28px; height:28px; border-radius:50%; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; font-size:0.7rem; font-weight:700; flex-shrink:0; }
+.paso-tag { font-size:0.55rem; padding:2px 7px; border-radius:3px; font-weight:500; }
+</style>
+
+<div class="container-fluid mt-3" style="max-width:1100px;">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h5 class="fw-bold mb-0"><i class="bi bi-diagram-3" style="color:var(--accent);"></i> {{ proyecto.codigo }} &middot; Flujo Personalizado</h5>
+        <div class="d-flex gap-1">
+            <a href="{% url 'proyectos:proyecto_workflow' proyecto.pk %}" class="btn btn-outline-secondary btn-sm">Volver a Configuracion</a>
+        </div>
+    </div>
+
+    {% if not flujo or not pasos %}
+    <div class="alert alert-info py-2 px-3" style="font-size:0.82rem;">
+        <i class="bi bi-info-circle"></i> No hay flujo personalizado configurado.
+        <form method="POST" class="d-inline ms-2">{% csrf_token %}<input type="hidden" name="accion" value="generar_auto"><button class="btn btn-sm btn-primary py-0 px-2" style="font-size:0.7rem;">Generar automaticamente</button></form>
+    </div>
+    {% endif %}
+
+    {% if flujo and pasos %}
+    <div class="card shadow-sm mb-3">
+        <div class="card-header py-1 px-2 d-flex justify-content-between align-items-center">
+            <small class="fw-semibold" style="font-size:0.68rem;">Pasos de Revision ({{ pasos|length }})</small>
+            <div class="d-flex gap-1">
+                <form method="POST" class="d-inline">{% csrf_token %}<input type="hidden" name="accion" value="generar_auto"><button class="btn btn-sm btn-outline-primary py-0 px-1" style="font-size:0.6rem;">Regenerar</button></form>
+                <form method="POST" class="d-inline" onsubmit="return confirm('Eliminar flujo personalizado?')">{% csrf_token %}<input type="hidden" name="accion" value="eliminar"><button class="btn btn-sm btn-outline-danger py-0 px-1" style="font-size:0.6rem;">Eliminar</button></form>
+            </div>
+        </div>
+        <div class="card-body p-2" id="pasosList">
+            {% for paso in pasos %}
+            <div class="paso-card d-flex align-items-center gap-3">
+                <div class="paso-num">{{ forloop.counter }}</div>
+                <div style="flex:1;">
+                    <div class="fw-semibold" style="font-size:0.78rem;">{{ paso.etiqueta|default:"Paso sin nombre" }}</div>
+                    <div style="font-size:0.68rem;color:var(--slate-500);">
+                        <span class="paso-tag" style="background:#ede9fe;color:#6d28d9;">{{ paso.rol }}</span>
+                        <span class="paso-tag" style="background:#d4f5e0;color:#1a7a3a;">{{ paso.tipo }}</span>
+                        <span style="margin-left:6px;">
+                            {% for uid in paso.user_ids %}
+                            {% with miembro=miembros|dictsortreversed:"user_id" %}{% endwith %}
+                            <span class="badge bg-light text-dark border me-1" style="font-size:0.55rem;">ID {{ uid }}</span>
+                            {% empty %}
+                            <span class="text-muted" style="font-size:0.6rem;">Cualquier {{ paso.rol }}</span>
+                            {% endfor %}
+                        </span>
+                    </div>
+                </div>
+                <span class="badge bg-light text-muted" style="font-size:0.55rem;">{{ paso.tipo|title }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header py-1 px-2"><small class="fw-semibold" style="font-size:0.68rem;">Integrantes del equipo</small></div>
+        <div class="card-body p-2">
+            <div style="font-size:0.75rem;">
+                {% for m in miembros %}
+                <span class="badge bg-light text-dark border me-1 mb-1" style="font-size:0.6rem;">
+                    {{ m.user.get_full_name }} ({{ m.rol }})
+                </span>
+                {% empty %}
+                <span class="text-muted" style="font-size:0.65rem;">Sin miembros</span>
+                {% endfor %}
+            </div>
+            <small class="text-muted d-block mt-1" style="font-size:0.6rem;">Los pasos se generan automaticamente segun los roles del equipo. Puedes regenerarlos cuando cambie el equipo.</small>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

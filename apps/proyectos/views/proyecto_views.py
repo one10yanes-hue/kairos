@@ -3,7 +3,7 @@ from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.paginator import Paginator
-from ..models import Proyecto, MiembroProyecto, WorkflowConfig, RegistroAvance, Tarea, HistoriaUsuario, Incidencia
+from ..models import Proyecto, MiembroProyecto, WorkflowConfig, RegistroAvance, Tarea, HistoriaUsuario, Incidencia, FlujoPersonalizado
 from ..decorators import miembro_requerido, ROLES_ADMIN, ROLES_EDICION
 from ..workflow_presets import PRESETS, ROLES_POR_PRESET, ROLES_REQUERIDOS
 from apps.accounts.models import User
@@ -242,7 +242,7 @@ def proyecto_create(request):
 
         # Onboarding: aplicar preset de flujo
         preset = request.POST.get("preset", "revision")
-        if preset in PRESETS:
+        if preset in PRESETS and preset != "personalizado":
             for ent, transiciones in PRESETS[preset].items():
                 for origen, destino in transiciones:
                     WorkflowConfig.objects.get_or_create(
@@ -252,6 +252,41 @@ def proyecto_create(request):
                     )
 
         # Onboarding: agregar miembros del equipo
+        roles_miembros = [
+            ("ejecutores", "ejecutor"),
+            ("revisores", "revisor"),
+            ("aprobadores", "aprobador"),
+            ("otros_roles", None),
+        ]
+        for field_name, default_rol in roles_miembros:
+            uids = request.POST.getlist(field_name)
+            for uid in uids:
+                if not uid:
+                    continue
+                rol = default_rol
+                if field_name == "otros_roles":
+                    rol = request.POST.get("rol_otros", "observador")
+                MiembroProyecto.objects.update_or_create(
+                    proyecto=proyecto, user_id=uid,
+                    defaults={"rol": rol, "activo": True}
+                )
+
+        # Personalizado: generar pasos o guardar custom
+        if preset == "personalizado":
+            from ..workflow_presets import generar_pasos_auto
+            pasos_json = request.POST.get("pasos_json", "[]")
+            import json
+            try:
+                pasos_custom = json.loads(pasos_json)
+            except json.JSONDecodeError:
+                pasos_custom = []
+            if pasos_custom and len(pasos_custom) > 0:
+                FlujoPersonalizado.objects.update_or_create(
+                    proyecto=proyecto,
+                    defaults={"pasos": pasos_custom, "activo": True}
+                )
+            else:
+                generar_pasos_auto(proyecto)
         roles_miembros = [
             ("ejecutores", "ejecutor"),
             ("revisores", "revisor"),
@@ -852,4 +887,56 @@ def proyecto_workflow(request, pk):
         "mostrar_actualizar": bool(preset_preview) and not proyecto.workflow_bloqueado,
         "workflow_bloqueado": proyecto.workflow_bloqueado,
         "transiciones_personalizadas": workflows_all,
+    })
+
+
+@miembro_requerido(ROLES_ADMIN)
+def proyecto_flujo_personalizado(request, pk):
+    """Vista para gestionar los pasos del Flujo Personalizado."""
+    proyecto = request.proyecto
+    flujo = FlujoPersonalizado.objects.filter(proyecto=proyecto, activo=True).first()
+
+    if request.method == "POST":
+        accion = request.POST.get("accion")
+        if accion == "guardar_pasos":
+            import json
+            try:
+                pasos_raw = request.POST.get("pasos_json", "[]")
+                pasos = json.loads(pasos_raw)
+            except (json.JSONDecodeError, TypeError):
+                messages.error(request, "Formato de pasos invalido.")
+                return redirect("proyectos:proyecto_flujo", pk=proyecto.pk)
+            # Validar estructura de cada paso
+            for paso in pasos:
+                if not all(k in paso for k in ("orden", "rol", "user_ids")):
+                    messages.error(request, "Cada paso debe tener orden, rol y user_ids.")
+                    return redirect("proyectos:proyecto_flujo", pk=proyecto.pk)
+            FlujoPersonalizado.objects.update_or_create(
+                proyecto=proyecto,
+                defaults={"pasos": pasos, "activo": True}
+            )
+            from ..workflow_presets import generar_pasos_auto
+            messages.success(request, f"Flujo personalizado guardado ({len(pasos)} pasos).")
+            return redirect("proyectos:proyecto_workflow", pk=proyecto.pk)
+        elif accion == "generar_auto":
+            from ..workflow_presets import generar_pasos_auto
+            if generar_pasos_auto(proyecto):
+                messages.success(request, "Flujo personalizado generado automaticamente segun el equipo actual.")
+            else:
+                messages.warning(request, "No hay revisores ni aprobadores en el equipo. No se generaron pasos.")
+            return redirect("proyectos:proyecto_flujo", pk=proyecto.pk)
+        elif accion == "eliminar":
+            if flujo:
+                flujo.activo = False
+                flujo.save()
+                messages.success(request, "Flujo personalizado eliminado. El proyecto usara el flujo estandar.")
+            return redirect("proyectos:proyecto_workflow", pk=proyecto.pk)
+
+    miembros = MiembroProyecto.objects.filter(proyecto=proyecto, activo=True).select_related("user")
+
+    return render(request, "proyectos/proyecto_flujo.html", {
+        "proyecto": proyecto,
+        "flujo": flujo,
+        "pasos": flujo.pasos if flujo else [],
+        "miembros": miembros,
     })

@@ -67,17 +67,31 @@ def sync_tarea_from_asignacion(sender, instance, created, **kwargs):
         )
 
         if nuevo_estado == "finalizada":
-            from apps.proyectos.models import _get_transiciones
-            transiciones = _get_transiciones(tarea.proyecto, "tarea")
-            if "revision" in transiciones.get("finalizada", []):
+            from apps.proyectos.models import FlujoPersonalizado, _get_transiciones
+            flujo = FlujoPersonalizado.objects.filter(proyecto=tarea.proyecto, activo=True).first()
+            if flujo and flujo.pasos:
+                # Flujo personalizado: crear card para el paso 1
+                paso = flujo.pasos[0]
+                _crear_cards_paso(tarea, paso, 1)
                 tarea.estado = "revision"
                 tarea.save(update_fields=["estado"])
                 RegistroAvance.objects.create(
                     proyecto=tarea.proyecto, tipo="comentario",
-                    descripcion=f"Tarea {tarea.codigo} -> En Revision (auto, pendiente de QA)",
+                    descripcion=f"Tarea {tarea.codigo} -> Revision paso 1/{(flujo.pasos)}",
                     user=instance.user or tarea.creador, referencia_id=tarea.pk
                 )
-                _crear_cards_revision_tarea(tarea)
+            elif not (flujo and not flujo.pasos):
+                # Sin flujo personalizado: comportamiento actual
+                transiciones = _get_transiciones(tarea.proyecto, "tarea")
+                if "revision" in transiciones.get("finalizada", []):
+                    tarea.estado = "revision"
+                    tarea.save(update_fields=["estado"])
+                    RegistroAvance.objects.create(
+                        proyecto=tarea.proyecto, tipo="comentario",
+                        descripcion=f"Tarea {tarea.codigo} -> En Revision (auto, pendiente de QA)",
+                        user=instance.user or tarea.creador, referencia_id=tarea.pk
+                    )
+                    _crear_cards_revision_tarea(tarea)
 
         if tarea.historia:
             old_hist_estado = tarea.historia.estado
@@ -86,8 +100,115 @@ def sync_tarea_from_asignacion(sender, instance, created, **kwargs):
                 _crear_cards_aprobar_historia(tarea.historia, tarea.asignado_a or tarea.creador)
 
 
+def _crear_cards_paso(tarea, paso, num_paso):
+    """Crea cards para un paso especifico del flujo personalizado.
+    paso: dict del JSON del modelo FlujoPersonalizado.
+    num_paso: numero de paso (1-indexed) para el prefijo [Rev-N].
+    """
+    import logging
+    from apps.proyectos.models import MiembroProyecto
+    from apps.actividades.models import Actividad, TipoActividad
+    from apps.gestion.models import AsignacionActividad
+    from apps.gestion.views import _notificar_usuario
+
+    proyecto = tarea.proyecto
+    subarea = proyecto.subareas.first()
+    if not subarea:
+        return
+
+    tipo_rev, _ = TipoActividad.objects.get_or_create(
+        subarea=subarea, nombre="Revision de Proyecto",
+        defaults={"requiere_fecha_limite": False, "requiere_entregable": False, "es_flash": False}
+    )
+    act_rev, _ = Actividad.objects.get_or_create(
+        subarea=subarea, tipo_actividad=tipo_rev,
+        defaults={"nombre": f"Revision de Proyecto - {proyecto.codigo}"}
+    )
+
+    user_ids = paso.get("user_ids", [])
+    if user_ids:
+        usuarios = User.objects.filter(pk__in=user_ids, activo=True)
+    else:
+        # user_ids vacio = tomar todos los miembros con ese rol (paralelo)
+        miembros = MiembroProyecto.objects.filter(
+            proyecto=proyecto, activo=True, rol=paso.get("rol", "revisor")
+        ).select_related("user")
+        usuarios = [m.user for m in miembros]
+
+    if not usuarios:
+        logging.getLogger("proyectos").warning(
+            f"Paso {num_paso} sin usuarios para tarea {tarea.codigo} en {proyecto.codigo}"
+        )
+        return
+
+    prefix = f"[Rev-{num_paso}]"
+    nombre_actividad = f"{prefix} {tarea.codigo}: {tarea.titulo[:80]}"
+
+    for user in usuarios:
+        _, created = AsignacionActividad.objects.get_or_create(
+            user=user,
+            nombre_actividad=nombre_actividad,
+            origen="Revision",
+            activo=True,
+            defaults={
+                "actividad": act_rev,
+                "estado": "Pendiente",
+                "origen_user": tarea.asignado_a or tarea.creador,
+                "nombre_tipo": paso.get("tipo", "Revision de Tarea").replace("_", " ").title(),
+            }
+        )
+        if created:
+            _notificar_usuario(user.pk, "nueva_revision", {
+                "tarea": tarea.titulo, "codigo": tarea.codigo,
+                "proyecto": proyecto.codigo,
+                "paso": num_paso,
+            })
+
+
+def _avanzar_paso_revision(tarea, paso_actual_num):
+    """Avanza al siguiente paso de revision cuando se aprueba el paso actual.
+    paso_actual_num: 1-indexed numero del paso que acaba de ser aprobado.
+    """
+    import logging
+    from apps.proyectos.models import FlujoPersonalizado, RegistroAvance
+    from apps.gestion.models import AsignacionActividad
+
+    flujo = FlujoPersonalizado.objects.filter(proyecto=tarea.proyecto, activo=True).first()
+    if not flujo or not flujo.pasos:
+        return
+
+    total_pasos = len(flujo.pasos)
+    siguiente = paso_actual_num  # 0-indexed en la lista
+
+    if siguiente < total_pasos:
+        # Hay siguiente paso
+        paso = flujo.pasos[siguiente]
+        _crear_cards_paso(tarea, paso, siguiente + 1)
+        RegistroAvance.objects.create(
+            proyecto=tarea.proyecto, tipo="comentario",
+            descripcion=f"Tarea {tarea.codigo} -> Revision paso {siguiente+1}/{total_pasos}",
+            user=tarea.asignado_a or tarea.creador, referencia_id=tarea.pk
+        )
+    else:
+        # Ultimo paso completado: tarea finalizada
+        tarea.estado = "finalizada"
+        tarea.save(update_fields=["estado"])
+        RegistroAvance.objects.create(
+            proyecto=tarea.proyecto, tipo="tarea_finalizada",
+            descripcion=f"Tarea {tarea.codigo} completada tras {total_pasos} pasos de revision",
+            user=tarea.asignado_a or tarea.creador, referencia_id=tarea.pk
+        )
+        # Actualizar historia padre
+        if tarea.historia:
+            old_hist = tarea.historia.estado
+            tarea.historia.actualizar_estado()
+            if tarea.historia.estado == "revision" and old_hist != "revision":
+                _crear_cards_aprobar_historia(tarea.historia, tarea.asignado_a or tarea.creador)
+
+
 def _crear_cards_revision_tarea(tarea):
-    """Crea cards [Revisar] T-NNN para los revisores cuando una tarea entra en revision."""
+    """Crea cards [Revisar] T-NNN para los revisores cuando una tarea entra en revision
+    (flujo NO personalizado, comportamiento original)."""
     import logging
     from apps.proyectos.models import MiembroProyecto
     from apps.actividades.models import Actividad, TipoActividad

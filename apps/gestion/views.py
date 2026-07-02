@@ -434,6 +434,58 @@ def finalizar_actividad(request, pk):
                     )
                     messages.warning(request, f"Tarea {tarea.codigo} rechazada.")
             return redirect("gestion:tablero")
+        elif nombre.startswith("[Rev-"):
+            import re
+            match = re.match(r'\[Rev-(\d+)\]\s+([^:]+):', nombre)
+            if match:
+                paso_num = int(match.group(1))
+                tarea_codigo = match.group(2).strip()
+                from apps.proyectos.models import Tarea
+                tarea = Tarea.objects.filter(codigo=tarea_codigo, activo=True).first()
+                if tarea:
+                    if accion_rev == "aprobar":
+                        from apps.proyectos.signals import _avanzar_paso_revision
+                        # Cerrar todas las cards [Rev-N] para esta tarea
+                        for p in range(1, 10):
+                            AsignacionActividad.objects.filter(
+                                nombre_actividad__startswith=f"[Rev-{p}] {tarea.codigo}:",
+                                activo=True
+                            ).update(activo=False, estado="Finalizada")
+                        from apps.proyectos.models import RegistroAvance
+                        RegistroAvance.objects.create(
+                            proyecto=tarea.proyecto, tipo="comentario",
+                            descripcion=f"Tarea {tarea.codigo} paso {paso_num} aprobado por {request.user.get_full_name()}",
+                            user=request.user, referencia_id=tarea.pk
+                        )
+                        _avanzar_paso_revision(tarea, paso_num)
+                        messages.success(request, f"Paso {paso_num} de revision de {tarea.codigo} aprobado.")
+                    elif accion_rev == "rechazar":
+                        motivo = request.POST.get("motivo_rechazo", "").strip()
+                        if not motivo:
+                            messages.error(request, "Debes indicar el motivo del rechazo.")
+                            return redirect("gestion:tablero")
+                        # Rechazo: devolver al ejecutor (reinicia desde paso 1)
+                        tarea.estado = "pendiente"
+                        tarea.save()
+                        if tarea.asignacion:
+                            tarea.asignacion.estado = "Pendiente"
+                            tarea.asignacion.estado_revision = "rechazado"
+                            tarea.asignacion.revision_comentario = motivo
+                            tarea.asignacion.save()
+                        # Cancelar TODAS las cards [Rev-N] activas
+                        for p in range(1, 10):
+                            AsignacionActividad.objects.filter(
+                                nombre_actividad__startswith=f"[Rev-{p}] {tarea.codigo}:",
+                                activo=True
+                            ).update(activo=False, estado="Cancelada")
+                        from apps.proyectos.models import RegistroAvance
+                        RegistroAvance.objects.create(
+                            proyecto=tarea.proyecto, tipo="comentario",
+                            descripcion=f"Tarea {tarea.codigo} rechazada en paso {paso_num}: {motivo[:80]}",
+                            user=request.user, referencia_id=tarea.pk
+                        )
+                        messages.warning(request, f"Tarea {tarea.codigo} rechazada en paso {paso_num}.")
+            return redirect("gestion:tablero")
 
         # Formato historia: "[Aprobar] US-019: Recuperar contraseña"
         historia_codigo = nombre.split("] ")[1].split(":")[0].strip() if "] " in nombre else ""

@@ -753,7 +753,7 @@ function abrirFinalizar(actividadId, nombre, subareaId, requiereEntregable, orig
     document.getElementById('siguienteError').style.display = 'none';
     finResetSecciones();
     var entSection = document.getElementById('entregableSection');
-    if (origen === 'Revision' || (currentNombreCompleto && currentNombreCompleto.indexOf('[Aprobar]') !== -1) || (currentNombreCompleto && currentNombreCompleto.indexOf('[Revisar]') !== -1)) {
+    if (origen === 'Revision' || (currentNombreCompleto && (currentNombreCompleto.indexOf('[Aprobar]') !== -1 || currentNombreCompleto.indexOf('[Revisar]') !== -1 || currentNombreCompleto.indexOf('[Rev-') !== -1))) {
         document.getElementById('btnFinalizar').style.display = 'none';
         document.getElementById('btnAprobar').style.display = 'inline-block';
         document.getElementById('btnRechazar').style.display = 'inline-block';

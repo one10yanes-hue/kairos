@@ -482,6 +482,30 @@ class WorkflowConfig(models.Model):
         unique_together = ["proyecto", "entidad", "estado_origen", "estado_destino"]
 
 
+class FlujoPersonalizado(models.Model):
+    """Configuracion de pasos de revision personalizados por proyecto."""
+    proyecto = models.OneToOneField(Proyecto, on_delete=models.CASCADE, related_name="flujo_personalizado")
+    pasos = models.JSONField(default=list, help_text="""
+        Lista de pasos de revision. Cada paso: {"orden":1,"etiqueta":"...","rol":"revisor","user_ids":[6],"tipo":"revision"}
+        user_ids vacio = tomar todos los miembros con ese rol (paralelo).
+    """)
+    activo = models.BooleanField(default=True)
+    creado = models.DateTimeField(auto_now_add=True)
+    actualizado = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "flujo_personalizado"
+
+    def __str__(self):
+        return f"FlujoPersonalizado({self.proyecto.codigo}: {len(self.pasos)} pasos)"
+
+    def paso_actual(self, paso_numero):
+        """Retorna el paso en la posicion indicada (0-indexed)."""
+        if 0 <= paso_numero < len(self.pasos):
+            return self.pasos[paso_numero]
+        return None
+
+
 class ComentarioHistoria(models.Model):
     historia = models.ForeignKey(HistoriaUsuario, on_delete=models.CASCADE, related_name="comentarios")
     user = models.ForeignKey(User, on_delete=models.PROTECT, related_name="comentarios_historia")

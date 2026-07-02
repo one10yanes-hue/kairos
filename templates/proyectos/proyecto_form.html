@@ -1,24 +1,38 @@
 {% extends "base.html" %}{% block content %}
 <style>
-.wizard-step { display:none; }
+.wizard-step { display:none; animation:fadeIn 0.25s ease; }
 .wizard-step.active { display:block; }
-.wizard-nav { display:flex; gap:0; margin-bottom:1.5rem; border-bottom:2px solid var(--slate-200); padding-bottom:0; }
-.wizard-nav a { padding:0.5rem 1rem; font-size:0.72rem; font-weight:500; color:var(--slate-400); text-decoration:none; border-bottom:2px solid transparent; margin-bottom:-2px; transition:all 0.12s; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+.wizard-nav { display:flex; gap:0; margin-bottom:1.5rem; border-bottom:2px solid var(--slate-200); }
+.wizard-nav a { padding:0.55rem 1.1rem; font-size:0.72rem; font-weight:500; color:var(--slate-400); text-decoration:none; border-bottom:2px solid transparent; margin-bottom:-2px; transition:all 0.15s; }
 .wizard-nav a.active { color:var(--accent); border-bottom-color:var(--accent); }
 .wizard-nav a.done { color:var(--success); }
-.preset-card { border:2px solid var(--slate-200); border-radius:0.625rem; padding:1rem; cursor:pointer; transition:all 0.12s; height:100%; }
-.preset-card:hover { border-color:var(--accent); box-shadow:0 2px 8px rgba(5,5,60,0.08); }
-.preset-card.selected { border-color:#1a7a3a; background:#d4f5e0; }
-.preset-card .p-name { font-weight:600; font-size:0.85rem; }
-.preset-card .p-desc { font-size:0.68rem; color:var(--slate-500); margin-top:4px; }
-.preset-card .p-roles { font-size:0.6rem; color:var(--slate-400); margin-top:6px; }
+.wizard-nav a.done::after { content:" \u2713"; font-size:0.6rem; }
+.preset-card { border:2px solid var(--slate-200); border-radius:0.75rem; padding:1.1rem 1rem; cursor:pointer; transition:all 0.15s; height:100%; position:relative; background:#fff; }
+.preset-card:hover { border-color:var(--accent); box-shadow:0 4px 12px rgba(5,5,60,0.08); transform:translateY(-2px); }
+.preset-card.selected { border-color:#1a7a3a; background:#f0fdf4; }
+.preset-card .p-icon { font-size:1.3rem; margin-bottom:5px; }
+.preset-card .p-name { font-weight:700; font-size:0.85rem; }
+.preset-card .p-desc { font-size:0.65rem; color:var(--slate-500); margin-top:3px; line-height:1.4; }
+.preset-card .p-roles { font-size:0.57rem; margin-top:5px; padding-top:5px; border-top:1px solid var(--slate-100); }
+.preset-card .p-badge { position:absolute; top:7px; right:7px; font-size:0.48rem; padding:1px 6px; border-radius:3px; background:#d4f5e0; color:#1a7a3a; font-weight:600; }
+.preset-card .p-check { position:absolute; bottom:8px; right:8px; width:20px; height:20px; border-radius:50%; border:2px solid var(--slate-300); display:flex; align-items:center; justify-content:center; font-size:0.55rem; background:#fff; transition:all 0.12s; }
+.preset-card.selected .p-check { border-color:#1a7a3a; background:#1a7a3a; color:#fff; }
+.paso-card { display:flex; align-items:center; gap:10px; padding:8px 12px; margin-bottom:6px; background:#fff; border:1.5px solid var(--slate-200); border-radius:0.5rem; }
+.paso-card:hover { border-color:var(--accent); }
+.paso-card .p-num { width:26px; height:26px; border-radius:50%; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; font-size:0.65rem; font-weight:700; flex-shrink:0; }
+.paso-card .p-info { flex:1; }
+.paso-card .p-info .title { font-size:0.78rem; font-weight:600; }
+.paso-card .p-del { cursor:pointer; border:none; background:none; padding:4px 6px; }
+.paso-card .p-del:hover { color:#991b1b; background:#fee2e2; }
+.paso-add { border:2px dashed var(--slate-200); border-radius:0.5rem; padding:8px; text-align:center; cursor:pointer; font-size:0.7rem; background:#fafbfc; }
+.paso-add:hover { border-color:var(--accent); }
+.chain { display:flex; align-items:center; flex-wrap:wrap; gap:4px; }
+.chain-node { text-align:center; padding:5px 8px; border:1.5px solid var(--slate-200); border-radius:0.5rem; background:#fff; min-width:60px; }
+.chain-node .r { font-size:0.58rem; font-weight:600; }
+.chain-node .u { font-size:0.52rem; }
 </style>
-
 <div class="container-fluid mt-3" style="max-width:1100px;">
-    <h5 class="fw-bold mb-3">
-        <i class="bi bi-plus-circle" style="color:var(--accent);"></i> Nuevo Proyecto
-    </h5>
-
     {% if not editando %}
     <div class="wizard-nav" id="wizardNav">
         <a href="#" class="active" data-step="1">1. Datos basicos</a>
@@ -27,128 +41,78 @@
         <a href="#" data-step="4">4. Confirmar</a>
     </div>
     {% endif %}
-
-    <div class="card shadow-sm">
+    <div class="card shadow-sm" style="border-radius:0.75rem;">
         <div class="card-body p-4">
             <form method="POST" id="proyectoForm">{% csrf_token %}
+                {% if editando %}<input type="hidden" name="editando" value="1">{% endif %}
 
-                {% if editando %}
-                <input type="hidden" name="editando" value="1">
-                {% endif %}
-
-                <!-- ===== STEP 1: DATOS BASICOS ===== -->
+                <!-- STEP 1 -->
                 <div class="wizard-step active" data-step="1">
-                    <div class="mb-3">
-                        <label class="form-label small fw-semibold mb-1">Nombre del proyecto <span class="text-danger">*</span></label>
-                        <input type="text" name="nombre" class="form-control" value="{{ proyecto.nombre|default:'' }}" required placeholder="Ej: Portal de Clientes">
-                    </div>
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-5">
-                            <label class="form-label small fw-semibold mb-1">Areas</label>
-                            <div class="border rounded p-2" id="areasContainer" style="max-height:200px;overflow-y:auto;background:#fafbfc;">
-                                {% for a in areas %}
-                                <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;font-size:0.78rem;border-bottom:1px solid #f1f5f9;">
-                                    <input type="checkbox" class="form-check-input mt-0 area-check" value="{{ a.pk }}" onchange="filtrarSubareas()">
-                                    <span>{{ a.nombre }}</span>
-                                </label>
-                                {% endfor %}
-                            </div>
-                        </div>
-                        <div class="col-md-7">
-                            <label class="form-label small fw-semibold mb-1">Subareas <span class="text-danger">*</span></label>
-                            <div class="border rounded p-2" id="subareasContainer" style="max-height:200px;overflow-y:auto;background:#fafbfc;">
-                                <div id="subareasPlaceholder" style="color:var(--slate-400);font-size:0.75rem;text-align:center;padding:1.5rem 0;">
-                                    <i class="bi bi-arrow-left" style="font-size:1.2rem;"></i><br>Selecciona una o mas areas
-                                </div>
-                                {% for a in areas %}
-                                <div class="subarea-group mb-2" data-area-id="{{ a.pk }}" style="display:none;">
-                                    <div class="fw-semibold px-2 py-1" style="font-size:0.65rem;color:var(--accent-dark);background:#eff6ff;border-radius:3px;">{{ a.nombre }}</div>
-                                    {% for s in subareas %}{% if s.area_id == a.pk %}
-                                    <label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;font-size:0.75rem;border-bottom:1px solid #f1f5f9;" data-area-id="{{ s.area_id }}">
-                                        <input type="checkbox" name="subareas" value="{{ s.pk }}" class="form-check-input mt-0 subarea-check" onchange="filtrarManagers()">
-                                        <span>{{ s.nombre }}</span>
-                                    </label>
-                                    {% endif %}{% endfor %}
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-8">
-                            <label class="form-label small fw-semibold mb-1">Manager <span class="text-danger">*</span></label>
-                            <div id="managerWrapper">
-                                <input type="text" class="form-control form-control-sm mb-1" id="filtroManager" placeholder="Buscar por nombre..." onkeyup="filtrarManagers()" style="font-size:0.78rem;">
-                                <select name="manager" id="managerSelect" class="form-select" required style="font-size:0.8rem;">
-                                    <option value="">Seleccionar...</option>
-                                    {% for u in usuarios %}
-                                    <option value="{{ u.pk }}" data-subareas="{% for us in u.subareas.all %}{{ us.subarea_id }}{% if not forloop.last %},{% endif %}{% endfor %}">{{ u.get_full_name }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div id="managerPlaceholder" style="display:none;color:var(--slate-400);font-size:0.75rem;padding:0.5rem 0;">
-                                <i class="bi bi-arrow-up" style="font-size:0.9rem;"></i> Seleccione subareas primero
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label small fw-semibold mb-1">Empresa</label>
-                            <select name="empresa" class="form-select" style="font-size:0.8rem;">
-                                <option value="">Sin empresa</option>
-                                {% for e in empresas %}<option value="{{ e.pk }}">{{ e.nombre }}</option>{% endfor %}
-                            </select>
-                        </div>
-                    </div>
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-4">
-                            <label class="form-label small fw-semibold mb-1">Fecha Inicio</label>
-                            <input type="date" name="fecha_inicio" class="form-control" min="{% now 'Y-m-d' %}" style="font-size:0.8rem;">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label small fw-semibold mb-1">Fecha Fin Estimada</label>
-                            <input type="date" name="fecha_fin_estimada" class="form-control" min="{% now 'Y-m-d' %}" style="font-size:0.8rem;">
-                        </div>
-                    </div>
                     <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold mb-1">Descripcion</label>
-                            <textarea name="descripcion" class="form-control" rows="2" style="font-size:0.8rem;"></textarea>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold mb-1">Objetivo</label>
-                            <textarea name="objetivo" class="form-control" rows="2" style="font-size:0.8rem;"></textarea>
-                        </div>
+                        <div class="col-md-8"><label class="form-label small fw-semibold mb-1">Nombre del proyecto <span class="text-danger">*</span></label>
+                            <input type="text" name="nombre" class="form-control" required placeholder="Ej: Portal de Clientes"></div>
+                        <div class="col-md-4"><label class="form-label small fw-semibold mb-1">Empresa</label>
+                            <select name="empresa" class="form-select"><option value="">Sin empresa</option>{% for e in empresas %}<option value="{{ e.pk }}">{{ e.nombre }}</option>{% endfor %}</select></div>
                     </div>
-                    <div class="d-flex gap-2 mt-3 pt-2 border-top">
+                    <div class="row g-3 mt-2">
+                        <div class="col-md-5"><label class="form-label small fw-semibold mb-1">Areas</label>
+                            <div class="border rounded p-2" style="max-height:190px;overflow-y:auto;background:#fafbfc;">
+                                {% for a in areas %}<label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;font-size:0.78rem;border-bottom:1px solid #f1f5f9;">
+                                    <input type="checkbox" class="form-check-input mt-0 area-check" value="{{ a.pk }}" onchange="filtrarSubareas()"><span>{{ a.nombre }}</span></label>{% endfor %}</div></div>
+                        <div class="col-md-7"><label class="form-label small fw-semibold mb-1">Subareas <span class="text-danger">*</span></label>
+                            <div class="border rounded p-2" id="subareasContainer" style="max-height:190px;overflow-y:auto;background:#fafbfc;">
+                                <div id="subareasPlaceholder" style="padding:1.5rem 0;text-align:center;font-size:0.75rem;">Selecciona una o mas areas</div>
+                                {% for a in areas %}<div class="subarea-group mb-2" data-area-id="{{ a.pk }}" style="display:none;">
+                                    <div class="fw-semibold px-2 py-1" style="font-size:0.65rem;background:#eff6ff;border-radius:3px;">{{ a.nombre }}</div>
+                                    {% for s in subareas %}{% if s.area_id == a.pk %}<label class="d-flex align-items-center gap-2 px-2 py-1" style="cursor:pointer;font-size:0.75rem;" data-area-id="{{ s.area_id }}">
+                                        <input type="checkbox" name="subareas" value="{{ s.pk }}" class="form-check-input mt-0 subarea-check" onchange="filtrarManagers()"><span>{{ s.nombre }}</span></label>{% endif %}{% endfor %}</div>{% endfor %}</div></div>
+                    </div>
+                    <div class="row g-3 mt-2">
+                        <div class="col-md-6"><label class="form-label small fw-semibold mb-1">Manager <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control form-control-sm mb-1" id="filtroManager" placeholder="Buscar..." onkeyup="filtrarManagers()" style="font-size:0.78rem;">
+                            <select name="manager" id="managerSelect" class="form-select" required style="font-size:0.8rem;">
+                                <option value="">Seleccionar...</option>
+                                {% for u in usuarios %}<option value="{{ u.pk }}" data-subareas="{% for us in u.subareas.all %}{{ us.subarea_id }}{% if not forloop.last %},{% endif %}{% endfor %}">{{ u.get_full_name }}</option>{% endfor %}</select></div>
+                        <div class="col-md-3"><label class="form-label small fw-semibold mb-1">Fecha Inicio</label>
+                            <input type="date" name="fecha_inicio" class="form-control" min="{% now 'Y-m-d' %}"></div>
+                        <div class="col-md-3"><label class="form-label small fw-semibold mb-1">Fecha Fin Est.</label>
+                            <input type="date" name="fecha_fin_estimada" class="form-control" min="{% now 'Y-m-d' %}"></div>
+                    </div>
+                    <div class="row g-3 mt-2">
+                        <div class="col-md-6"><label class="form-label small fw-semibold mb-1">Descripcion</label>
+                            <textarea name="descripcion" class="form-control" rows="2"></textarea></div>
+                        <div class="col-md-6"><label class="form-label small fw-semibold mb-1">Objetivo</label>
+                            <textarea name="objetivo" class="form-control" rows="2"></textarea></div>
+                    </div>
+                    <div class="d-flex gap-2 mt-3 pt-3 border-top">
                         <button type="button" class="btn btn-primary btn-sm px-3" onclick="irPaso(2)">Siguiente <i class="bi bi-arrow-right"></i></button>
                         <a href="{% url 'proyectos:proyecto_list' %}" class="btn btn-outline-secondary btn-sm px-3">Cancelar</a>
                     </div>
                 </div>
 
-                <!-- ===== STEP 2: PLANTILLA DE FLUJO ===== -->
+                <!-- STEP 2 -->
                 <div class="wizard-step" data-step="2">
-                    <p class="text-muted mb-3" style="font-size:0.78rem;">Selecciona la plantilla de flujo de trabajo para el proyecto. Define como las tareas avanzan de un estado a otro.</p>
                     <div class="row g-3 mb-3">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="preset-card" data-preset="simple" onclick="seleccionarPreset(this)">
-                                <div class="p-name">Simple</div>
-                                <div class="p-desc">pendiente &rarr; en_curso &rarr; finalizada</div>
-                                <div class="p-roles">Roles: Lider, Ejecutor</div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
+                                <span class="p-badge">Basico</span><div class="p-icon"><i class="bi bi-arrow-right-circle"></i></div>
+                                <div class="p-name">Simple</div><div class="p-desc">Sin revisiones. Ejecutor finaliza.</div>
+                                <div class="p-roles">Lider, Ejecutor</div><div class="p-check"></div></div></div>
+                        <div class="col-md-3">
                             <div class="preset-card" data-preset="revision" onclick="seleccionarPreset(this)">
-                                <div class="p-name">Con Revision</div>
-                                <div class="p-desc">incluye flujo de revision y aprobacion</div>
-                                <div class="p-roles">Roles: Lider, Responsable, Ejecutor, Revisor, Aprobador</div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
+                                <span class="p-badge">Popular</span><div class="p-icon"><i class="bi bi-check2-all"></i></div>
+                                <div class="p-name">Con Revision</div><div class="p-desc">Revision QA + aprobacion.</div>
+                                <div class="p-roles">Lider, Ejecutor, Revisor, Aprobador</div><div class="p-check"></div></div></div>
+                        <div class="col-md-3">
                             <div class="preset-card" data-preset="completo" onclick="seleccionarPreset(this)">
-                                <div class="p-name">Completo</div>
-                                <div class="p-desc">Todos los estados disponibles</div>
-                                <div class="p-roles">Roles: Lider, Responsable, Ejecutor, Revisor, Aprobador, Observador</div>
-                            </div>
-                        </div>
+                                <span class="p-badge">Avanzado</span><div class="p-icon"><i class="bi bi-grid-3x3-gap-fill"></i></div>
+                                <div class="p-name">Completo</div><div class="p-desc">Todos los estados.</div>
+                                <div class="p-roles">6 roles disponibles</div><div class="p-check"></div></div></div>
+                        <div class="col-md-3">
+                            <div class="preset-card" data-preset="personalizado" onclick="seleccionarPreset(this)">
+                                <span class="p-badge">Flexible</span><div class="p-icon"><i class="bi bi-diagram-3"></i></div>
+                                <div class="p-name">Personalizado</div><div class="p-desc">Crea tus niveles de revision.</div>
+                                <div class="p-roles">Tu eliges roles y orden</div><div class="p-check"></div></div></div>
                     </div>
                     <input type="hidden" name="preset" id="presetInput" value="revision">
                     <div class="d-flex gap-2 mt-3 pt-2 border-top">
@@ -157,44 +121,26 @@
                     </div>
                 </div>
 
-                <!-- ===== STEP 3: EQUIPO ===== -->
+                <!-- STEP 3 -->
                 <div class="wizard-step" data-step="3">
-                    <p class="text-muted mb-3" style="font-size:0.78rem;">Asigna los miembros del equipo. El Manager ya fue asignado como Lider.</p>
                     <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold mb-1">Ejecutores <span class="text-danger">*</span></label>
-                            <select name="ejecutores" class="form-select" multiple style="font-size:0.78rem;min-height:100px;">
-                                {% for u in usuarios %}<option value="{{ u.pk }}">{{ u.get_full_name }}</option>{% endfor %}
-                            </select>
-                            <small style="font-size:0.6rem;color:var(--slate-400);">Selecciona uno o mas ejecutores (Ctrl+click)</small>
-                        </div>
-                        <div class="col-md-6" id="revisoresGroup">
-                            <label class="form-label small fw-semibold mb-1">Revisores / QA</label>
-                            <select name="revisores" class="form-select" multiple style="font-size:0.78rem;min-height:100px;">
-                                {% for u in usuarios %}<option value="{{ u.pk }}">{{ u.get_full_name }}</option>{% endfor %}
-                            </select>
-                            <small style="font-size:0.6rem;color:var(--slate-400);">Para flujos con revision</small>
-                        </div>
+                        <div class="col-md-6"><label class="form-label small fw-semibold mb-1">Ejecutores <span class="text-danger">*</span></label>
+                            <select name="ejecutores" class="form-select" multiple style="min-height:100px;font-size:0.78rem;">{% for u in usuarios %}<option value="{{ u.pk }}">{{ u.get_full_name }}</option>{% endfor %}</select></div>
+                        <div class="col-md-6" id="revisoresGroup"><label class="form-label small fw-semibold mb-1">Revisores / QA</label>
+                            <select name="revisores" class="form-select" multiple style="min-height:100px;font-size:0.78rem;">{% for u in usuarios %}<option value="{{ u.pk }}">{{ u.get_full_name }}</option>{% endfor %}</select></div>
                     </div>
                     <div class="row g-3 mb-3">
-                        <div class="col-md-6" id="aprobadoresGroup">
-                            <label class="form-label small fw-semibold mb-1">Aprobadores</label>
-                            <select name="aprobadores" class="form-select" multiple style="font-size:0.78rem;min-height:100px;">
-                                {% for u in usuarios %}<option value="{{ u.pk }}">{{ u.get_full_name }}</option>{% endfor %}
-                            </select>
-                            <small style="font-size:0.6rem;color:var(--slate-400);">Para flujos con revision</small>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold mb-1">Responsables / Observadores</label>
-                            <select name="otros_roles" class="form-select" multiple style="font-size:0.78rem;min-height:100px;">
-                                {% for u in usuarios %}<option value="{{ u.pk }}">{{ u.get_full_name }}</option>{% endfor %}
-                            </select>
-                            <select name="rol_otros" class="form-select form-select-sm" style="font-size:0.78rem;">
-                                <option value="responsable">Responsable</option>
-                                <option value="observador" selected>Observador</option>
-                            </select>
-                            <small style="font-size:0.6rem;color:var(--slate-400);">Responsables y Observadores (opcional)</small>
-                        </div>
+                        <div class="col-md-6" id="aprobadoresGroup"><label class="form-label small fw-semibold mb-1">Aprobadores</label>
+                            <select name="aprobadores" class="form-select" multiple style="min-height:100px;font-size:0.78rem;">{% for u in usuarios %}<option value="{{ u.pk }}">{{ u.get_full_name }}</option>{% endfor %}</select></div>
+                        <div class="col-md-6"><label class="form-label small fw-semibold mb-1">Resp. / Observadores</label>
+                            <select name="otros_roles" class="form-select" multiple style="min-height:80px;font-size:0.78rem;">{% for u in usuarios %}<option value="{{ u.pk }}">{{ u.get_full_name }}</option>{% endfor %}</select>
+                            <select name="rol_otros" class="form-select form-select-sm mt-1" style="font-size:0.7rem;"><option value="responsable">Responsable</option><option value="observador" selected>Observador</option></select></div>
+                    </div>
+                    <div id="pasosBuilder" style="display:none;">
+                        <hr><label class="form-label small fw-semibold mb-2">Pasos de Revision Personalizados</label>
+                        <div id="pasosContainer"></div>
+                        <div class="paso-add mt-1" onclick="agregarPaso()"><i class="bi bi-plus-circle"></i> Agregar paso</div>
+                        <input type="hidden" name="pasos_json" id="pasosJson" value="[]">
                     </div>
                     <div class="d-flex gap-2 mt-3 pt-2 border-top">
                         <button type="button" class="btn btn-outline-secondary btn-sm px-3" onclick="irPaso(2)"><i class="bi bi-arrow-left"></i> Atras</button>
@@ -202,206 +148,153 @@
                     </div>
                 </div>
 
-                <!-- ===== STEP 4: CONFIRMAR ===== -->
+                <!-- STEP 4 -->
                 <div class="wizard-step" data-step="4">
                     <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <div class="card shadow-sm h-100">
-                                <div class="card-header py-1 px-2"><small class="fw-semibold" style="font-size:0.65rem;">Resumen del Proyecto</small></div>
-                                <div class="card-body p-3" style="font-size:0.78rem;" id="resumenProyecto">
-                                    <div class="mb-1"><span class="text-muted">Nombre:</span> <span id="resNombre" class="fw-semibold"></span></div>
-                                    <div class="mb-1"><span class="text-muted">Manager:</span> <span id="resManager"></span></div>
-                                    <div class="mb-1"><span class="text-muted">Subareas:</span> <span id="resSubareas"></span></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="card shadow-sm h-100">
-                                <div class="card-header py-1 px-2"><small class="fw-semibold" style="font-size:0.65rem;">Flujo y Equipo</small></div>
-                                <div class="card-body p-3" style="font-size:0.78rem;" id="resumenFlujo">
-                                    <div class="mb-1"><span class="text-muted">Flujo:</span> <span id="resFlujo" class="fw-semibold"></span></div>
-                                    <div class="mb-1"><span class="text-muted">Ejecutores:</span> <span id="resEjecutores"></span></div>
-                                    <div class="mb-1" id="resRevisoresRow"><span class="text-muted">Revisores:</span> <span id="resRevisores"></span></div>
-                                    <div class="mb-1" id="resAprobadoresRow"><span class="text-muted">Aprobadores:</span> <span id="resAprobadores"></span></div>
-                                </div>
-                            </div>
-                        </div>
+                        <div class="col-md-7"><div class="card h-100">
+                            <div class="card-header py-1 px-2"><small class="fw-semibold">Resumen del Proyecto</small></div>
+                            <div class="card-body p-3" style="font-size:0.78rem;">
+                                <table class="table table-sm table-borderless mb-0">
+                                    <tr><td class="text-muted" style="width:100px;">Nombre</td><td id="resNombre" class="fw-semibold"></td></tr>
+                                    <tr><td class="text-muted">Manager</td><td id="resManager"></td></tr>
+                                    <tr><td class="text-muted">Subareas</td><td id="resSubareas"></td></tr>
+                                    <tr><td class="text-muted">Flujo</td><td id="resFlujo" class="fw-semibold"></td></tr>
+                                </table></div></div></div>
+                        <div class="col-md-5"><div class="card h-100">
+                            <div class="card-header py-1 px-2"><small class="fw-semibold">Equipo</small></div>
+                            <div class="card-body p-3" style="font-size:0.72rem;" id="resEquipo"></div></div></div>
                     </div>
+                    <div id="resChain" style="display:none;" class="mb-3">
+                        <div class="card"><div class="card-header py-1 px-2"><small class="fw-semibold"><i class="bi bi-diagram-3"></i> Cadena de Revision</small></div>
+                            <div class="card-body p-2"><div class="chain" id="chainContainer"></div></div></div></div>
                     <div class="d-flex gap-2 mt-3 pt-2 border-top">
                         <button type="button" class="btn btn-outline-secondary btn-sm px-3" onclick="irPaso(3)"><i class="bi bi-arrow-left"></i> Atras</button>
                         <button type="submit" class="btn btn-success btn-sm px-4"><i class="bi bi-check-lg"></i> Crear Proyecto</button>
                         <a href="{% url 'proyectos:proyecto_list' %}" class="btn btn-outline-secondary btn-sm px-3">Cancelar</a>
                     </div>
                 </div>
-
             </form>
         </div>
     </div>
 </div>
 
 <script>
-var pasoActual = 1;
-var totalPasos = 4;
-
+var pasoActual = 1, totalPasos = 4, pasos = [];
 function irPaso(n) {
     if (n < 1 || n > totalPasos) return;
-    if (n > pasoActual) {
-        if (!validarPaso(pasoActual)) return;
-    }
+    if (n > pasoActual && !validarPaso(pasoActual)) return;
     pasoActual = n;
-    document.querySelectorAll('.wizard-step').forEach(function(el) { el.classList.remove('active'); });
-    document.querySelector('.wizard-step[data-step="' + n + '"]').classList.add('active');
-    document.querySelectorAll('.wizard-nav a').forEach(function(el) {
-        var s = parseInt(el.getAttribute('data-step'));
-        el.classList.toggle('active', s === n);
-        el.classList.toggle('done', s < n);
+    document.querySelectorAll('.wizard-step').forEach(function(e){ e.classList.remove('active'); });
+    document.querySelector('.wizard-step[data-step="'+n+'"]').classList.add('active');
+    document.querySelectorAll('.wizard-nav a').forEach(function(e){
+        var s = parseInt(e.getAttribute('data-step'));
+        e.classList.toggle('active', s===n); e.classList.toggle('done', s<n);
     });
-    if (n === 4) actualizarResumen();
+    if (n===3) actualizarPasos(); if (n===4) actualizarResumen();
 }
-
 function validarPaso(n) {
-    if (n === 1) {
-        var nombre = document.querySelector('[name="nombre"]').value.trim();
-        if (!nombre) { alert('El nombre del proyecto es obligatorio.'); return false; }
-        var sub = document.querySelectorAll('.subarea-check:checked');
-        if (sub.length === 0) { alert('Debes seleccionar al menos una subarea.'); return false; }
-        var manager = document.querySelector('[name="manager"]').value;
-        if (!manager) { alert('Debes seleccionar un Manager.'); return false; }
+    if (n===1) {
+        if (!document.querySelector('[name="nombre"]').value.trim()) { alert('Nombre obligatorio.'); return false; }
+        if (!document.querySelectorAll('.subarea-check:checked').length) { alert('Selecciona subarea.'); return false; }
+        if (!document.querySelector('[name="manager"]').value) { alert('Selecciona Manager.'); return false; }
     }
-    if (n === 2) {
-        var preset = document.getElementById('presetInput').value;
-        if (!preset) { alert('Debes seleccionar una plantilla de flujo.'); return false; }
-    }
-    if (n === 3) {
-        var ejec = document.querySelector('[name="ejecutores"]');
-        if (!ejec || ejec.selectedOptions.length === 0) { alert('Debes asignar al menos 1 Ejecutor.'); return false; }
-    }
+    if (n===2) { if (!document.getElementById('presetInput').value) { alert('Selecciona plantilla.'); return false; } }
+    if (n===3) { if (!document.querySelector('[name="ejecutores"]').selectedOptions.length) { alert('Asigna al menos 1 Ejecutor.'); return false; } }
     return true;
 }
-
 function seleccionarPreset(el) {
-    document.querySelectorAll('.preset-card').forEach(function(c) { c.classList.remove('selected'); });
+    document.querySelectorAll('.preset-card').forEach(function(c){ c.classList.remove('selected'); });
     el.classList.add('selected');
     document.getElementById('presetInput').value = el.getAttribute('data-preset');
-    // Mostrar/ocultar roles segun preset
-    var preset = el.getAttribute('data-preset');
-    var revGroup = document.getElementById('revisoresGroup');
-    var aprGroup = document.getElementById('aprobadoresGroup');
-    if (preset === 'simple') {
-        revGroup.style.display = 'none';
-        aprGroup.style.display = 'none';
-    } else {
-        revGroup.style.display = 'block';
-        aprGroup.style.display = 'block';
+    var p = el.getAttribute('data-preset'), rG = document.getElementById('revisoresGroup'), aG = document.getElementById('aprobadoresGroup'), pB = document.getElementById('pasosBuilder');
+    rG.style.display = (p==='simple'?'none':'block');
+    aG.style.display = (p==='simple'?'none':'block');
+    pB.style.display = (p==='personalizado'?'block':'none');
+}
+function agregarPaso() { pasos.push({orden:pasos.length+1,etiqueta:'',rol:'revisor',user_ids:[],tipo:'revision'}); renderPasos(); }
+function eliminarPaso(i) { pasos.splice(i,1); pasos.forEach(function(p,j){p.orden=j+1;}); renderPasos(); }
+function renderPasos() {
+    var c = document.getElementById('pasosContainer'), h = '';
+    pasos.forEach(function(p,i){
+        h += '<div class="paso-card"><div class="p-num">'+(i+1)+'</div><div class="p-info">';
+        h += '<input class="form-control form-control-sm" placeholder="Nombre" value="'+p.etiqueta.replace(/"/g,'&quot;')+'" style="font-size:0.75rem;max-width:250px;" onchange="pasos['+i+'].etiqueta=this.value;actualizarJsonPasos()">';
+        h += '<div class="mt-1"><select class="form-select form-select-sm d-inline" style="width:auto;font-size:0.65rem;" onchange="pasos['+i+'].rol=this.value;actualizarJsonPasos()">';
+        h += '<option value="revisor"'+(p.rol==='revisor'?' selected':'')+'>Revisor</option>';
+        h += '<option value="aprobador"'+(p.rol==='aprobador'?' selected':'')+'>Aprobador</option></select>';
+        h += ' <select class="form-select form-select-sm d-inline" style="width:auto;font-size:0.65rem;" multiple onchange="pasos['+i+'].user_ids=Array.from(this.selectedOptions).map(function(o){return parseInt(o.value)});actualizarJsonPasos()">';
+        [].forEach.call(document.querySelectorAll('[name="revisores"] option, [name="aprobadores"] option'),function(o){
+            if (o.parentElement.selectedOptions && Array.from(o.parentElement.selectedOptions).indexOf(o)>=0) {
+                h += '<option value="'+o.value+'"'+(p.user_ids.indexOf(parseInt(o.value))>=0?' selected':'')+'>'+o.text+'</option>';
+            }
+        });
+        h += '</select></div></div>';
+        h += '<button type="button" class="p-del" onclick="eliminarPaso('+i+')" title="Eliminar"><i class="bi bi-x-lg"></i></button></div>';
+    });
+    if (!pasos.length) h += '<p class="text-muted text-center py-2" style="font-size:0.72rem;">Sin pasos. Agrega niveles de revision.</p>';
+    c.innerHTML = h; actualizarJsonPasos();
+}
+function actualizarJsonPasos() { document.getElementById('pasosJson').value = JSON.stringify(pasos); }
+function actualizarPasos() {
+    if (document.getElementById('presetInput').value === 'personalizado' && pasos.length === 0) {
+        var revs = [].map.call(document.querySelector('[name="revisores"]').selectedOptions,function(o){return{id:parseInt(o.value),name:o.text};});
+        var aprs = [].map.call(document.querySelector('[name="aprobadores"]').selectedOptions,function(o){return{id:parseInt(o.value),name:o.text};});
+        pasos = [];
+        if (revs.length) pasos.push({orden:1,etiqueta:'Revision'+(revs.length>1?' ('+revs.length+' revisores)':''),rol:'revisor',user_ids:revs.map(function(u){return u.id;}),tipo:'revision'});
+        if (aprs.length) pasos.push({orden:pasos.length+1,etiqueta:'Aprobacion'+(aprs.length>1?' ('+aprs.length+' aprobadores)':''),rol:'aprobador',user_ids:aprs.map(function(u){return u.id;}),tipo:'aprobacion'});
+        renderPasos();
     }
 }
-
 function actualizarResumen() {
     document.getElementById('resNombre').textContent = document.querySelector('[name="nombre"]').value;
-    var mgr = document.getElementById('managerSelect');
-    document.getElementById('resManager').textContent = mgr.options[mgr.selectedIndex] ? mgr.options[mgr.selectedIndex].text : '';
-    var subs = [];
-    document.querySelectorAll('.subarea-check:checked').forEach(function(c) {
-        subs.push(c.parentElement.textContent.trim());
-    });
-    document.getElementById('resSubareas').textContent = subs.join(', ') || '—';
-    var p = document.getElementById('presetInput').value;
-    document.getElementById('resFlujo').textContent = p.charAt(0).toUpperCase() + p.slice(1);
-    var nomEje = [], nomRev = [], nomApr = [];
-    document.querySelectorAll('[name="ejecutores"] option:checked').forEach(function(o) { nomEje.push(o.text); });
-    document.querySelectorAll('[name="revisores"] option:checked').forEach(function(o) { nomRev.push(o.text); });
-    document.querySelectorAll('[name="aprobadores"] option:checked').forEach(function(o) { nomApr.push(o.text); });
-    document.getElementById('resEjecutores').textContent = nomEje.join(', ') || '—';
-    document.getElementById('resRevisores').textContent = nomRev.join(', ') || '—';
-    document.getElementById('resAprobadores').textContent = nomApr.join(', ') || '—';
-    document.getElementById('resRevisoresRow').style.display = nomRev.length ? '' : 'none';
-    document.getElementById('resAprobadoresRow').style.display = nomApr.length ? '' : 'none';
+    var m = document.getElementById('managerSelect'); document.getElementById('resManager').textContent = m.options[m.selectedIndex]?m.options[m.selectedIndex].text:'';
+    var s = []; document.querySelectorAll('.subarea-check:checked').forEach(function(c){s.push(c.parentElement.textContent.trim());});
+    document.getElementById('resSubareas').textContent = s.join(', ')||'--';
+    document.getElementById('resFlujo').textContent = document.getElementById('presetInput').value.charAt(0).toUpperCase() + document.getElementById('presetInput').value.slice(1);
+    var eq = [];
+    function addRol(n, sel) { var o = document.querySelector('[name="'+sel+'"]'); if (o && o.selectedOptions.length) eq.push('<b>'+n+':</b> '+[].map.call(o.selectedOptions,function(x){return x.text;}).join(', ')); }
+    addRol('Ejecutores','ejecutores'); addRol('Revisores','revisores'); addRol('Aprobadores','aprobadores');
+    document.getElementById('resEquipo').innerHTML = eq.join('<br>')||'--';
+    var ch = document.getElementById('chainContainer'), cd = document.getElementById('resChain');
+    if (document.getElementById('presetInput').value === 'personalizado' && pasos.length) {
+        cd.style.display = 'block'; var h = ''; var au = {};
+        [].forEach.call(document.querySelectorAll('[name="revisores"] option, [name="aprobadores"] option'),function(o){au[o.value]=o.text;});
+        pasos.forEach(function(p,i){
+            var n = p.user_ids.map(function(id){return au[id]||'ID '+id;});
+            h += '<div class="chain-node"><div class="r">'+(p.tipo==='aprobacion'?'Aprobacion':'Revision')+' '+(i+1)+'</div><div class="u">'+(p.etiqueta||p.rol)+'</div><div class="u" style="font-size:0.52rem;">'+n.join(', ')+'</div></div>';
+            if (i < pasos.length-1) h += '<div class="chain-arrow"><i class="bi bi-arrow-right"></i></div>';
+        });
+        ch.innerHTML = h;
+    } else { cd.style.display = 'none'; }
 }
-
 function filtrarSubareas() {
-    var checks = document.querySelectorAll('.area-check:checked');
-    var areasActivas = [];
-    for (var i = 0; i < checks.length; i++) { areasActivas.push(checks[i].value); }
-    var groups = document.querySelectorAll('.subarea-group');
-    var placeholder = document.getElementById('subareasPlaceholder');
-    if (areasActivas.length === 0) {
-        placeholder.style.display = 'block';
-        for (var i = 0; i < groups.length; i++) { groups[i].style.display = 'none'; }
-        filtrarManagers();
-        return;
-    }
-    placeholder.style.display = 'none';
-    for (var i = 0; i < groups.length; i++) {
-        var g = groups[i];
-        var areaActiva = areasActivas.indexOf(g.getAttribute('data-area-id')) >= 0;
-        g.style.display = areaActiva ? '' : 'none';
-        if (!areaActiva) {
-            var cbs = g.querySelectorAll('input[type=checkbox]');
-            for (var j = 0; j < cbs.length; j++) { cbs[j].checked = false; }
-        }
-    }
+    var c = document.querySelectorAll('.area-check:checked'), a = []; for (var i=0;i<c.length;i++) a.push(c[i].value);
+    document.querySelectorAll('.subarea-group').forEach(function(g){
+        var v = a.indexOf(g.getAttribute('data-area-id'))>=0; g.style.display = v?'':'none';
+        if (!v) g.querySelectorAll('input[type=checkbox]').forEach(function(cb){cb.checked=false;});
+    });
+    document.getElementById('subareasPlaceholder').style.display = a.length?'none':'block';
     filtrarManagers();
 }
-
 function filtrarManagers() {
-    var subChecks = document.querySelectorAll('.subarea-check:checked');
-    var subSeleccionadas = [];
-    for (var i = 0; i < subChecks.length; i++) { subSeleccionadas.push(subChecks[i].value); }
-    var wrapper = document.getElementById('managerWrapper');
-    var placeholder = document.getElementById('managerPlaceholder');
-    if (subSeleccionadas.length === 0) {
-        wrapper.style.display = 'none';
-        placeholder.style.display = 'block';
-        return;
-    }
-    wrapper.style.display = 'block';
-    placeholder.style.display = 'none';
+    var s = []; document.querySelectorAll('.subarea-check:checked').forEach(function(c){s.push(c.value);});
     var sel = document.getElementById('managerSelect');
+    if (!s.length) { document.querySelector('[name="manager"]').closest('.col-md-6').style.opacity='0.4'; return; }
+    document.querySelector('[name="manager"]').closest('.col-md-6').style.opacity='1';
     var f = document.getElementById('filtroManager').value.toLowerCase();
-    for (var i = 0; i < sel.options.length; i++) {
-        var o = sel.options[i];
-        if (o.value === '') { o.style.display = ''; continue; }
-        var matchText = o.text.toLowerCase().indexOf(f) >= 0;
-        var matchSub = tieneSubarea(o, subSeleccionadas);
-        o.style.display = (matchText && matchSub) ? '' : 'none';
-    }
-    if (sel.value && sel.options[sel.selectedIndex] && sel.options[sel.selectedIndex].style.display === 'none') {
-        sel.value = '';
+    for (var i=0;i<sel.options.length;i++) {
+        var o = sel.options[i]; if (!o.value) { o.style.display=''; continue; }
+        o.style.display = (o.text.toLowerCase().indexOf(f)>=0 && (o.getAttribute('data-subareas')||'').split(',').some(function(x){return x.trim()&&s.indexOf(x.trim())>=0;}))?'':'none';
     }
 }
-
-function tieneSubarea(option, subIds) {
-    var data = option.getAttribute('data-subareas') || '';
-    var ids = data.split(',');
-    for (var i = 0; i < ids.length; i++) {
-        if (ids[i].trim() && subIds.indexOf(ids[i].trim()) >= 0) return true;
-    }
-    return false;
-}
-
 document.addEventListener('DOMContentLoaded', function() {
-    // Default preset selection
     document.querySelector('.preset-card[data-preset="revision"]').classList.add('selected');
-    // Auto-marcar areas de subareas si edicion
-    var subChecks = document.querySelectorAll('.subarea-check:checked');
-    if (subChecks.length > 0) {
-        var areaIds = [];
-        for (var i = 0; i < subChecks.length; i++) {
-            var aid = subChecks[i].parentElement.getAttribute('data-area-id');
-            if (aid && areaIds.indexOf(aid) < 0) areaIds.push(aid);
-        }
-        document.querySelectorAll('.area-check').forEach(function(c) {
-            if (areaIds.indexOf(c.value) >= 0) c.checked = true;
-        });
+    var sc = document.querySelectorAll('.subarea-check:checked');
+    if (sc.length) {
+        var aids = []; sc.forEach(function(c){var a=c.parentElement.getAttribute('data-area-id');if(a&&aids.indexOf(a)<0)aids.push(a);});
+        document.querySelectorAll('.area-check').forEach(function(c){if(aids.indexOf(c.value)>=0)c.checked=true;});
         filtrarSubareas();
     }
     filtrarManagers();
-    // Date sync
-    var q = document.querySelector('[name="fecha_inicio"]');
-    var f = document.querySelector('[name="fecha_fin_estimada"]');
-    if (q && f) {
-        q.addEventListener('change', function() { if (q.value) f.min = q.value; if (q.value && f.value && f.value < q.value) f.value = q.value; });
-    }
 });
 </script>
 {% endblock %}
