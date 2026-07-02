@@ -18,12 +18,18 @@
 .preset-card .p-badge { position:absolute; top:7px; right:7px; font-size:0.48rem; padding:1px 6px; border-radius:3px; background:#d4f5e0; color:#1a7a3a; font-weight:600; }
 .preset-card .p-check { position:absolute; bottom:8px; right:8px; width:20px; height:20px; border-radius:50%; border:2px solid var(--slate-300); display:flex; align-items:center; justify-content:center; font-size:0.55rem; background:#fff; transition:all 0.12s; }
 .preset-card.selected .p-check { border-color:#1a7a3a; background:#1a7a3a; color:#fff; }
-.paso-card { display:flex; align-items:center; gap:10px; padding:8px 12px; margin-bottom:6px; background:#fff; border:1.5px solid var(--slate-200); border-radius:0.5rem; }
-.paso-card:hover { border-color:var(--accent); }
-.paso-card .p-num { width:26px; height:26px; border-radius:50%; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; font-size:0.65rem; font-weight:700; flex-shrink:0; }
-.paso-card .p-info { flex:1; }
-.paso-card .p-info .title { font-size:0.78rem; font-weight:600; }
-.paso-card .p-del { cursor:pointer; border:none; background:none; padding:4px 6px; }
+.paso-card { display:flex; align-items:flex-start; gap:12px; padding:12px 14px; margin-bottom:8px; background:#fff; border:1.5px solid var(--slate-200); border-radius:0.5rem; transition:all 0.12s; }
+.paso-card:hover { border-color:var(--accent); box-shadow:0 2px 8px rgba(5,5,60,0.06); }
+.paso-card .p-num { width:28px; height:28px; min-width:28px; border-radius:50%; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; font-size:0.7rem; font-weight:700; }
+.paso-card .p-body { flex:1; display:flex; flex-direction:column; gap:6px; }
+.paso-card .p-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.paso-card .p-row input { font-size:0.72rem; border:1px solid var(--slate-200); border-radius:4px; padding:3px 8px; width:220px; }
+.paso-card .p-row input:focus { outline:none; border-color:var(--accent); }
+.paso-card .p-badge-rol { font-size:0.55rem; padding:2px 8px; border-radius:3px; font-weight:600; text-transform:uppercase; }
+.paso-card .p-badge-rol.revisor { background:#ede9fe; color:#6d28d9; }
+.paso-card .p-badge-rol.aprobador { background:#d4f5e0; color:#1a7a3a; }
+.paso-card .p-tag { font-size:0.55rem; padding:1px 6px; border-radius:3px; background:var(--slate-100); color:var(--slate-600); display:inline-block; margin:1px; }
+.paso-card .p-del { cursor:pointer; border:none; background:none; padding:2px 6px; font-size:0.8rem; border-radius:4px; color:var(--slate-400); }
 .paso-card .p-del:hover { color:#991b1b; background:#fee2e2; }
 .paso-add { border:2px dashed var(--slate-200); border-radius:0.5rem; padding:8px; text-align:center; cursor:pointer; font-size:0.7rem; background:#fafbfc; }
 .paso-add:hover { border-color:var(--accent); }
@@ -137,6 +143,7 @@
                                     <td style="font-size:0.72rem;">{{ u.cedula }}</td>
                                     <td>
                                         <select name="rol_{{ u.pk }}" class="form-select form-select-sm" style="font-size:0.68rem;">
+                                            <option value="">Sin asignar</option>
                                             <option value="ejecutor">Ejecutor</option>
                                             <option value="revisor">Revisor / QA</option>
                                             <option value="aprobador">Aprobador</option>
@@ -242,21 +249,44 @@ function agregarPaso() { pasos.push({orden:pasos.length+1,etiqueta:'',rol:'revis
 function eliminarPaso(i) { pasos.splice(i,1); pasos.forEach(function(p,j){p.orden=j+1;}); renderPasos(); }
 function renderPasos() {
     var c = document.getElementById('pasosContainer'), h = '';
+    var allMembers = {};
+    document.querySelectorAll('[name^="rol_"]').forEach(function(s){
+        var pk = s.getAttribute('name').replace('rol_','');
+        allMembers[pk] = s.closest('tr').querySelector('td').textContent.trim();
+    });
     pasos.forEach(function(p,i){
-        h += '<div class="paso-card"><div class="p-num">'+(i+1)+'</div><div class="p-info">';
-        h += '<input class="form-control form-control-sm" placeholder="Nombre" value="'+p.etiqueta.replace(/"/g,'&quot;')+'" style="font-size:0.75rem;max-width:250px;" onchange="pasos['+i+'].etiqueta=this.value;actualizarJsonPasos()">';
-        h += '<div class="mt-1"><select class="form-select form-select-sm d-inline" style="width:auto;font-size:0.65rem;" onchange="pasos['+i+'].rol=this.value;actualizarJsonPasos()">';
+        h += '<div class="paso-card">';
+        h += '<div class="p-num">'+(i+1)+'</div><div class="p-body">';
+        h += '<div class="p-row">';
+        h += '<span style="font-size:0.7rem;font-weight:600;min-width:60px;">Paso '+(i+1)+':</span>';
+        h += '<input type="text" placeholder="ej: Revision tecnica" value="'+p.etiqueta.replace(/"/g,'&quot;')+'" onchange="pasos['+i+'].etiqueta=this.value;actualizarJsonPasos()">';
+        h += '<span class="p-badge-rol '+p.rol+'">'+p.rol+'</span>';
+        h += '</div>';
+        h += '<div class="p-row" style="font-size:0.65rem;">';
+        h += '<span style="min-width:60px;color:var(--slate-400);">Revisores:</span>';
+        h += '<select onchange="pasos['+i+'].rol=this.value;renderPasos()" style="width:auto;font-size:0.6rem;padding:2px 4px;border:1px solid var(--slate-200);border-radius:3px;">';
         h += '<option value="revisor"'+(p.rol==='revisor'?' selected':'')+'>Revisor</option>';
         h += '<option value="aprobador"'+(p.rol==='aprobador'?' selected':'')+'>Aprobador</option></select>';
-        h += ' <select class="form-select form-select-sm d-inline" style="width:auto;font-size:0.65rem;" multiple onchange="pasos['+i+'].user_ids=Array.from(this.selectedOptions).map(function(o){return parseInt(o.value)});actualizarJsonPasos()">';
-        var relevantes = obtenerUsuariosPorRol(p.rol);
-        relevantes.forEach(function(u){
+        h += '<select multiple size="3" onchange="pasos['+i+'].user_ids=Array.from(this.selectedOptions).map(function(o){return parseInt(o.value)});actualizarJsonPasos();renderPasos()" style="min-width:240px;max-width:100%;font-size:0.62rem;padding:2px;border:1px solid var(--slate-200);border-radius:3px;">';
+        var relUsers = obtenerUsuariosPorRol(p.rol);
+        if (!relUsers.length) h += '<option disabled>No hay usuarios con rol '+p.rol+'. Asigna roles en la tabla.</option>';
+        else relUsers.forEach(function(u){
             h += '<option value="'+u.id+'"'+(p.user_ids.indexOf(u.id)>=0?' selected':'')+'>'+u.name+'</option>';
         });
-        h += '</select></div></div>';
-        h += '<button type="button" class="p-del" onclick="eliminarPaso('+i+')" title="Eliminar"><i class="bi bi-x-lg"></i></button></div>';
+        h += '</select>';
+        if (p.user_ids.length) {
+            h += '<span style="font-size:0.55rem;margin-left:4px;">';
+            p.user_ids.forEach(function(uid){
+                var nm = allMembers[uid] || 'ID '+uid;
+                h += '<span class="p-tag">'+nm.substr(0,15)+'</span>';
+            });
+            h += '</span>';
+        }
+        h += '</div></div>';
+        h += '<button class="p-del" onclick="eliminarPaso('+i+')" title="Eliminar paso"><i class="bi bi-x-lg"></i></button>';
+        h += '</div>';
     });
-    if (!pasos.length) h += '<p class="text-muted text-center py-2" style="font-size:0.72rem;">Sin pasos. Agrega niveles de revision.</p>';
+    if (!pasos.length) h += '<div class="paso-add" onclick="agregarPaso()">No hay pasos definidos. Click aqui para agregar tu primer nivel de revision.</div>';
     c.innerHTML = h; actualizarJsonPasos();
 }
 function actualizarJsonPasos() { document.getElementById('pasosJson').value = JSON.stringify(pasos); }
