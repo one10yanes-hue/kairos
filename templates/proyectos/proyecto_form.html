@@ -7,7 +7,7 @@
 .wizard-nav a { padding:0.55rem 1.1rem; font-size:0.72rem; font-weight:500; color:var(--slate-400); text-decoration:none; border-bottom:2px solid transparent; margin-bottom:-2px; transition:all 0.15s; }
 .wizard-nav a.active { color:var(--accent); border-bottom-color:var(--accent); }
 .wizard-nav a.done { color:var(--success); }
-.wizard-nav a.done::after { content:" \u2713"; font-size:0.6rem; }
+.wizard-nav a.done::after { ; font-size:0.6rem; }
 .preset-card { border:2px solid var(--slate-200); border-radius:0.75rem; padding:1.1rem 1rem; cursor:pointer; transition:all 0.15s; height:100%; position:relative; background:#fff; }
 .preset-card:hover { border-color:var(--accent); box-shadow:0 4px 12px rgba(5,5,60,0.08); transform:translateY(-2px); }
 .preset-card.selected { border-color:#1a7a3a; background:#f0fdf4; }
@@ -129,47 +129,35 @@
 
                 <!-- STEP 3 -->
                 <div class="wizard-step" data-step="3">
-                    <p class="text-muted mb-2" style="font-size:0.75rem;">Solo se muestran usuarios de tus areas. Asigna un rol a cada miembro del equipo.</p>
-                    <div class="d-flex gap-2 mb-2 align-items-center">
-                        <input type="text" id="filtroEquipo" class="form-control form-control-sm" placeholder="Buscar miembro..." style="width:200px;font-size:0.72rem;" onkeyup="filtrarEquipo()">
-                        <select id="batchRol" class="form-select form-select-sm" style="width:140px;font-size:0.65rem;" onchange="batchAsignarRol()">
-                            <option value="">Asignar a todos...</option>
-                            <option value="ejecutor">Ejecutor</option>
-                            <option value="revisor">Revisor</option>
-                            <option value="aprobador">Aprobador</option>
-                            <option value="responsable">Responsable</option>
-                            <option value="observador">Observador</option>
-                        </select>
-                        <small id="equipoCount" class="text-muted" style="font-size:0.6rem;"></small>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <p class="text-muted mb-0" style="font-size:0.72rem;">Selecciona el rol para cada miembro. Solo puedes elegir <b>un rol por persona</b>.</p>
+                        <small class="text-muted" style="font-size:0.6rem;" id="equipoCount"></small>
                     </div>
-                    <div class="border rounded" style="max-height:320px;overflow-y:auto;">
-                        <table class="table table-hover table-sm mb-0" style="font-size:0.8rem;">
-                            <thead class="table-light"><tr>
-                                <th style="font-size:0.6rem;font-weight:600;">Miembro</th>
-                                <th style="font-size:0.6rem;font-weight:600;width:90px;">Cedula</th>
-                                <th style="font-size:0.6rem;font-weight:600;width:120px;">Rol en el proyecto</th>
-                            </tr></thead><tbody>
-                                {% for u in usuarios %}
-                                <tr>
-                                    <td class="fw-semibold">{{ u.get_full_name }}</td>
-                                    <td style="font-size:0.72rem;">{{ u.cedula }}</td>
-                                    <td>
-                                        <select name="rol_{{ u.pk }}" class="form-select form-select-sm" style="font-size:0.68rem;">
-                                            <option value="">Sin asignar</option>
-                                            <option value="ejecutor">Ejecutor</option>
-                                            <option value="revisor">Revisor / QA</option>
-                                            <option value="aprobador">Aprobador</option>
-                                            <option value="responsable">Responsable</option>
-                                            <option value="observador">Observador</option>
-                                        </select>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+                    <div style="overflow-x:auto;">
+                    <table class="table table-hover table-sm mb-0" style="font-size:0.8rem;border-collapse:separate;border-spacing:0 2px;">
+                        <thead style="position:sticky;top:0;background:#fff;z-index:1;"><tr>
+                            <th style="font-size:0.6rem;font-weight:600;border-bottom:2px solid var(--slate-200);">
+                                <input type="text" id="filtroEquipo" class="form-control form-control-sm" placeholder="Filtrar..." style="width:180px;font-size:0.68rem;border:1px solid var(--slate-200);" onkeyup="filtrarEquipo()"></th>
+                            <th style="font-size:0.6rem;font-weight:600;text-align:center;border-bottom:2px solid var(--slate-200);width:70px;">Ejecutor*</th>
+                            <th style="font-size:0.6rem;font-weight:600;text-align:center;border-bottom:2px solid var(--slate-200);width:70px;">Revisor</th>
+                            <th style="font-size:0.6rem;font-weight:600;text-align:center;border-bottom:2px solid var(--slate-200);width:70px;">Aprobador</th>
+                            <th style="font-size:0.6rem;font-weight:600;text-align:center;border-bottom:2px solid var(--slate-200);width:70px;">Resp.</th>
+                            <th style="font-size:0.6rem;font-weight:600;text-align:center;border-bottom:2px solid var(--slate-200);width:70px;">Observ.</th>
+                        </tr></thead><tbody>
+                            {% for u in usuarios %}
+                            <tr data-search="{{ u.get_full_name|lower }}">
+                                <td class="fw-semibold" style="font-size:0.75rem;">{{ u.get_full_name }}</td>
+                                <td style="text-align:center;"><input type="radio" name="rol_{{ u.pk }}" value="ejecutor" class="form-check-input mt-0" style="cursor:pointer;"></td>
+                                <td style="text-align:center;"><input type="radio" name="rol_{{ u.pk }}" value="revisor" class="form-check-input mt-0" style="cursor:pointer;"></td>
+                                <td style="text-align:center;"><input type="radio" name="rol_{{ u.pk }}" value="aprobador" class="form-check-input mt-0" style="cursor:pointer;"></td>
+                                <td style="text-align:center;"><input type="radio" name="rol_{{ u.pk }}" value="responsable" class="form-check-input mt-0" style="cursor:pointer;"></td>
+                                <td style="text-align:center;"><input type="radio" name="rol_{{ u.pk }}" value="observador" class="form-check-input mt-0" style="cursor:pointer;"></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table></div>
                     <div id="pasosBuilder" style="display:none;">
-                        <hr><label class="form-label small fw-semibold mb-2">Pasos de Revision Personalizados</label>
+                        <hr><div class="d-flex justify-content-between align-items-center mb-2"><label class="form-label small fw-semibold mb-0">Pasos de Revision Personalizados</label><small class="text-muted" style="font-size:0.6rem;">Define el orden de los niveles de VoBo</small></div>
                         <div id="pasosContainer"></div>
                         <div class="paso-add mt-1" onclick="agregarPaso()"><i class="bi bi-plus-circle"></i> Agregar paso</div>
                         <input type="hidden" name="pasos_json" id="pasosJson" value="[]">
@@ -233,11 +221,9 @@ function validarPaso(n) {
     if (n===2) { if (!document.getElementById('presetInput').value) { alert('Selecciona plantilla.'); return false; } }
     if (n===3) {
         var hayEjec = false;
-        document.querySelectorAll('[name^="rol_"]').forEach(function(s){ if(s.value==='ejecutor') hayEjec=true; });
-        if (!hayEjec) { alert('Debes asignar al menos 1 Ejecutor.'); return false; }
-        var miembros = 0;
-        document.querySelectorAll('[name^="rol_"]').forEach(function(s){ if(s.value) miembros++; });
-        if (miembros === 0) { alert('Asigna al menos 1 miembro al equipo.'); return false; }
+        document.querySelectorAll('[name^="rol_"]:checked').forEach(function(s){ if(s.value==='ejecutor') hayEjec=true; });
+        if (!hayEjec) { alert('Debes asignar al menos 1 Ejecutor. Marca el radio de Ejecutor para algun usuario.'); return false; }
+        
     }
     return true;
 }
@@ -251,7 +237,7 @@ function seleccionarPreset(el) {
 
 function obtenerUsuariosPorRol(rolBuscado) {
     var res = [];
-    document.querySelectorAll('[name^="rol_"]').forEach(function(s){
+    document.querySelectorAll('[name^="rol_"]:checked').forEach(function(s){
         if (s.value === rolBuscado) {
             var pk = parseInt(s.getAttribute('name').replace('rol_',''));
             var nombre = s.closest('tr').querySelector('td').textContent.trim();
@@ -262,25 +248,26 @@ function obtenerUsuariosPorRol(rolBuscado) {
 }
 function filtrarEquipo() {
     var f = document.getElementById('filtroEquipo').value.toLowerCase();
-    var count = 0;
-    document.querySelectorAll('[name^="rol_"]').forEach(function(s){
-        var row = s.closest('tr');
-        var text = row.textContent.toLowerCase();
-        var match = text.indexOf(f) >= 0;
-        row.style.display = match ? '' : 'none';
+    var count = 0, total = 0;
+    document.querySelectorAll('tr[data-search]').forEach(function(r){
+        total++;
+        var match = r.getAttribute('data-search').indexOf(f) >= 0;
+        r.style.display = match ? '' : 'none';
         if (match) count++;
     });
-    document.getElementById('equipoCount').textContent = count + ' de ' + document.querySelectorAll('[name^="rol_"]').length + ' visibles';
+    document.getElementById('equipoCount').textContent = f ? (count + ' de ' + total + ' visibles') : (total + ' miembros');
 }
 function batchAsignarRol() {
     var rol = document.getElementById('batchRol').value;
     if (!rol) { document.getElementById('equipoCount').textContent = ''; return; }
-    document.querySelectorAll('[name^="rol_"]').forEach(function(s){
-        var row = s.closest('tr');
-        if (row.style.display !== 'none') s.value = rol;
+    document.querySelectorAll('tr[data-search]').forEach(function(r){
+        if (r.style.display !== 'none') {
+            var radio = r.querySelector('input[type=radio][value="'+rol+'"]');
+            if (radio) radio.checked = true;
+        }
     });
     document.getElementById('batchRol').value = '';
-    document.getElementById('equipoCount').textContent = 'Rol asignado a los visibles';
+    document.getElementById('equipoCount').textContent = 'Rol asignado a visibles';
 }
 function agregarPaso() { pasos.push({orden:pasos.length+1,etiqueta:'',rol:'revisor',user_ids:[],tipo:'revision'}); renderPasos(); }
 function eliminarPaso(i) { pasos.splice(i,1); pasos.forEach(function(p,j){p.orden=j+1;}); renderPasos(); }
@@ -344,15 +331,15 @@ function actualizarResumen() {
     document.getElementById('resSubareas').textContent = s.join(', ')||'--';
     document.getElementById('resFlujo').textContent = document.getElementById('presetInput').value.charAt(0).toUpperCase() + document.getElementById('presetInput').value.slice(1);
     var eq = [];
-    document.querySelectorAll('[name^="rol_"]').forEach(function(sel){
-        var n = sel.closest('tr').querySelector('td').textContent.trim();
-        eq.push('<b>'+sel.value.charAt(0).toUpperCase()+sel.value.slice(1)+':</b> '+n);
+    var roles = {'ejecutor':'Ejecutor','revisor':'Revisor','aprobador':'Aprobador','responsable':'Resp.','observador':'Observ.'};
+    document.querySelectorAll('[name^="rol_"]:checked').forEach(function(sel){
+        eq.push('<b>'+roles[sel.value]+':</b> '+sel.closest('tr').querySelector('td').textContent.trim());
     });
     document.getElementById('resEquipo').innerHTML = eq.join('<br>')||'--';
     var ch = document.getElementById('chainContainer'), cd = document.getElementById('resChain');
     if (document.getElementById('presetInput').value === 'personalizado' && pasos.length) {
         cd.style.display = 'block'; var h = ''; var au = {};
-        document.querySelectorAll('[name^="rol_"]').forEach(function(sel){
+        document.querySelectorAll('[name^="rol_"]:checked').forEach(function(sel){
             var pk = sel.getAttribute('name').replace('rol_','');
             au[pk] = sel.closest('tr').querySelector('td').textContent.trim();
         });
@@ -384,6 +371,7 @@ function filtrarManagers() {
         o.style.display = (o.text.toLowerCase().indexOf(f)>=0 && (o.getAttribute('data-subareas')||'').split(',').some(function(x){return x.trim()&&s.indexOf(x.trim())>=0;}))?'':'none';
     }
 }
+setTimeout(function(){ document.getElementById('equipoCount').textContent = document.querySelectorAll('tr[data-search]').length + ' miembros'; }, 100);
 document.addEventListener('DOMContentLoaded', function() {
     document.querySelector('.preset-card[data-preset="revision"]').classList.add('selected');
     var sc = document.querySelectorAll('.subarea-check:checked');
