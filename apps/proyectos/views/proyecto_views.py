@@ -304,7 +304,11 @@ def proyecto_create(request):
         messages.success(request, f"Proyecto '{proyecto.codigo}' creado.")
         return redirect("proyectos:proyecto_detail", pk=proyecto.pk)
 
-    usuarios = User.objects.filter(activo=True, is_active=True).exclude(rol__nombre="Master")
+    usuarios = User.objects.filter(
+        activo=True, is_active=True,
+        subareas__subarea__in=subareas,
+        subareas__activo=True
+    ).exclude(rol__nombre="Master").distinct().order_by("nombre", "apellido")
     from apps.accounts.models import Empresa
     from apps.estructura.models import Area
     from collections import defaultdict

@@ -129,7 +129,19 @@
 
                 <!-- STEP 3 -->
                 <div class="wizard-step" data-step="3">
-                    <p class="text-muted mb-2" style="font-size:0.75rem;">Asigna un rol a cada miembro del equipo. El Manager ya es <strong>Lider</strong> automaticamente.</p>
+                    <p class="text-muted mb-2" style="font-size:0.75rem;">Solo se muestran usuarios de tus areas. Asigna un rol a cada miembro del equipo.</p>
+                    <div class="d-flex gap-2 mb-2 align-items-center">
+                        <input type="text" id="filtroEquipo" class="form-control form-control-sm" placeholder="Buscar miembro..." style="width:200px;font-size:0.72rem;" onkeyup="filtrarEquipo()">
+                        <select id="batchRol" class="form-select form-select-sm" style="width:140px;font-size:0.65rem;" onchange="batchAsignarRol()">
+                            <option value="">Asignar a todos...</option>
+                            <option value="ejecutor">Ejecutor</option>
+                            <option value="revisor">Revisor</option>
+                            <option value="aprobador">Aprobador</option>
+                            <option value="responsable">Responsable</option>
+                            <option value="observador">Observador</option>
+                        </select>
+                        <small id="equipoCount" class="text-muted" style="font-size:0.6rem;"></small>
+                    </div>
                     <div class="border rounded" style="max-height:320px;overflow-y:auto;">
                         <table class="table table-hover table-sm mb-0" style="font-size:0.8rem;">
                             <thead class="table-light"><tr>
@@ -223,6 +235,9 @@ function validarPaso(n) {
         var hayEjec = false;
         document.querySelectorAll('[name^="rol_"]').forEach(function(s){ if(s.value==='ejecutor') hayEjec=true; });
         if (!hayEjec) { alert('Debes asignar al menos 1 Ejecutor.'); return false; }
+        var miembros = 0;
+        document.querySelectorAll('[name^="rol_"]').forEach(function(s){ if(s.value) miembros++; });
+        if (miembros === 0) { alert('Asigna al menos 1 miembro al equipo.'); return false; }
     }
     return true;
 }
@@ -244,6 +259,28 @@ function obtenerUsuariosPorRol(rolBuscado) {
         }
     });
     return res;
+}
+function filtrarEquipo() {
+    var f = document.getElementById('filtroEquipo').value.toLowerCase();
+    var count = 0;
+    document.querySelectorAll('[name^="rol_"]').forEach(function(s){
+        var row = s.closest('tr');
+        var text = row.textContent.toLowerCase();
+        var match = text.indexOf(f) >= 0;
+        row.style.display = match ? '' : 'none';
+        if (match) count++;
+    });
+    document.getElementById('equipoCount').textContent = count + ' de ' + document.querySelectorAll('[name^="rol_"]').length + ' visibles';
+}
+function batchAsignarRol() {
+    var rol = document.getElementById('batchRol').value;
+    if (!rol) { document.getElementById('equipoCount').textContent = ''; return; }
+    document.querySelectorAll('[name^="rol_"]').forEach(function(s){
+        var row = s.closest('tr');
+        if (row.style.display !== 'none') s.value = rol;
+    });
+    document.getElementById('batchRol').value = '';
+    document.getElementById('equipoCount').textContent = 'Rol asignado a los visibles';
 }
 function agregarPaso() { pasos.push({orden:pasos.length+1,etiqueta:'',rol:'revisor',user_ids:[],tipo:'revision'}); renderPasos(); }
 function eliminarPaso(i) { pasos.splice(i,1); pasos.forEach(function(p,j){p.orden=j+1;}); renderPasos(); }
